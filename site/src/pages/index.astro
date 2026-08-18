@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import { withBase } from '../lib/url';
 
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.published.valueOf() - a.data.published.valueOf()
@@ -13,12 +14,12 @@ const posts = (await getCollection('posts')).sort(
     {
       posts.map((post) => (
         <li>
-          <a href={`/posts/${post.data.slug}/`}>{post.data.title}</a>
+          <a href={withBase(`/posts/${post.data.slug}/`)}>{post.data.title}</a>
           <span class="meta">{post.data.published.toISOString().slice(0, 10)}</span>
           {post.data.journey && (
             <span class="meta">
               {' '}
-              — <a href={`/journeys/${post.data.journey}/`}>{post.data.journey}</a>
+              — <a href={withBase(`/journeys/${post.data.journey}/`)}>{post.data.journey}</a>
             </span>
           )}
         </li>

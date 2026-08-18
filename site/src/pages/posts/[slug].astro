@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import { splitPostBody } from '../../lib/post-body';
+import { withBase } from '../../lib/url';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -19,7 +20,7 @@ const blocks = splitPostBody(post.body ?? '', post.data.fragments);
 ---
 
 <Base title={post.data.title}>
-  <p><a href="/">← feed</a></p>
+  <p><a href={withBase('/')}>← feed</a></p>
   <h1>{post.data.title}</h1>
   <p class="meta">
     {post.data.published.toISOString().slice(0, 10)}
@@ -27,7 +28,7 @@ const blocks = splitPostBody(post.body ?? '', post.data.fragments);
     {post.data.journey && (
       <>
         {' '}
-        · <a href={`/journeys/${post.data.journey}/`}>{post.data.journey}</a>
+        · <a href={withBase(`/journeys/${post.data.journey}/`)}>{post.data.journey}</a>
       </>
     )}
   </p>

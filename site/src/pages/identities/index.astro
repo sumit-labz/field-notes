@@ -1,18 +1,19 @@
 ---
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/url';
 
 const identities = (await getCollection('identities')).sort((a, b) => a.data.order - b.data.order);
 ---
 
 <Base title="Identities">
-  <p><a href="/">← feed</a></p>
+  <p><a href={withBase('/')}>← feed</a></p>
   <h1>Identities</h1>
   <ul>
     {
       identities.map((identity) => (
         <li>
-          <a href={`/identities/${identity.data.slug}/`}>{identity.data.title}</a>
+          <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
         </li>
       ))
     }

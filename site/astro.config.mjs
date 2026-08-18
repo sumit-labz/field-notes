@@ -1,6 +1,11 @@
 import { defineConfig, envField } from 'astro/config';
 
 export default defineConfig({
+  // Project page at sumit-labz.github.io/field-notes, not a user/org root
+  // page — every internal link must go through lib/url.ts's withBase() to
+  // pick up this prefix, since Astro doesn't rewrite hardcoded hrefs itself.
+  site: 'https://sumit-labz.github.io',
+  base: '/field-notes',
   env: {
     schema: {
       // Base URL fragment media is served from (SPEC.md §4 secrets:

@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { withBase } from '../lib/url';
 
 interface Props {
   title: string;
@@ -23,8 +24,8 @@ const { title } = Astro.props;
   </head>
   <body>
     <nav>
-      <a href="/">feed</a> ·
-      <a href="/identities">identities</a>
+      <a href={withBase('/')}>feed</a> ·
+      <a href={withBase('/identities')}>identities</a>
     </nav>
     <main>
       <slot />

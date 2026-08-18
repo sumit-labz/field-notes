@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
 import { paragraphs } from '../../lib/post-body';
+import { withBase } from '../../lib/url';
 
 export async function getStaticPaths() {
   const identities = await getCollection('identities');
@@ -24,7 +25,7 @@ const groups = STATUS_ORDER.map((status) => ({
 ---
 
 <Base title={identity.data.title}>
-  <p><a href="/identities">← identities</a></p>
+  <p><a href={withBase('/identities')}>← identities</a></p>
   <h1>{identity.data.title}</h1>
   <Fragment set:html={paragraphs(identity.body ?? '')} />
 
@@ -36,7 +37,7 @@ const groups = STATUS_ORDER.map((status) => ({
         <ul>
           {group.journeys.map((journey) => (
             <li>
-              <a href={`/journeys/${journey.data.slug}/`}>
+              <a href={withBase(`/journeys/${journey.data.slug}/`)}>
                 <JourneyTitle
                   title={journey.data.title}
                   status={journey.data.status}

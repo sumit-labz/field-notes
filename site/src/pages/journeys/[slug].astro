@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
 import { paragraphs } from '../../lib/post-body';
+import { withBase } from '../../lib/url';
 
 export async function getStaticPaths() {
   const journeys = await getCollection('journeys');
@@ -31,7 +32,7 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
 ---
 
 <Base title={data.title}>
-  <p><a href="/">← feed</a></p>
+  <p><a href={withBase('/')}>← feed</a></p>
   <JourneyTitle title={data.title} status={data.status} as="h1" seed={data.slug} />
   <p class="meta">
     status: {data.status}
@@ -41,7 +42,7 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
   {
     emergedFrom && (
       <p>
-        emerged from <a href={`/journeys/${emergedFrom.data.slug}/`}>{emergedFrom.data.title}</a>
+        emerged from <a href={withBase(`/journeys/${emergedFrom.data.slug}/`)}>{emergedFrom.data.title}</a>
       </p>
     )
   }
@@ -51,7 +52,7 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
   {
     becameJourneys.map((child) => (
       <p>
-        ↳ became: <a href={`/journeys/${child.data.slug}/`}>{child.data.title}</a>
+        ↳ became: <a href={withBase(`/journeys/${child.data.slug}/`)}>{child.data.title}</a>
       </p>
     ))
   }
@@ -64,7 +65,7 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
     {
       posts.map((post) => (
         <li>
-          <a href={`/posts/${post.data.slug}/`}>{post.data.title}</a>
+          <a href={withBase(`/posts/${post.data.slug}/`)}>{post.data.title}</a>
           <span class="meta"> · {post.data.published.toISOString().slice(0, 10)}</span>
         </li>
       ))
