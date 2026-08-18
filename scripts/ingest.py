@@ -38,6 +38,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -62,6 +63,13 @@ MAX_LONG_EDGE = 1600
 WEBP_QUALITY = 80
 EXIF_DATE_TIME_ORIGINAL = 36867
 SECRET_ENV_VARS = ("TELEGRAM_BOT_TOKEN", "R2_ACCESS_KEY", "R2_SECRET_KEY")
+PUSH_RETRY_ATTEMPTS = 3
+PUSH_RETRY_BACKOFF_SECONDS = 5
+UNMERGED_STATUS_CODES = {"UU", "AA", "DD", "AU", "UA", "DU", "UD"}
+# Never let a git call block on an interactive prompt — this only ever runs
+# unattended (CI, or a human running it locally who still shouldn't get
+# stuck on an editor for a routine rebase --continue).
+GIT_ENV = {**os.environ, "GIT_EDITOR": "true", "GIT_TERMINAL_PROMPT": "0"}
 
 
 class IngestError(Exception):
@@ -424,13 +432,52 @@ def write_fragment_file(fragment: Fragment) -> None:
 # git
 
 
+def git(args: list[str]) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True, env=GIT_ENV)
+
+
 def run_git(args: list[str]) -> None:
-    result = subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
+    result = git(args)
     if result.returncode != 0:
         raise IngestError(f"git {args[0]} failed: {result.stderr.strip()}")
 
 
-def commit_and_push(fragment_count: int) -> None:
+def unmerged_paths() -> set[str]:
+    result = git(["status", "--porcelain=v1"])
+    paths = set()
+    for line in result.stdout.splitlines():
+        if len(line) < 4:
+            continue
+        code, path = line[:2], line[3:]
+        if code in UNMERGED_STATUS_CODES:
+            paths.add(path)
+    return paths
+
+
+def rebase_onto_remote(new_offset: int) -> None:
+    pull = git(["pull", "--rebase", "--autostash", "origin", "main"])
+    if pull.returncode == 0:
+        return
+
+    conflicts = unmerged_paths()
+    offset_rel = str(STATE_PATH.relative_to(REPO_ROOT)).replace("\\", "/")
+
+    if conflicts != {offset_rel}:
+        git(["rebase", "--abort"])  # best-effort cleanup; the real error is below
+        raise IngestError(f"git pull --rebase failed: {pull.stderr.strip()}")
+
+    # The offset file is the one place a rebase can conflict — e.g. a
+    # concurrent run already advanced past a different batch. Don't let git
+    # text-merge the two JSON values: our in-memory new_offset, computed
+    # from this run's own getUpdates call, is the only value that's
+    # actually correct for the batch this run processed. Re-write it
+    # directly and continue the rebase rather than trusting the merge.
+    write_offset(new_offset)
+    run_git(["add", offset_rel])
+    run_git(["rebase", "--continue"])
+
+
+def commit_and_push(fragment_count: int, new_offset: int) -> None:
     run_git(["add", "fragments", str(STATE_PATH.relative_to(REPO_ROOT))])
     run_git(
         [
@@ -439,7 +486,28 @@ def commit_and_push(fragment_count: int) -> None:
             "commit", "-m", f"ingest: {fragment_count} fragments",
         ]
     )
-    run_git(["push"])
+    push_with_retry(new_offset)
+
+
+def push_with_retry(new_offset: int) -> None:
+    last_error = ""
+    for attempt in range(1, PUSH_RETRY_ATTEMPTS + 1):
+        result = git(["push"])
+        if result.returncode == 0:
+            if attempt > 1:
+                print(f"[ingest] push succeeded on attempt {attempt}/{PUSH_RETRY_ATTEMPTS}")
+            return
+
+        last_error = result.stderr.strip()
+        if attempt == PUSH_RETRY_ATTEMPTS:
+            break
+
+        print(f"[ingest] push rejected (attempt {attempt}/{PUSH_RETRY_ATTEMPTS}): {last_error}")
+        print("[ingest] pulling and rebasing before retry")
+        rebase_onto_remote(new_offset)
+        time.sleep(PUSH_RETRY_BACKOFF_SECONDS * attempt)
+
+    raise IngestError(f"git push failed after {PUSH_RETRY_ATTEMPTS} attempts: {last_error}")
 
 
 # ---------------------------------------------------------------------------
@@ -501,7 +569,7 @@ def main() -> None:
 
     new_offset = max(u["update_id"] for u in updates) + 1
     write_offset(new_offset)
-    commit_and_push(len(fragments))
+    commit_and_push(len(fragments), new_offset)
     print(f"[ingest] committed {len(fragments)} fragments, offset now {new_offset}")
 
 
