@@ -1,0 +1,5 @@
+requests
+Pillow
+boto3
+PyYAML
+python-dotenv

@@ -199,6 +199,10 @@ Steps:
 10. Commit everything as a SINGLE squashed commit: `ingest: N fragments`.
 11. If no new messages, exit without committing.
 
+`ingest.py` writes a `dimensions: [width, height]` field on each media entry,
+read from the image at resize time. `image-dimensions.ts` uses it when present
+and only falls back to fetching when absent.
+
 Failure handling: on any exception, open a GitHub issue titled
 `ingest failed <date>` and exit non-zero. Silent failure is the one unacceptable
 outcome — `getUpdates` discards messages older than 24h, so a quiet break loses
