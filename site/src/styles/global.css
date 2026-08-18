@@ -1,0 +1,185 @@
+/* site/src/styles/global.css
+   Field-notes visual language — SPEC.md §7.
+   Two inks, one ground. No cards, no shadows, no radius, no motion beyond a
+   plain underline. Materiality comes from type, image rotation, and stamped
+   timestamps — nothing else. */
+
+:root {
+  --ground: #f4f0e6;
+  --ink: #1a1a18;
+  --ink-2: #5a564c; /* metadata only — recedes so timestamps don't compete with body text */
+
+  --font-structure: 'Archivo', sans-serif;
+  --font-body: 'Instrument Sans', sans-serif;
+  --font-meta: 'Space Mono', monospace;
+  --font-annotation: 'Caveat', cursive;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.125rem; /* 17–18px per §7 */
+  line-height: 1.7;
+}
+
+main {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 6rem;
+}
+
+/* links: underline is the only hover/focus effect this site has */
+a {
+  color: var(--ink);
+  text-decoration: none;
+}
+a:hover,
+a:focus {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--ink);
+  margin: 2rem 0;
+}
+
+/* structure: nav and standalone status labels — Archivo, uppercase,
+   letterspaced. This is chrome, not document headings, so it stays exempt
+   from the sentence-case rule below. */
+nav {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem 0;
+  font-family: var(--font-structure);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+}
+
+.label {
+  font-family: var(--font-structure);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.8rem;
+  margin: 0 0 0.75em;
+}
+
+/* content headings: Archivo, sentence case, never uppercase — a post title
+   is a title, not a label. */
+h1, h2, h3 {
+  font-family: var(--font-structure);
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 0.5em;
+}
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.1rem; }
+
+/* metadata: timestamps, ids, counts — mono, small, and the one place the
+   second, quieter ink is used, so it recedes behind body text. */
+.meta {
+  font-family: var(--font-meta);
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+
+/* annotation: margin notes and abandonment reasons only, set as marginalia —
+   hung slightly left of the body edge with a rule, not sized up to compete
+   with body text. Full ink, full length: the two-line cap is an authorial
+   rule for what you write, not something CSS truncates. */
+.annotation {
+  font-family: var(--font-annotation);
+  font-size: 1.25rem;
+  line-height: 1.3;
+  color: var(--ink);
+  margin: 0.75em 0 0.75em -1rem;
+  padding-left: 0.85rem;
+  border-left: 1px solid var(--ink-2);
+}
+
+/* journey status marks */
+.journey-title {
+  position: relative;
+  display: inline-block;
+  font-weight: 500;
+}
+
+.journey-title--struck .journey-title__text {
+  position: relative;
+  z-index: 0;
+}
+
+/* Sized and positioned in real pixels by client/strike-through.ts, one path
+   per rendered line — see that file for why. Server-rendered markup ships
+   this empty, so with no JS (or if measurement fails) the title just wraps
+   as plain, fully legible text: never scrolled, never truncated. */
+.journey-title--struck svg.strike-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.journey-title--struck svg.strike-overlay path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+svg.tick {
+  width: 0.85em;
+  height: 0.85em;
+  margin-left: 0.35em;
+  vertical-align: -0.05em;
+}
+svg.tick rect {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+svg.tick path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* fragment media: deterministic per-fragment tilt (lib/rotation.ts). width/
+   height come from the real fetched image (lib/image-dimensions.ts) so the
+   browser reserves the right box before the image loads — max-width/height:
+   auto then let it scale down on narrow viewports without losing that
+   aspect ratio or the layout-shift protection. */
+.fragment-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0;
+}
+
+.fragment-photo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--ink);
+}
+
+figure {
+  margin: 1.5rem 0;
+}

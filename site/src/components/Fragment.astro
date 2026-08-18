@@ -1,0 +1,51 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatCapturedAt } from '../lib/dates';
+import { tiltForId } from '../lib/rotation';
+import { mediaUrl } from '../lib/media-url';
+import { getImageDimensions } from '../lib/image-dimensions';
+
+interface Props {
+  fragment: CollectionEntry<'fragments'>;
+}
+
+const { fragment } = Astro.props;
+const { data, body } = fragment;
+const tilt = tiltForId(data.id);
+const caption = body?.trim() ?? '';
+
+const photos = data.media
+  ? await Promise.all(
+      data.media.map(async (key) => {
+        const src = mediaUrl(key);
+        const { width, height } = await getImageDimensions(src);
+        return { src, width, height };
+      })
+    )
+  : [];
+---
+
+<figure>
+  <figcaption class="meta">
+    {formatCapturedAt(data.captured_at)} · {data.type}
+    {data.spark && <span> · spark</span>}
+  </figcaption>
+  {
+    photos.length > 0 && (
+      <div class="fragment-photos">
+        {photos.map((photo) => (
+          <img
+            class="fragment-photo"
+            src={photo.src}
+            width={photo.width}
+            height={photo.height}
+            loading="lazy"
+            alt={caption}
+            style={`transform: rotate(${tilt}deg)`}
+          />
+        ))}
+      </div>
+    )
+  }
+  {caption && <p>{caption}</p>}
+</figure>

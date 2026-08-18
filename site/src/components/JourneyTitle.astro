@@ -1,0 +1,39 @@
+---
+interface Props {
+  title: string;
+  status: 'active' | 'paused' | 'abandoned' | 'completed';
+  as?: 'span' | 'h1';
+  /** Stable id (the journey slug) the strike wobble is seeded from. */
+  seed: string;
+}
+
+const { title, status, as = 'span', seed } = Astro.props;
+const Tag = as;
+---
+
+{
+  status === 'paused' ? (
+    <Tag class="journey-title">[ {title} ]</Tag>
+  ) : status === 'completed' ? (
+    <Tag class="journey-title">
+      {title}
+      <svg class="tick" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <rect x="2" y="3" width="14" height="14" />
+        <path d="M5,10.5 L8.5,14 L15,6" />
+      </svg>
+    </Tag>
+  ) : status === 'abandoned' ? (
+    <Tag class="journey-title journey-title--struck" data-strike-seed={seed}>
+      <span class="journey-title__text" data-strike-text>
+        {title}
+      </span>
+      <svg class="strike-overlay" aria-hidden="true" focusable="false" />
+    </Tag>
+  ) : (
+    <Tag class="journey-title">{title}</Tag>
+  )
+}
+
+<script>
+  import '../client/strike-through';
+</script>

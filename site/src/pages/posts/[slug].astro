@@ -1,0 +1,47 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import FragmentBlock from '../../components/Fragment.astro';
+import { splitPostBody } from '../../lib/post-body';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+  return posts.map((post) => ({
+    params: { slug: post.data.slug },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+const blocks = splitPostBody(post.body ?? '', post.data.fragments);
+---
+
+<Base title={post.data.title}>
+  <p><a href="/">← feed</a></p>
+  <h1>{post.data.title}</h1>
+  <p class="meta">
+    {post.data.published.toISOString().slice(0, 10)}
+    {' · '}{post.data.fragments.length} fragments
+    {post.data.journey && (
+      <>
+        {' '}
+        · <a href={`/journeys/${post.data.journey}/`}>{post.data.journey}</a>
+      </>
+    )}
+  </p>
+
+  {
+    blocks.map((block) =>
+      block.kind === 'text' ? (
+        <Fragment set:html={block.html} />
+      ) : (
+        (() => {
+          const fragment = fragmentsById.get(block.id);
+          return fragment ? <FragmentBlock fragment={fragment} /> : null;
+        })()
+      )
+    )
+  }
+</Base>

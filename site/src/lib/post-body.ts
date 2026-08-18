@@ -1,0 +1,46 @@
+// Splits a post's raw markdown body into text/fragment blocks per SPEC.md 3.2:
+// fragments render inline at {{fragment:ID}} markers if present, otherwise
+// appended in listed order after the prose.
+
+export type PostBlock = { kind: 'text'; html: string } | { kind: 'fragment'; id: string };
+
+const MARKER_RE = /\{\{fragment:([a-zA-Z0-9-]+)\}\}/g;
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+export function paragraphs(text: string): string {
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${escapeHtml(p)}</p>`)
+    .join('\n');
+}
+
+export function splitPostBody(body: string, orderedFragmentIds: string[]): PostBlock[] {
+  MARKER_RE.lastIndex = 0;
+  const hasMarkers = MARKER_RE.test(body);
+  MARKER_RE.lastIndex = 0;
+
+  if (!hasMarkers) {
+    const blocks: PostBlock[] = [];
+    if (body.trim()) blocks.push({ kind: 'text', html: paragraphs(body) });
+    for (const id of orderedFragmentIds) blocks.push({ kind: 'fragment', id });
+    return blocks;
+  }
+
+  const blocks: PostBlock[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = MARKER_RE.exec(body))) {
+    const textChunk = body.slice(lastIndex, match.index);
+    if (textChunk.trim()) blocks.push({ kind: 'text', html: paragraphs(textChunk) });
+    blocks.push({ kind: 'fragment', id: match[1] });
+    lastIndex = MARKER_RE.lastIndex;
+  }
+  const rest = body.slice(lastIndex);
+  if (rest.trim()) blocks.push({ kind: 'text', html: paragraphs(rest) });
+  return blocks;
+}

@@ -1,0 +1,28 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+
+const posts = (await getCollection('posts')).sort(
+  (a, b) => b.data.published.valueOf() - a.data.published.valueOf()
+);
+---
+
+<Base title="Feed">
+  <h1>Feed</h1>
+  <ul>
+    {
+      posts.map((post) => (
+        <li>
+          <a href={`/posts/${post.data.slug}/`}>{post.data.title}</a>
+          <span class="meta">{post.data.published.toISOString().slice(0, 10)}</span>
+          {post.data.journey && (
+            <span class="meta">
+              {' '}
+              — <a href={`/journeys/${post.data.journey}/`}>{post.data.journey}</a>
+            </span>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</Base>

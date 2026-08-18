@@ -1,0 +1,73 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import JourneyTitle from '../../components/JourneyTitle.astro';
+import { paragraphs } from '../../lib/post-body';
+
+export async function getStaticPaths() {
+  const journeys = await getCollection('journeys');
+  return journeys.map((journey) => ({
+    params: { slug: journey.data.slug },
+    props: { journey },
+  }));
+}
+
+const { journey } = Astro.props;
+const { data } = journey;
+
+const allJourneys = await getCollection('journeys');
+// SPEC.md 3.3: emerged_from is the only relationship field; genealogy is derived
+// from it rather than a separate graph structure.
+const emergedFrom = data.emerged_from
+  ? allJourneys.find((j) => j.data.slug === data.emerged_from)
+  : null;
+const becameJourneys = allJourneys.filter((j) => j.data.emerged_from === data.slug);
+
+const allPosts = await getCollection('posts');
+const posts = allPosts
+  .filter((p) => p.data.journey === data.slug)
+  .sort((a, b) => a.data.published.valueOf() - b.data.published.valueOf());
+const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.length, 0);
+---
+
+<Base title={data.title}>
+  <p><a href="/">← feed</a></p>
+  <JourneyTitle title={data.title} status={data.status} as="h1" seed={data.slug} />
+  <p class="meta">
+    status: {data.status}
+    {' · started '}{data.started.toISOString().slice(0, 10)}
+    {data.ended && <> · ended {data.ended.toISOString().slice(0, 10)}</>}
+  </p>
+  {
+    emergedFrom && (
+      <p>
+        emerged from <a href={`/journeys/${emergedFrom.data.slug}/`}>{emergedFrom.data.title}</a>
+      </p>
+    )
+  }
+  {
+    data.status === 'abandoned' && data.reason && <p class="annotation">{data.reason}</p>
+  }
+  {
+    becameJourneys.map((child) => (
+      <p>
+        ↳ became: <a href={`/journeys/${child.data.slug}/`}>{child.data.title}</a>
+      </p>
+    ))
+  }
+
+  <Fragment set:html={paragraphs(journey.body ?? '')} />
+
+  <h2>Posts</h2>
+  <p class="meta">{posts.length} posts · {fragmentCount} fragments</p>
+  <ul>
+    {
+      posts.map((post) => (
+        <li>
+          <a href={`/posts/${post.data.slug}/`}>{post.data.title}</a>
+          <span class="meta"> · {post.data.published.toISOString().slice(0, 10)}</span>
+        </li>
+      ))
+    }
+  </ul>
+</Base>
