@@ -1,0 +1,7 @@
+# hashtag -> journey slug map
+# A hashtag in a fragment caption that matches a key here sets the
+# fragment's `journey` field and is stripped from the body. An unmatched
+# hashtag is left in the body verbatim.
+
+paintingmyths: painting-myths
+herosjourney: heros-journey-structure
