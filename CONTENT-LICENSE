@@ -1,0 +1,18 @@
+# Content license
+
+Copyright (c) 2026 Sumit
+
+The journal content in this repository — everything in `fragments/`, `posts/`,
+`journeys/`, and `identities/`, together with all associated images, audio, and
+video, whether stored here or referenced in external object storage — is licensed
+under the Creative Commons Attribution-NonCommercial 4.0 International License
+(CC BY-NC 4.0).
+
+Full license text: https://creativecommons.org/licenses/by-nc/4.0/legalcode
+Summary: https://creativecommons.org/licenses/by-nc/4.0/
+
+In short, you are free to share and adapt this content, provided you give
+appropriate credit and do not use it for commercial purposes.
+
+The software in this repository (`scripts/` and `site/`) is licensed separately
+under the MIT License. See LICENSE.

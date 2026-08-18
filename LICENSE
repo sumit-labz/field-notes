@@ -2,6 +2,11 @@ MIT License
 
 Copyright (c) 2026 Sumit
 
+This license applies ONLY to the software in this repository: the contents of
+`scripts/` and `site/`. Journal content — `fragments/`, `posts/`, `journeys/`,
+`identities/`, and all associated media — is licensed separately under
+CONTENT-LICENSE.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
