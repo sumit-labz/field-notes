@@ -54,6 +54,14 @@ load_dotenv()
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / ".state" / "telegram-offset.json"
 FRAGMENTS_DIR = REPO_ROOT / "fragments"
+# Video and audio are NOT uploaded to R2 (photos are). They are saved as-is
+# into these repo-committed folders and referenced by a repo-relative path in
+# the fragment frontmatter (e.g. "media/video/2026-08-28-192734.mp4"). The site
+# tells local media from R2 keys by the "media/" prefix — see the fragments
+# schema in site/src/content/config.ts and site/src/lib/local-media.ts.
+MEDIA_DIR = REPO_ROOT / "media"
+VIDEO_DIR = MEDIA_DIR / "video"
+AUDIO_DIR = MEDIA_DIR / "audio"
 JOURNEYS_CONFIG_PATH = REPO_ROOT / "config" / "journeys.yml"
 
 TELEGRAM_API = "https://api.telegram.org"
@@ -164,7 +172,10 @@ def fetch_updates(config: Config, offset: int | None) -> list[dict]:
     return body["result"]
 
 
-def telegram_file_bytes(config: Config, file_id: str) -> bytes:
+def telegram_download(config: Config, file_id: str) -> tuple[bytes, str]:
+    """Return (content, telegram_file_path). The file_path suffix is Telegram's
+    own extension for the file (e.g. "voice/file_5.oga", "videos/file_3.mp4")
+    and is used to name locally-saved video/audio media."""
     try:
         resp = requests.get(
             f"{TELEGRAM_API}/bot{config.telegram_token}/getFile",
@@ -181,12 +192,17 @@ def telegram_file_bytes(config: Config, file_id: str) -> bytes:
         # it, or an exception formatted from it, reach a print() or issue body.
         download = requests.get(
             f"{TELEGRAM_API}/file/bot{config.telegram_token}/{file_path}",
-            timeout=60,
+            timeout=120,
         )
         download.raise_for_status()
-        return download.content
+        return download.content, file_path
     except requests.RequestException as exc:
         raise IngestError(f"failed to download telegram file: {redact_secrets(str(exc))}") from exc
+
+
+def telegram_file_bytes(config: Config, file_id: str) -> bytes:
+    content, _ = telegram_download(config, file_id)
+    return content
 
 
 def message_sender_id(message: dict) -> int | None:
@@ -352,44 +368,89 @@ def fragment_id_and_path(captured_at: datetime) -> tuple[str, Path, str, str]:
     return fragment_id, path, date_str, time_str
 
 
+def media_extension(file_path: str, fallback: str) -> str:
+    """Extension (without dot) for a locally-saved media file, taken from
+    Telegram's file_path, falling back when it carries none."""
+    suffix = Path(file_path).suffix.lstrip(".").lower()
+    return suffix or fallback
+
+
+def write_local_media(dir_path: Path, filename: str, data: bytes) -> None:
+    dir_path.mkdir(parents=True, exist_ok=True)
+    (dir_path / filename).write_bytes(data)
+
+
+# One piece of media collected from a Telegram message, tagged with how it
+# should be persisted. Photos are resized to WebP and uploaded to R2; video and
+# audio are saved raw into the repo (no R2). `data` is the bytes to persist and
+# `ext` is only meaningful for the local kinds.
+@dataclass
+class MediaItem:
+    kind: str  # "photo" | "video" | "audio"
+    data: bytes
+    ext: str = ""
+
+
 def build_fragment(client, config: Config, group: list[dict], journey_map: dict[str, str]) -> Fragment:
     first = group[0]
     caption = first.get("caption") or first.get("text") or ""
 
-    fragment_type = "text"
-    raw_media: list[bytes] = []
+    items: list[MediaItem] = []
     exif_dt: datetime | None = None
 
     for message in group:
         photo = message.get("photo")
         document = message.get("document")
+        video = message.get("video") or message.get("video_note")
+        audio = message.get("voice") or message.get("audio")
+
         if photo:
             file_id = photo[-1]["file_id"]  # largest size Telegram offers
+            original = telegram_file_bytes(config, file_id)
+            if exif_dt is None:
+                exif_dt = extract_exif_datetime(original)
+            items.append(MediaItem(kind="photo", data=resize_to_webp(original)))
         elif document and (document.get("mime_type") or "").startswith("image/"):
             file_id = document["file_id"]
-        elif message.get("voice") or message.get("video") or message.get("video_note") or message.get("audio"):
-            # Explicitly out of v1 scope (SPEC.md §9). Skipped, not silently
-            # dropped: this print is the signal that something didn't make
-            # it into the archive, visible in the Actions log for this run.
-            print(f"[ingest] message {message.get('message_id')} has unsupported media (voice/video/audio) — caption kept, media skipped")
-            continue
+            original = telegram_file_bytes(config, file_id)
+            if exif_dt is None:
+                exif_dt = extract_exif_datetime(original)
+            items.append(MediaItem(kind="photo", data=resize_to_webp(original)))
+        elif video:
+            # Saved as-is into the repo, NOT uploaded to R2 (see MEDIA_DIR).
+            data, file_path = telegram_download(config, video["file_id"])
+            items.append(MediaItem(kind="video", data=data, ext=media_extension(file_path, "mp4")))
+        elif audio:
+            data, file_path = telegram_download(config, audio["file_id"])
+            items.append(MediaItem(kind="audio", data=data, ext=media_extension(file_path, "oga")))
         else:
             continue
-
-        original = telegram_file_bytes(config, file_id)
-        if exif_dt is None:
-            exif_dt = extract_exif_datetime(original)
-        raw_media.append(resize_to_webp(original))
-        fragment_type = "photo"
 
     captured_at = exif_dt or datetime.fromtimestamp(first["date"], tz=timezone.utc).astimezone(IST)
     fragment_id, path, date_str, time_str = fragment_id_and_path(captured_at)
 
+    # Fragment type is the kind of its first media item; a group with no media
+    # is a plain text fragment. (Groups are homogeneous in practice — several
+    # photos, or a single video/voice note.)
+    fragment_type = items[0].kind if items else "text"
+
     media_keys: list[str] = []
-    for index, webp_bytes in enumerate(raw_media, start=1):
-        key = f"f/{date_str}/{time_str}-{index}.webp"
-        upload_to_r2(client, config, key, webp_bytes)
-        media_keys.append(key)
+    photo_index = 0
+    local_index = 0
+    for item in items:
+        if item.kind == "photo":
+            photo_index += 1
+            key = f"f/{date_str}/{time_str}-{photo_index}.webp"
+            upload_to_r2(client, config, key, item.data)
+            media_keys.append(key)
+        else:
+            local_index += 1
+            dir_path = VIDEO_DIR if item.kind == "video" else AUDIO_DIR
+            suffix = "" if local_index == 1 else f"-{local_index}"
+            filename = f"{fragment_id}{suffix}.{item.ext}"
+            write_local_media(dir_path, filename, item.data)
+            # Repo-relative POSIX path, matching what the site expects.
+            media_keys.append(f"media/{item.kind}/{filename}")
 
     body, journey, spark = parse_caption(caption, journey_map)
 
@@ -478,7 +539,13 @@ def rebase_onto_remote(new_offset: int) -> None:
 
 
 def commit_and_push(fragment_count: int, new_offset: int) -> None:
-    run_git(["add", "fragments", str(STATE_PATH.relative_to(REPO_ROOT))])
+    # "media/" holds locally-saved video/audio. Only stage it when it exists —
+    # a photos/text-only batch never creates it, and `git add` of a missing
+    # pathspec would fail the run.
+    add_paths = ["fragments", str(STATE_PATH.relative_to(REPO_ROOT))]
+    if MEDIA_DIR.exists():
+        add_paths.append("media")
+    run_git(["add", *add_paths])
     run_git(
         [
             "-c", "user.name=field-notes-ingest",

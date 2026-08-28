@@ -14,7 +14,11 @@ const fragments = defineCollection({
     id: z.string(),
     captured_at: z.coerce.date(),
     type: z.enum(['photo', 'text', 'video', 'audio']),
-    // omitted for text fragments
+    // Omitted for text fragments. Each entry is EITHER an R2 object key (photos,
+    // e.g. "f/2026-08-18/192314-1.webp") OR a repo-relative local path (video/
+    // audio, e.g. "media/video/2026-08-28-192734.mp4"). The renderer tells them
+    // apart by the "media/" prefix — see lib/local-media.ts. Video/audio are
+    // committed to the repo, not uploaded to R2 (see scripts/ingest.py).
     media: z.array(z.string()).optional(),
     journey: z.string().nullable(),
     spark: z.boolean(),

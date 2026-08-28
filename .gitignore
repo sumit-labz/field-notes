@@ -153,3 +153,6 @@ site/.astro/
 
 # Local Claude design bundle (its safe spec/mockups are committed to docs/design/)
 field-notes-design-bundle/
+
+# Claude Code local (personal) settings
+.claude/settings.local.json

@@ -1,0 +1,530 @@
+---
+// /internal/fragments — a working inbox for Sumit, NOT a public reader page.
+//
+// Deliberately outside the site's design system (docs/design/IMPLEMENTATION-
+// SPEC.md governs the public reader; this tool does not follow it). Optimized
+// purely for fast scanning and copy-pasting fragment IDs into Claude Code.
+//
+// PRIVACY / DISCOVERABILITY TRADEOFF: this is a real Astro route, so it builds
+// and deploys with the rest of the site and is reachable by anyone who knows
+// the URL — it is NOT authenticated or truly private, just unlinked. It is
+// excluded from nav (Base layout, not used here) and carries a robots noindex.
+// The project currently ships no sitemap.xml and no RSS feed (no @astrojs/
+// sitemap or @astrojs/rss integration in astro.config.mjs / package.json), so
+// there is nothing to exclude it from today; if either is ever added, this
+// route must be filtered out of it.
+import { getCollection } from 'astro:content';
+import { formatCapturedAt } from '../../lib/dates';
+import { mediaUrl } from '../../lib/media-url';
+import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
+
+const TYPE_ICON: Record<string, string> = {
+  photo: '🖼️',
+  video: '🎬',
+  audio: '🎙️',
+  text: '📝',
+};
+
+// One resolved preview per fragment, computed here so the template stays flat.
+type Preview =
+  | { kind: 'photo'; src: string; raw: string }
+  | { kind: 'video'; src: string; path: string }
+  | { kind: 'audio'; src: string; path: string }
+  | { kind: 'text'; excerpt: string }
+  | { kind: 'missing'; path: string };
+
+function resolvePreview(
+  type: string,
+  media: string[] | undefined,
+  body: string
+): Preview {
+  const key = media?.[0];
+  if (type === 'photo' && key) {
+    const src = mediaUrl(key);
+    return { kind: 'photo', src, raw: src };
+  }
+  if ((type === 'video' || type === 'audio') && key) {
+    if (!isLocalMedia(key)) {
+      // A video/audio fragment should always carry a local path; if it somehow
+      // holds an R2 key, fall back to serving it from R2 rather than breaking.
+      return { kind: type, src: mediaUrl(key), path: key };
+    }
+    const src = localMediaUrl(key);
+    if (!src) return { kind: 'missing', path: key };
+    return { kind: type, src, path: key };
+  }
+  const trimmed = body.trim();
+  const excerpt = trimmed.length > 100 ? trimmed.slice(0, 100) + '…' : trimmed;
+  return { kind: 'text', excerpt };
+}
+
+const fragments = await getCollection('fragments');
+
+const rows = fragments
+  .map((f) => ({
+    id: f.data.id,
+    date: f.data.id.slice(0, 10), // fragments/YYYY-MM-DD/… — folder == group key
+    capturedAt: f.data.captured_at,
+    type: f.data.type,
+    journey: f.data.journey,
+    spark: f.data.spark,
+    consumedBy: f.data.consumed_by,
+    preview: resolvePreview(f.data.type, f.data.media, f.body ?? ''),
+  }))
+  .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
+
+// Group by capture date, newest date first (rows already sorted newest-first).
+const groups: { date: string; items: typeof rows }[] = [];
+for (const row of rows) {
+  let group = groups.find((g) => g.date === row.date);
+  if (!group) {
+    group = { date: row.date, items: [] };
+    groups.push(group);
+  }
+  group.items.push(row);
+}
+
+const total = rows.length;
+const unassignedCount = rows.filter((r) => r.journey === null).length;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>fragment inbox (internal)</title>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --panel: #ffffff;
+        --border: #d9d9d4;
+        --text: #1c1c1a;
+        --muted: #6b6b64;
+        --accent: #2563eb;
+        --spark: #d97706;
+        --stub-bg: #f0f0ee;
+        --stub-text: #9a9a92;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17171a;
+          --panel: #1f1f23;
+          --border: #34343a;
+          --text: #e6e6e2;
+          --muted: #9a9a92;
+          --accent: #6ea8ff;
+          --spark: #f5b23d;
+          --stub-bg: #26262b;
+          --stub-text: #6b6b64;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      code, .mono {
+        font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 20px;
+      }
+      .title-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      h1 { font-size: 16px; margin: 0; font-weight: 600; }
+      .counts { color: var(--muted); font-size: 12px; }
+      .controls {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .controls label { color: var(--muted); font-size: 12px; margin-right: 4px; }
+      select {
+        font: inherit;
+        font-size: 13px;
+        padding: 3px 6px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 4px 9px;
+        font-size: 12px;
+      }
+      button:hover { border-color: var(--accent); }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .selbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      main { padding: 8px 20px 80px; }
+      .date-group { margin-top: 22px; }
+      .date-head {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 4px;
+        margin-bottom: 8px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 24px 120px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 10px 8px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+      }
+      .row:nth-child(odd) { background: var(--panel); }
+      .row.hidden { display: none; }
+      .row-check { margin-top: 2px; }
+      .preview { }
+      .thumb {
+        max-width: 110px;
+        max-height: 90px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        display: block;
+      }
+      .av { max-width: 320px; width: 100%; display: block; }
+      audio.av { height: 34px; }
+      .excerpt {
+        color: var(--text);
+        font-size: 13px;
+        white-space: pre-wrap;
+      }
+      .excerpt.empty { color: var(--muted); font-style: italic; }
+      .missing { color: var(--spark); font-size: 12px; }
+      .meta {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 0;
+      }
+      .id-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .id {
+        font-size: 13px;
+        font-weight: 600;
+        user-select: all;
+        cursor: text;
+      }
+      .copy-btn { padding: 2px 7px; font-size: 11px; }
+      .copied { border-color: var(--accent); color: var(--accent); }
+      .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .type-tag { color: var(--text); }
+      .journey-tag code { color: var(--text); }
+      .journey-tag.unassigned { color: var(--muted); font-style: italic; }
+      .spark-tag { color: var(--spark); font-weight: 600; }
+      .consumed { color: var(--muted); font-size: 11px; }
+      .stubs { display: flex; gap: 6px; margin-top: 2px; }
+      .stub {
+        background: var(--stub-bg);
+        color: var(--stub-text);
+        border: 1px dashed var(--border);
+        cursor: not-allowed;
+        font-size: 11px;
+        padding: 3px 8px;
+      }
+      .stub:hover { border-color: var(--border); }
+      .stub .soon {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        opacity: 0.8;
+        margin-left: 4px;
+      }
+      .empty-state { color: var(--muted); margin-top: 40px; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title-row">
+        <h1>fragment inbox</h1>
+        <span class="counts">
+          {total} fragments · {unassignedCount} unassigned · internal / not indexed
+        </span>
+      </div>
+      <div class="controls">
+        <div>
+          <label for="filter-type">type</label>
+          <select id="filter-type">
+            <option value="all">all</option>
+            <option value="photo">photo</option>
+            <option value="video">video</option>
+            <option value="audio">audio</option>
+            <option value="text">text</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-assigned">journey</label>
+          <select id="filter-assigned">
+            <option value="all">all</option>
+            <option value="unassigned">unassigned</option>
+            <option value="assigned">assigned</option>
+          </select>
+        </div>
+        <span class="counts" id="visible-count"></span>
+      </div>
+      <div class="selbar">
+        <button id="copy-selected" class="primary">copy selected IDs</button>
+        <button id="select-visible">select all visible</button>
+        <button id="clear-sel">clear</button>
+        <span id="sel-count">0 selected</span>
+      </div>
+    </header>
+
+    <main>
+      {
+        total === 0 ? (
+          <p class="empty-state">No fragments yet.</p>
+        ) : (
+          groups.map((group) => (
+            <section class="date-group">
+              <div class="date-head">{group.date}</div>
+              {group.items.map((row) => (
+                <div
+                  class="row"
+                  data-type={row.type}
+                  data-assigned={row.journey === null ? 'unassigned' : 'assigned'}
+                  data-id={row.id}
+                >
+                  <input class="row-check" type="checkbox" aria-label={`select ${row.id}`} />
+
+                  <div class="preview">
+                    {row.preview.kind === 'photo' && (
+                      <a href={row.preview.raw} target="_blank" rel="noreferrer">
+                        <img class="thumb" src={row.preview.src} alt={row.id} loading="lazy" />
+                      </a>
+                    )}
+                    {row.preview.kind === 'video' && (
+                      <video class="av" controls preload="metadata" src={row.preview.src} />
+                    )}
+                    {row.preview.kind === 'audio' && (
+                      <audio class="av" controls preload="metadata" src={row.preview.src} />
+                    )}
+                    {row.preview.kind === 'text' && (
+                      <div class={`excerpt${row.preview.excerpt ? '' : ' empty'}`}>
+                        {row.preview.excerpt || '(no text)'}
+                      </div>
+                    )}
+                    {row.preview.kind === 'missing' && (
+                      <div class="missing">
+                        ⚠ file not found: <code>{row.preview.path}</code>
+                      </div>
+                    )}
+                  </div>
+
+                  <div class="meta">
+                    <div class="id-line">
+                      <code class="id mono">{row.id}</code>
+                      <button class="copy-btn" data-copy-id={row.id}>copy</button>
+                    </div>
+                    <div class="tags">
+                      <span class="type-tag">{TYPE_ICON[row.type] ?? ''} {row.type}</span>
+                      <span>· {formatCapturedAt(row.capturedAt)}</span>
+                      {row.journey === null ? (
+                        <span class="journey-tag unassigned">· unassigned</span>
+                      ) : (
+                        <span class="journey-tag">
+                          · <code>{row.journey}</code>
+                        </span>
+                      )}
+                      {row.spark && <span class="spark-tag">· ★ spark</span>}
+                    </div>
+                    {row.consumedBy && (
+                      <div class="consumed">consumed by: <code>{row.consumedBy}</code></div>
+                    )}
+                    {(row.type === 'audio' || row.type === 'text') && (
+                      <div class="stubs">
+                        {row.type === 'audio' && (
+                          <button class="stub" disabled type="button">
+                            Transcribe<span class="soon">soon</span>
+                          </button>
+                        )}
+                        {row.type === 'text' && (
+                          <button class="stub" disabled type="button">
+                            Fix grammar<span class="soon">soon</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </section>
+          ))
+        )
+      }
+    </main>
+
+    <script>
+      // Clipboard + filtering for the internal inbox. Plain DOM, no framework —
+      // this page is a local tool, function over polish.
+
+      async function copyText(text: string): Promise<boolean> {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Clipboard API needs a secure context (localhost counts). Fall back
+          // to the legacy path so copy still works over plain http if needed.
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return ok;
+          } catch {
+            return false;
+          }
+        }
+      }
+
+      function flash(btn: HTMLElement, label: string) {
+        const prev = btn.textContent;
+        btn.textContent = label;
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove('copied');
+        }, 1000);
+      }
+
+      // Per-row copy.
+      document.querySelectorAll<HTMLButtonElement>('[data-copy-id]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-copy-id') ?? '';
+          const ok = await copyText(id);
+          flash(btn, ok ? 'copied ✓' : 'failed');
+        });
+      });
+
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('.row'));
+      const checks = () =>
+        rows.map((r) => r.querySelector<HTMLInputElement>('.row-check')!);
+
+      // Filters.
+      const typeSel = document.getElementById('filter-type') as HTMLSelectElement;
+      const assignedSel = document.getElementById('filter-assigned') as HTMLSelectElement;
+      const visibleCount = document.getElementById('visible-count')!;
+
+      function isVisible(row: HTMLElement): boolean {
+        const t = typeSel.value;
+        const a = assignedSel.value;
+        if (t !== 'all' && row.dataset.type !== t) return false;
+        if (a !== 'all' && row.dataset.assigned !== a) return false;
+        return true;
+      }
+
+      function applyFilter() {
+        let shown = 0;
+        for (const row of rows) {
+          const vis = isVisible(row);
+          row.classList.toggle('hidden', !vis);
+          if (vis) shown++;
+        }
+        // Hide date groups that ended up empty.
+        document.querySelectorAll<HTMLElement>('.date-group').forEach((g) => {
+          const any = Array.from(g.querySelectorAll<HTMLElement>('.row')).some(
+            (r) => !r.classList.contains('hidden')
+          );
+          g.style.display = any ? '' : 'none';
+        });
+        visibleCount.textContent = `${shown} shown`;
+        updateSelCount();
+      }
+      typeSel.addEventListener('change', applyFilter);
+      assignedSel.addEventListener('change', applyFilter);
+
+      // Selection + copy-selected.
+      const selCount = document.getElementById('sel-count')!;
+      function selectedIds(): string[] {
+        return rows
+          .filter((r) => !r.classList.contains('hidden'))
+          .filter((r) => r.querySelector<HTMLInputElement>('.row-check')!.checked)
+          .map((r) => r.dataset.id ?? '');
+      }
+      function updateSelCount() {
+        selCount.textContent = `${selectedIds().length} selected`;
+      }
+      checks().forEach((c) => c.addEventListener('change', updateSelCount));
+
+      document.getElementById('select-visible')!.addEventListener('click', () => {
+        rows
+          .filter((r) => !r.classList.contains('hidden'))
+          .forEach((r) => {
+            r.querySelector<HTMLInputElement>('.row-check')!.checked = true;
+          });
+        updateSelCount();
+      });
+      document.getElementById('clear-sel')!.addEventListener('click', () => {
+        checks().forEach((c) => (c.checked = false));
+        updateSelCount();
+      });
+      document.getElementById('copy-selected')!.addEventListener('click', async (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        const ids = selectedIds();
+        if (ids.length === 0) {
+          flash(btn, 'none selected');
+          return;
+        }
+        // Newline-separated: pastes cleanly into a Claude Code prompt as a list.
+        const ok = await copyText(ids.join('\n'));
+        flash(btn, ok ? `copied ${ids.length} ✓` : 'failed');
+      });
+
+      applyFilter();
+    </script>
+  </body>
+</html>
