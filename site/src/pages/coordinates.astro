@@ -18,13 +18,13 @@ const sorted = posts.sort(
 );
 ---
 
-<Base title="Coordinates">
-  <h1>Coordinates</h1>
-  <p class="annotation">places I found once and want to get back to. no map, just an ×.</p>
+<Base title="Notes to self">
+  <h1>Notes to self</h1>
+  <p class="annotation">things I worked out once and want to hold onto. no map, just an ×.</p>
 
   {
     sorted.length === 0 ? (
-      <p class="annotation annotation--ghost">no coordinates yet. they arrive when a realization gets written down.</p>
+      <p class="annotation annotation--ghost">nothing written yet. it arrives when a realization does.</p>
     ) : (
       sorted.map((post) => {
         const journey = post.data.journey ? journeyBySlug.get(post.data.journey) : null;
