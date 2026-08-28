@@ -87,14 +87,23 @@ const identities = defineCollection({
 
 // IMPLEMENTATION-SPEC stage 4: /about is a dated, append-only stack. Each file
 // in about/ is one entry, newest on top; older entries recede through ink →
-// graphite → ghost. `mix` is the ordered list of identity slugs that sized
-// that period of life (first = biggest).
+// graphite → ghost. `mix` is the obsessions that sized that period of life —
+// each carries its OWN explicit weight, so the size/colour is driven by a real
+// signal per entry, not by list order. Every weight resolves to an explicit
+// size+colour pair in about.astro; there is no index-based fallback.
 const about = defineCollection({
   loader: glob({ pattern: '*.md', base: `${repoRoot}about` }),
   schema: z.object({
     date: z.coerce.date(),
     season: z.string(),
-    mix: z.array(z.string()).optional(),
+    mix: z
+      .array(
+        z.object({
+          slug: z.string(),
+          weight: z.enum(['dominant', 'present', 'emerging', 'quiet']),
+        })
+      )
+      .optional(),
   }),
 });
 

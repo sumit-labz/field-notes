@@ -13,12 +13,19 @@ const identityTitle = new Map(
   identityEntries.map((i) => [i.data.slug, i.data.title])
 );
 
+// Entry recede (newest = current, older fade to ghost) is genuinely by stack
+// position — that's the timeline. The obsession mix is NOT: each label's size
+// and colour comes from its own explicit weight, so four items resolve to four
+// distinct weights regardless of order or count.
 const layerClass = (index: number) =>
   index === 0 ? 'about-entry--current' : index === 1 ? 'about-entry--past' : 'about-entry--archive';
-const mixSize = (index: number) =>
-  index === 0 ? '1.5rem' : index === 1 ? '1.15rem' : '0.95rem';
-const mixColor = (index: number) =>
-  index === 0 ? 'var(--ink)' : index === 1 ? 'var(--graphite)' : 'var(--ghost)';
+
+const MIX_WEIGHT: Record<'dominant' | 'present' | 'emerging' | 'quiet', { size: string; color: string }> = {
+  dominant: { size: '1.6rem', color: 'var(--ink)' },
+  present: { size: '1.25rem', color: 'var(--ink)' },
+  emerging: { size: '1rem', color: 'var(--graphite)' },
+  quiet: { size: '0.85rem', color: 'var(--ghost)' },
+};
 ---
 
 <Base title="About">
@@ -33,11 +40,11 @@ const mixColor = (index: number) =>
           <div class="text">{entry.body ?? ''}</div>
           {entry.data.mix && entry.data.mix.length > 0 && (
             <div class="about-mix">
-              {entry.data.mix.map((slug, j) => (
+              {entry.data.mix.map((item) => (
                 <span
-                  style={`font-size:${mixSize(j)};color:${mixColor(j)}`}
+                  style={`font-size:${MIX_WEIGHT[item.weight].size};color:${MIX_WEIGHT[item.weight].color}`}
                 >
-                  {identityTitle.get(slug) ?? slug}
+                  {identityTitle.get(item.slug) ?? item.slug}
                 </span>
               ))}
             </div>
