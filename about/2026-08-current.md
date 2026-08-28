@@ -1,6 +1,7 @@
 ---
 date: 2026-08-01
 season: "2026 · 08"
+aside: "sound came back this month. of course it did."
 mix:
   - slug: making-tools
     weight: dominant

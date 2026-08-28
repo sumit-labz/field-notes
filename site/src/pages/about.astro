@@ -49,6 +49,7 @@ const MIX_WEIGHT: Record<'dominant' | 'present' | 'emerging' | 'quiet', { size: 
               ))}
             </div>
           )}
+          {entry.data.aside && <p class="about-notebook">{entry.data.aside}</p>}
         </div>
       ))
     }

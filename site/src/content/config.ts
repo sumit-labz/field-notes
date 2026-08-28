@@ -96,6 +96,10 @@ const about = defineCollection({
   schema: z.object({
     date: z.coerce.date(),
     season: z.string(),
+    // A short, dry, self-observed aside in the Caveat margin voice — the M2
+    // mock's "sound came back this month. of course it did." Optional: an
+    // entry without one renders no extra line.
+    aside: z.string().optional(),
     mix: z
       .array(
         z.object({
