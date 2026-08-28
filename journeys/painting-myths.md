@@ -1,7 +1,7 @@
 ---
 slug: painting-myths
 title: Painting myths
-identity: painting
+identity: making-images
 status: active
 started: 2026-01-05
 emerged_from: null
