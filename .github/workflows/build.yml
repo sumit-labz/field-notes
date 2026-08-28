@@ -2,9 +2,10 @@ name: build
 
 on:
   push:
-    # Publish from main (the live archive) and from the redesign branch so
-    # the v0 demo deploys straight from the branch it was built on.
-    branches: [main, "redesign/v0"]
+    # Publish from main only — the single canonical source of truth. The v0
+    # redesign has shipped into main, so the temporary redesign/v0 branch
+    # deploy is gone: one branch, one deploy, no race on the pages lock.
+    branches: [main]
     # Ingest commits (every 15 minutes) touch fragments/ and .state/ only —
     # they carry no site changes, so they shouldn't trigger a rebuild/deploy.
     paths-ignore:
