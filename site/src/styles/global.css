@@ -183,15 +183,9 @@ h2 { font-size: 1.05rem; }
   object-fit: cover;
   border-bottom: 1px solid var(--ink);
 }
+/* No image yet: a blank sheet, honest empty space — never placeholder text. */
 .card-photo--empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ghost);
-  font-family: var(--font-meta);
-  font-size: 0.62rem;
-  text-align: center;
-  padding: 6px;
+  background: var(--ground);
 }
 .card__body { padding: 0.85rem 0.95rem 0.95rem; }
 .card__identity {
@@ -296,7 +290,17 @@ h2 { font-size: 1.05rem; }
   display: inline-block;
   font-weight: 500;
 }
-.journey-title--struck .journey-title__text { position: relative; z-index: 0; }
+/* Reliable baseline: the title is struck with plain CSS line-through even
+   before/without JS. When the client wobble mark draws successfully it adds
+   .is-wobbled and we drop the CSS line so the two never stack. */
+.journey-title--struck .journey-title__text {
+  position: relative;
+  z-index: 0;
+  text-decoration: line-through;
+  text-decoration-color: var(--ink);
+  text-decoration-thickness: 2px;
+}
+.journey-title--struck.is-wobbled .journey-title__text { text-decoration: none; }
 .journey-title--struck svg.strike-overlay {
   position: absolute;
   top: 0; left: 0;

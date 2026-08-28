@@ -19,7 +19,12 @@ function draw(container: HTMLElement): void {
   const range = document.createRange();
   range.selectNodeContents(textEl);
   const rects = Array.from(range.getClientRects());
-  if (rects.length === 0) return;
+  // Can't measure yet: leave the CSS line-through baseline in place so the
+  // title still reads as struck rather than plain.
+  if (rects.length === 0) {
+    container.classList.remove('is-wobbled');
+    return;
+  }
 
   const containerRect = container.getBoundingClientRect();
   const seed = container.dataset.strikeSeed ?? '';
@@ -38,6 +43,9 @@ function draw(container: HTMLElement): void {
     path.setAttribute('transform', `translate(${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})`);
     svg.appendChild(path);
   });
+
+  // wobble drawn — drop the plain CSS line so the two marks don't stack
+  container.classList.add('is-wobbled');
 }
 
 function drawAll(): void {
