@@ -29,7 +29,7 @@ const blocks = splitPostBody(post.body ?? '', post.data.fragments);
   <p class="meta">
     {dateLine(post.data.published)}
     {' · '}{post.data.fragments.length} fragments
-    {post.data.kind === 'insight' && <> · coordinate</>}
+    {post.data.kind === 'insight' && <> · note to self</>}
     {post.data.journey && (
       <>
         {' '}
