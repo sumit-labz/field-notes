@@ -35,7 +35,9 @@ const href = withBase(`/journeys/${slug}/`);
         style={`transform: rotate(${tilt}deg)`}
       />
     ) : (
-      <div class="card-photo card-photo--empty">[ lead image ]</div>
+      // No resolvable image yet — emptiness is a material, not a placeholder.
+      // Render a blank sheet, never the literal mockup string.
+      <div class="card-photo card-photo--empty" aria-hidden="true" />
     )
   }
   <div class="card__body">
