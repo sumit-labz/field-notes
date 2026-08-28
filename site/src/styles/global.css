@@ -1,13 +1,27 @@
 /* site/src/styles/global.css
-   Field-notes visual language — SPEC.md §7.
-   Two inks, one ground. No cards, no shadows, no radius, no motion beyond a
-   plain underline. Materiality comes from type, image rotation, and stamped
-   timestamps — nothing else. */
+   Field-notes visual language — as redesigned in field-notes-design-bundle
+   (IMPLEMENTATION-SPEC.md + references/*.html). Static only: no motion, no
+   hover animation beyond a plain underline. Irregularity only from data or a
+   hashed seed — never decorative.
+
+   Materials (each token is a material with a meaning, not a UI slider):
+     --ground     the paper the whole archive sits on
+     --paper      an inserted / scan sheet — one surface max, barely perceptible
+     --ink        assertion — what happened
+     --graphite   thinking — annotation, practice, marginalia (was metadata grey)
+     --ghost      the past — faded archive (use INSTEAD of opacity)
+     --line       soft paper boundary
+     --highlight  significance / connection only. never a button, nav, or hover.
+*/
 
 :root {
-  --ground: #f4f0e6;
-  --ink: #1a1a18;
-  --ink-2: #5a564c; /* metadata only — recedes so timestamps don't compete with body text */
+  --ground: #F4F0E6;
+  --paper: #FAF8F1;
+  --ink: #181714;
+  --graphite: #4E4A42;
+  --ghost: #898277;
+  --line: #C8C1B3;
+  --highlight: #D8AE3E;
 
   --font-structure: 'Archivo', sans-serif;
   --font-body: 'Instrument Sans', sans-serif;
@@ -28,14 +42,15 @@ body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 1.125rem; /* 17–18px per §7 */
+  font-size: 1.0625rem; /* 17px */
   line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
-  max-width: 42rem;
+  max-width: 56rem;
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 6rem;
+  padding: 2.25rem 1.5rem 7rem;
 }
 
 /* links: underline is the only hover/focus effect this site has */
@@ -49,92 +64,245 @@ a:focus {
   text-underline-offset: 0.15em;
 }
 
-hr {
-  border: none;
-  border-top: 1px solid var(--ink);
-  margin: 2rem 0;
+/* typography utilities */
+.font-arch { font-family: var(--font-structure); }
+.font-mono { font-family: var(--font-meta); }
+.font-cav { font-family: var(--font-annotation); }
+
+.upper {
+  font-family: var(--font-structure);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
-/* structure: nav and standalone status labels — Archivo, uppercase,
-   letterspaced. This is chrome, not document headings, so it stays exempt
-   from the sentence-case rule below. */
+/* nav — chrome, uppercase Archivo, bottom rule in ink. Never motion. */
 nav {
-  max-width: 42rem;
+  max-width: 56rem;
   margin: 0 auto;
-  padding: 1.75rem 1.25rem 0;
+  padding: 1.9rem 1.5rem 0;
+  display: flex;
+  gap: 1.4rem;
+  align-items: baseline;
   font-family: var(--font-structure);
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  border-bottom: 1px solid var(--ink);
 }
+nav a {
+  color: var(--ink);
+  padding-bottom: 0.7rem;
+}
+nav a:hover { text-decoration: none; }
+nav a:not(:hover) { border-bottom: none; }
+nav .wordmark { font-family: var(--font-annotation); font-size: 1.5rem; letter-spacing: 0; text-transform: none; margin-right: auto; color: var(--ink); }
 
+/* structural label — Archivo uppercase */
 .label {
   font-family: var(--font-structure);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 0.8rem;
-  margin: 0 0 0.75em;
+  font-size: 0.72rem;
+  margin: 0 0 0.5em;
 }
 
-/* content headings: Archivo, sentence case, never uppercase — a post title
-   is a title, not a label. */
+/* content headings: Archivo, sentence case, a title not a label */
 h1, h2, h3 {
   font-family: var(--font-structure);
   font-weight: 500;
   line-height: 1.25;
-  margin: 0 0 0.5em;
+  margin: 0 0 0.4em;
 }
-h1 { font-size: 1.75rem; }
-h2 { font-size: 1.1rem; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.05rem; }
 
-/* metadata: timestamps, ids, counts — mono, small, and the one place the
-   second, quieter ink is used, so it recedes behind body text. */
+/* metadata: timestamps, ids, counts — mono, small, graphite, never compete */
 .meta {
   font-family: var(--font-meta);
-  font-size: 0.8rem;
-  color: var(--ink-2);
+  font-size: 0.78rem;
+  color: var(--graphite);
 }
 
-/* annotation: margin notes and abandonment reasons only, set as marginalia —
-   hung slightly left of the body edge with a rule, not sized up to compete
-   with body text. Full ink, full length: the two-line cap is an authorial
-   rule for what you write, not something CSS truncates. */
+/* annotation: margin notes + abandonment reasons — the handwriting voice */
 .annotation {
   font-family: var(--font-annotation);
-  font-size: 1.25rem;
-  line-height: 1.3;
+  font-size: 1.3rem;
+  line-height: 1.25;
   color: var(--ink);
-  margin: 0.75em 0 0.75em -1rem;
-  padding-left: 0.85rem;
-  border-left: 1px solid var(--ink-2);
+  margin: 0.4em 0 0.6em;
+}
+.annotation--ghost { color: var(--graphite); }
+
+.hr {
+  border: none;
+  border-top: 1px solid var(--ink);
+  margin: 2rem 0;
 }
 
-/* journey status marks */
+/* ↓↓ HOME ↓↓ */
+.terms {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 1.7rem;
+  line-height: 1.25;
+  letter-spacing: 0.005em;
+  max-width: 22ch;
+  margin: 1.2rem 0 0.75rem;
+}
+.terms .q { color: var(--graphite); font-weight: 500; }
+
+.section-label {
+  font-family: var(--font-structure);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.72rem;
+  color: var(--graphite);
+  margin: 2.5rem 0 0.9rem;
+}
+
+/* journey cards — hero proportion, learn/create only, no motion */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.4rem;
+}
+.card {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  display: block;
+  color: var(--ink);
+}
+.card:hover { text-decoration: none; }
+.card-photo {
+  display: block;
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--ink);
+}
+.card-photo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ghost);
+  font-family: var(--font-meta);
+  font-size: 0.62rem;
+  text-align: center;
+  padding: 6px;
+}
+.card__body { padding: 0.85rem 0.95rem 0.95rem; }
+.card__identity {
+  font-family: var(--font-structure);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.6rem;
+  color: var(--graphite);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.4rem;
+}
+.card__title {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 1.08rem;
+  line-height: 1.15;
+  margin: 0 0 0.45rem;
+}
+.card__line {
+  font-family: var(--font-annotation);
+  font-size: 1.15rem;
+  line-height: 1.3;
+  color: var(--graphite);
+  margin: 0;
+}
+
+/* ---- OBSESSION (identity) streams ---- */
+.streams {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.4rem;
+}
+.stream h5 {
+  font-family: var(--font-structure);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  margin: 0 0 0.25rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.stream .j {
+  font-size: 0.92rem;
+  padding: 0.55rem 0;
+}
+.stream .j .st {
+  font-family: var(--font-meta);
+  font-size: 0.62rem;
+  color: var(--graphite);
+  display: block;
+  margin-top: 0.15rem;
+}
+.stream .empty {
+  font-family: var(--font-annotation);
+  color: var(--graphite);
+  font-size: 1.3rem;
+  padding-top: 0.5rem;
+}
+@media (max-width: 720px) { .streams { grid-template-columns: 1fr; } }
+
+/* ---- JOURNEY / POST rhythm ---- */
+.postrow {
+  display: flex;
+  gap: 1.4rem;
+  margin-top: 0.5rem;
+}
+.postrow .prose { flex: 1; min-width: 0; }
+.postrow .prose p { margin: 0 0 0.9rem; }
+.postrow .margin {
+  width: 170px;
+  flex: none;
+  padding-top: 0.25rem;
+}
+.postrow .margin .annotation { margin-top: 0.6rem; }
+@media (max-width: 720px) { .postrow { flex-direction: column; } .postrow .margin { width: auto; } }
+
+.fullbleed {
+  margin: 1.4rem 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+
+.lineage {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0.25rem 0 0.15rem;
+  font-family: var(--font-meta);
+  font-size: 0.72rem;
+  color: var(--graphite);
+}
+
+/* ---- status marks ---- */
 .journey-title {
   position: relative;
   display: inline-block;
   font-weight: 500;
 }
-
-.journey-title--struck .journey-title__text {
-  position: relative;
-  z-index: 0;
-}
-
-/* Sized and positioned in real pixels by client/strike-through.ts, one path
-   per rendered line — see that file for why. Server-rendered markup ships
-   this empty, so with no JS (or if measurement fails) the title just wraps
-   as plain, fully legible text: never scrolled, never truncated. */
+.journey-title--struck .journey-title__text { position: relative; z-index: 0; }
 .journey-title--struck svg.strike-overlay {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   overflow: visible;
   pointer-events: none;
 }
-
 .journey-title--struck svg.strike-overlay path {
   fill: none;
   stroke: var(--ink);
@@ -143,43 +311,136 @@ h2 { font-size: 1.1rem; }
 }
 
 svg.tick {
-  width: 0.85em;
-  height: 0.85em;
-  margin-left: 0.35em;
-  vertical-align: -0.05em;
+  width: 0.85em; height: 0.85em;
+  margin-left: 0.3em;
+  vertical-align: -0.06em;
 }
-svg.tick rect {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.5;
+svg.tick rect { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.bracketed { color: var(--ink); }
+
+/* in_progress: a small honest mono mark in graphite, never a badge/button */
+.inprogress {
+  font-family: var(--font-meta);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--graphite);
+  display: inline-block;
+  vertical-align: 0.08em;
 }
-svg.tick path {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.inprogress::before { content: "· "; }
+
+/* ---- ABOUT stack: ink ages instead of fading ---- */
+.about-stack { margin-top: 1.5rem; }
+.about-entry { border: 1px solid var(--line); margin-bottom: 0.9rem; padding: 1.3rem 1.4rem; }
+.about-entry--current { border-color: var(--ink); }
+.about-entry .date {
+  font-family: var(--font-meta);
+  font-size: 0.72rem;
+  color: var(--graphite);
+  margin-bottom: 0.7rem;
+}
+.about-entry .text {
+  font-size: 1.1rem;
+  line-height: 1.55;
+  max-width: 46ch;
+  color: var(--ink);
+}
+.about-entry--past .date { color: var(--graphite); }
+.about-entry--past .text { color: var(--graphite); font-size: 1rem; }
+.about-entry--archive .date { color: var(--ghost); }
+.about-entry--archive .text { color: var(--ghost); font-size: 0.92rem; line-height: 1.5; }
+.about-mix {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+  font-family: var(--font-structure);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+.about-mix span { line-height: 1; }
+.about-notebook {
+  font-family: var(--font-annotation);
+  font-size: 1.35rem;
+  color: var(--graphite);
+  margin: 0.75rem 0 0;
 }
 
-/* fragment media: deterministic per-fragment tilt (lib/rotation.ts). width/
-   height come from the real fetched image (lib/image-dimensions.ts) so the
-   browser reserves the right box before the image loads — max-width/height:
-   auto then let it scale down on narrow viewports without losing that
-   aspect ratio or the layout-shift protection. */
+/* ---- COORDINATES (insights) ---- */
+.coord {
+  display: flex;
+  gap: 1rem;
+  padding: 1.4rem 0;
+  border-top: 1px solid var(--line);
+}
+.coord:first-of-type { border-top: 1px solid var(--ink); }
+.coord .mark {
+  flex: none;
+  width: 40px;
+  padding-top: 0.1rem;
+  color: var(--ink);
+}
+.coord .body { flex: 1; min-width: 0; }
+.coord .title {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 1.18rem;
+  line-height: 1.3;
+  max-width: 40ch;
+  margin: 0 0 0.5rem;
+}
+.coord .text { font-size: 0.98rem; line-height: 1.6; max-width: 52ch; margin: 0 0 0.55rem; }
+.coord .provenance {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: var(--font-meta);
+  font-size: 0.68rem;
+  color: var(--graphite);
+}
+.coord .note {
+  font-family: var(--font-annotation);
+  font-size: 1.3rem;
+  color: var(--graphite);
+  margin: 0.7rem 0 0;
+}
+
+/* fragments */
 .fragment-photos {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
   margin: 0.75rem 0;
 }
-
 .fragment-photo {
   display: block;
   max-width: 100%;
   height: auto;
   border: 1px solid var(--ink);
 }
+figure { margin: 1.5rem 0; }
 
-figure {
-  margin: 1.5rem 0;
+/* footer stamp */
+.foot {
+  margin-top: 3.5rem;
+  border-top: 1px solid var(--ink);
+  padding-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.stamp {
+  font-family: var(--font-structure);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.64rem;
+  border: 1px solid var(--ink);
+  padding: 0.25rem 0.6rem;
 }

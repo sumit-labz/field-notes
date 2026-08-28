@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>field-notes — Information Architecture (M1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#f4f0e6;
+    --ink:#1a1a18;
+    --meta:#5a564c;
+    --line:#c9c2b1;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ground);color:var(--ink);}
+  body{font-family:"Instrument Sans",sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px;margin:0 auto;padding:56px 28px 96px;}
+  .label{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.14em;font-weight:600;}
+  .mono{font-family:"Space Mono",monospace;}
+  .cav{font-family:"Caveat",cursive;color:var(--meta);font-size:1.28rem;line-height:1.1;}
+  h1{font-family:"Archivo",sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:1.15rem;margin:0 0 4px;}
+  .sub{font-family:"Space Mono",monospace;color:var(--meta);font-size:.78rem;letter-spacing:.02em;}
+  .hd{border-bottom:1px solid var(--ink);padding-bottom:14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  section{margin-top:52px;}
+  .sec-title{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.14em;font-weight:600;font-size:.82rem;color:var(--ink);margin:0 0 4px;}
+  .sec-note{font-family:"Space Mono",monospace;color:var(--meta);font-size:.72rem;margin:0 0 18px;}
+  .box{border:1px solid var(--line);padding:14px 16px;background:transparent;}
+  .box.ink{border-color:var(--ink);}
+  .grid{display:grid;gap:14px;}
+  .fname{font-family:"Space Mono",monospace;font-size:.74rem;color:var(--meta);}
+  .new{font-family:"Space Mono",monospace;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--ink);padding:1px 6px;margin-left:6px;vertical-align:middle;}
+  .route{display:grid;grid-template-columns:190px 1fr;gap:10px;padding:9px 0;border-bottom:1px dotted var(--line);}
+  .route:last-child{border-bottom:none;}
+  .route .r{font-family:"Space Mono",monospace;font-size:.82rem;}
+  .route .d{color:var(--ink);font-size:.92rem;}
+  .route .d small{color:var(--meta);}
+  .tier{display:flex;align-items:center;gap:14px;margin:0 0 10px;}
+  .tier .n{font-family:"Space Mono",monospace;font-size:.72rem;color:var(--meta);width:132px;flex:none;}
+  .tier .b{flex:1;border:1px solid var(--ink);padding:11px 14px;}
+  .tier .b b{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.1em;font-size:.72rem;}
+  .tier .b span{color:var(--meta);font-size:.9rem;}
+  .flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;}
+  .node{border:1px solid var(--ink);padding:12px 14px;flex:1;min-width:150px;}
+  .node h4{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;margin:0 0 6px;}
+  .node ul{margin:0;padding-left:0;list-style:none;}
+  .node li{font-family:"Space Mono",monospace;font-size:.7rem;color:var(--meta);line-height:1.7;}
+  .arrow{display:flex;align-items:center;justify-content:center;padding:0 8px;font-family:"Space Mono",monospace;color:var(--meta);font-size:1rem;}
+  .card{border:1px solid var(--ink);padding:0;max-width:340px;}
+  .card .img{height:120px;border-bottom:1px solid var(--ink);display:flex;align-items:center;justify-content:center;color:var(--meta);font-family:"Space Mono",monospace;font-size:.66rem;transform:rotate(-1.4deg);}
+  .card .body{padding:12px 14px;}
+  .card .idt{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.62rem;color:var(--meta);}
+  .card .ttl{font-family:"Archivo",sans-serif;font-weight:600;font-size:1.02rem;margin:3px 0 6px;}
+  .card .strike{text-decoration:line-through;text-decoration-thickness:1.5px;}
+  .card .ln{font-size:.86rem;color:var(--ink);}
+  .anno-row{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;}
+  .callouts{flex:1;min-width:220px;}
+  .callouts div{font-family:"Space Mono",monospace;font-size:.72rem;color:var(--meta);padding:5px 0;border-bottom:1px dotted var(--line);}
+  .callouts b{color:var(--ink);font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.06em;font-size:.64rem;}
+  .streams{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .stream h4{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.72rem;margin:0 0 10px;border-bottom:1px solid var(--ink);padding-bottom:6px;}
+  .jrow{font-size:.86rem;padding:6px 0;border-bottom:1px dotted var(--line);}
+  .jrow .st{font-family:"Space Mono",monospace;font-size:.66rem;color:var(--meta);}
+  .stack .entry{border:1px solid var(--line);padding:12px 14px;margin-bottom:10px;}
+  .stack .entry.top{border-color:var(--ink);}
+  .stack .entry .dt{font-family:"Space Mono",monospace;font-size:.68rem;color:var(--meta);}
+  .stack .e2{opacity:.72;transform:scale(.985);}
+  .stack .e3{opacity:.5;transform:scale(.97);}
+  .foot{margin-top:60px;border-top:1px solid var(--ink);padding-top:16px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .foot .idents span{font-family:"Space Mono",monospace;font-size:.74rem;color:var(--meta);display:inline-block;margin-right:14px;}
+  .stamp{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:.66rem;border:1px solid var(--ink);padding:4px 10px;align-self:flex-start;}
+  .tiltnote{display:inline-block;transform:rotate(-2deg);}
+  @media(max-width:620px){
+    .route{grid-template-columns:1fr;gap:2px;}
+    .streams{grid-template-columns:1fr;}
+    .tier .n{width:96px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hd">
+    <div>
+      <h1>field-notes</h1>
+      <div class="sub">information architecture · milestone m1 · 2026-08-18</div>
+    </div>
+    <div class="cav tiltnote">the map, not the paint —<br>that's M2.</div>
+  </div>
+
+  <!-- A. ROUTES -->
+  <section>
+    <div class="sec-title">A · Routes</div>
+    <div class="sec-note">what pages exist and what each one is for</div>
+    <div class="box ink">
+      <div class="route"><div class="r">/</div><div class="d">The stranger door. Terms → journeys → feed. <small>No longer a bare feed.</small></div></div>
+      <div class="route"><div class="r">/posts/[slug]</div><div class="d">A published unit. <small>Can now be in-progress.</small></div></div>
+      <div class="route"><div class="r">/identities</div><div class="d">The four questions.</div></div>
+      <div class="route"><div class="r">/identities/[slug]</div><div class="d">One territory, split into Learn / Create streams.</div></div>
+      <div class="route"><div class="r">/journeys/[slug]</div><div class="d">Opener (the plan) → posts oldest-first (the drift).</div></div>
+      <div class="route"><div class="r">/about</div><div class="d">Dated, append-only stack. The biography.<span class="new">new</span></div></div>
+    </div>
+  </section>
+
+  <!-- B. HOMEPAGE -->
+  <section>
+    <div class="sec-title">B · The homepage sequence</div>
+    <div class="sec-note">what a stranger needs, in order — all of it already in the data</div>
+    <div class="tier"><div class="n">1 · what is this?</div><div class="b"><b>The terms</b> &nbsp;<span>one plain line. "An archive of things I'm exploring. Some of it goes nowhere."</span></div></div>
+    <div class="tier"><div class="n">2 · is it for me?<br>3 · one thing to sink into</div><div class="b"><b>Journeys — the hook</b> &nbsp;<span>honest proportion: active + abandoned lead, a completed one now and then. Rule-selected by last activity, not hand-picked.</span></div></div>
+    <div class="tier"><div class="n">4 · is it alive?</div><div class="b"><b>The feed — the pulse</b> &nbsp;<span>posts newest-first, incl. in-progress. Proof it's ongoing.</span></div></div>
+    <div class="cav" style="margin-top:6px;">strangers who bounce here were never yours. good.</div>
+  </section>
+
+  <!-- C. OBJECT MODEL -->
+  <section>
+    <div class="sec-title">C · Object model</div>
+    <div class="sec-note">four objects · two new fields this milestone (the whole cost)</div>
+    <div class="flow">
+      <div class="node">
+        <h4>Fragment</h4>
+        <ul><li>id · captured_at</li><li>type · media[]</li><li>spark (the !)</li><li>journey (usually null)</li><li>ZERO decisions</li></ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <h4>Post</h4>
+        <ul><li>slug · title</li><li>journey · fragments[]</li><li>status<span class="new">new</span></li><li class="mono" style="color:var(--ink)">in_progress|published</li></ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <h4>Journey</h4>
+        <ul><li>slug · title · status</li><li>path<span class="new">new</span></li><li class="mono" style="color:var(--ink)">learn|create</li><li>emerged_from</li><li>reason (if abandoned)</li></ul>
+      </div>
+      <div class="arrow">→</div>
+      <div class="node">
+        <h4>Identity</h4>
+        <ul><li>a question</li><li>4 total</li><li>holds journeys</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- D. JOURNEY CARD -->
+  <section>
+    <div class="sec-title">D · The journey card</div>
+    <div class="sec-note">the load-bearing object — everything legible in one glance</div>
+    <div class="anno-row">
+      <div class="card">
+        <div class="img">[ lead image · tilt hashed from id ]</div>
+        <div class="body">
+          <div class="idt">making sound · learn</div>
+          <div class="ttl strike">Scoring the mural film</div>
+          <div class="ln cav">ran out of dopamine before I ran out of reverb.</div>
+        </div>
+      </div>
+      <div class="callouts">
+        <div><b>identity + path</b><br>which question · learn or create</div>
+        <div><b>title + status mark</b><br>plain / [paused] / ✓ done / struck-through</div>
+        <div><b>one image</b><br>opener fragment, deterministic tilt</div>
+        <div><b>one line</b><br>opener's first line — or, if abandoned, the real reason (dry)</div>
+        <div><b>↳ became &lt;journey&gt;</b><br>only if emerged_from is set</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- E. IDENTITY PAGE -->
+  <section>
+    <div class="sec-title">E · Identity page — two streams</div>
+    <div class="sec-note">e.g. /identities/making-images · Learn vs Create, journeys by status within each</div>
+    <div class="streams">
+      <div class="stream">
+        <h4>Learn</h4>
+        <div class="jrow">Truby's story method <span class="st">· active</span></div>
+        <div class="jrow">Fresco underpainting <span class="st">· paused</span></div>
+        <div class="jrow strike">Colour theory, properly <span class="st">· abandoned</span></div>
+      </div>
+      <div class="stream">
+        <h4>Create</h4>
+        <div class="jrow">Mythic murals <span class="st">· active</span></div>
+        <div class="jrow">The Kafka series <span class="st">· active</span></div>
+        <div class="jrow">✓ Zine no.1 <span class="st">· completed</span></div>
+      </div>
+    </div>
+    <div class="cav" style="margin-top:10px;">learn → create is just an emerged_from edge. no new machinery.</div>
+  </section>
+
+  <!-- F. WEEKEND RITUAL -->
+  <section>
+    <div class="sec-title">F · The fragment → post weekend ritual</div>
+    <div class="sec-note">the maker's experience (yours), not a public route — low friction, forgiving</div>
+    <div class="flow">
+      <div class="node"><h4>All week</h4><ul><li>capture freely</li><li>zero decisions</li><li>fragments land unassigned</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="node"><h4>Weekend · draft</h4><ul><li>week's fragments</li><li>auto-drafted into</li><li>a post scaffold</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="node"><h4>Weekend · shape</h4><ul><li>order + prose</li><li>assign a journey</li><li>(or spawn one)</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="node"><h4>Publish</h4><ul><li>set status:</li><li>in_progress = fine</li><li>finish it later</li></ul></div>
+    </div>
+    <div class="cav" style="margin-top:10px;">in-progress is not a failure state. it's the whole point.</div>
+  </section>
+
+  <!-- G. ABOUT STACK -->
+  <section>
+    <div class="sec-title">G · The About stack</div>
+    <div class="sec-note">dated · append-only · rewritten only when it feels false (~2×/yr). the stack is the biography.</div>
+    <div class="stack">
+      <div class="entry top">
+        <div class="dt">2026-08 · current</div>
+        A developer who paints. Drifting from myth toward Kafkaesque absurdism. Building a tool out of what I learned the year I got fired.
+      </div>
+      <div class="entry e2">
+        <div class="dt">2025-11</div>
+        Mostly painting now. Still not sure what it's for.
+      </div>
+      <div class="entry e3">
+        <div class="dt">2024-06</div>
+        Graphic designer, six years out from the job that ended.
+      </div>
+    </div>
+    <div class="cav" style="margin-top:8px;">old versions never leave. you can watch a person change their mind.</div>
+  </section>
+
+  <!-- FOOT -->
+  <div class="foot">
+    <div class="idents">
+      <span>making&nbsp;images</span><span>making&nbsp;things&nbsp;move</span><span>making&nbsp;sound</span><span>making&nbsp;tools</span>
+      <div class="sub" style="margin-top:8px;">schema cost so far: 2 fields · Journey.path · Post.status</div>
+    </div>
+    <div class="stamp">build less</div>
+  </div>
+
+</div>
+</body>
+</html>

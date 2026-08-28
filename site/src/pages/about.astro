@@ -1,0 +1,51 @@
+---
+// /about — a dated, append-only stack. Newest full ink; the past recedes
+// through graphite then ghost (never opacity — material, not a fade). The
+// sized obsession mix per entry is the biography.
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+
+const entries = (await getCollection('about')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+const identityEntries = await getCollection('identities');
+const identityTitle = new Map(
+  identityEntries.map((i) => [i.data.slug, i.data.title])
+);
+
+const layerClass = (index: number) =>
+  index === 0 ? 'about-entry--current' : index === 1 ? 'about-entry--past' : 'about-entry--archive';
+const mixSize = (index: number) =>
+  index === 0 ? '1.5rem' : index === 1 ? '1.15rem' : '0.95rem';
+const mixColor = (index: number) =>
+  index === 0 ? 'var(--ink)' : index === 1 ? 'var(--graphite)' : 'var(--ghost)';
+---
+
+<Base title="About">
+  <h1>About</h1>
+  <p class="annotation">do I fit anywhere? no. that's the whole page.</p>
+
+  <div class="about-stack">
+    {
+      entries.map((entry, i) => (
+        <div class={`about-entry ${layerClass(i)}`}>
+          <div class="date">{entry.data.season}</div>
+          <div class="text">{entry.body ?? ''}</div>
+          {entry.data.mix && entry.data.mix.length > 0 && (
+            <div class="about-mix">
+              {entry.data.mix.map((slug, j) => (
+                <span
+                  style={`font-size:${mixSize(j)};color:${mixColor(j)}`}
+                >
+                  {identityTitle.get(slug) ?? slug}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))
+    }
+  </div>
+
+  <p class="about-notebook">old versions never leave. you can watch a person change their mind.</p>
+</Base>

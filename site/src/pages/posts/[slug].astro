@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
+import { dateLine } from '../../lib/content';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -21,10 +22,14 @@ const blocks = splitPostBody(post.body ?? '', post.data.fragments);
 
 <Base title={post.data.title}>
   <p><a href={withBase('/')}>← feed</a></p>
-  <h1>{post.data.title}</h1>
+  <h1>
+    {post.data.title}
+    {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
+  </h1>
   <p class="meta">
-    {post.data.published.toISOString().slice(0, 10)}
+    {dateLine(post.data.published)}
     {' · '}{post.data.fragments.length} fragments
+    {post.data.kind === 'insight' && <> · coordinate</>}
     {post.data.journey && (
       <>
         {' '}

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>field-notes — three signature moves</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#f4f0e6;--ink:#1a1a18;--meta:#5a564c;--line:#c9c2b1;--mark:#e2b74a;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:"Instrument Sans",sans-serif;line-height:1.6;}
+  .wrap{max-width:900px;margin:0 auto;padding:50px 26px 100px;}
+  .mono{font-family:"Space Mono",monospace;}
+  .cav{font-family:"Caveat",cursive;color:var(--meta);}
+  .arch{font-family:"Archivo",sans-serif;text-transform:uppercase;letter-spacing:.12em;}
+  h1{font-family:"Archivo";font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;margin:0 0 4px;}
+  .sub{font-family:"Space Mono";color:var(--meta);font-size:.75rem;}
+  .top{border-bottom:1px solid var(--ink);padding-bottom:12px;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;}
+  .move{margin-top:52px;}
+  .movetag{font-family:"Space Mono";font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--meta);border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:24px;}
+
+  /* MOVE 1 — thought correction + semantic scale */
+  .think{max-width:34ch;}
+  .think p{margin:0 0 12px;}
+  .big{font-family:"Archivo";font-weight:600;font-size:2.1rem;line-height:1.05;letter-spacing:.005em;margin:6px 0 10px;}
+  .tiny{font-size:.82rem;color:var(--meta);}
+  .rev{color:var(--meta);position:relative;}
+  .rev svg{position:absolute;left:-2px;right:-2px;top:52%;width:calc(100% + 4px);height:12px;overflow:visible;}
+  .corr{display:block;margin-top:2px;}
+  .corr .cav{font-size:1.4rem;}
+  .no{font-family:"Archivo";font-weight:700;font-size:1.5rem;text-align:right;color:var(--ink);margin:2px 0 2px;}
+
+  /* MOVE 2 — living margin */
+  .doc{display:grid;grid-template-columns:1fr 220px;gap:34px;}
+  .main .jt{font-family:"Archivo";text-transform:uppercase;letter-spacing:.09em;font-size:1.15rem;margin-bottom:12px;}
+  .main p{margin:0 0 14px;max-width:46ch;}
+  .marg{padding-top:44px;border-left:1px dotted var(--line);padding-left:16px;}
+  .marg .m{margin-bottom:26px;}
+  .marg .cav{font-size:1.35rem;line-height:1.05;}
+  .marg .hand{font-family:"Caveat";color:var(--ink);font-size:1.5rem;line-height:1.02;}
+  .marg .when{font-family:"Space Mono";font-size:.62rem;color:var(--meta);display:block;margin-top:3px;}
+  .imginline{height:150px;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);margin:6px 0 16px;display:flex;align-items:center;justify-content:center;color:var(--meta);font-family:"Space Mono";font-size:.6rem;transform:rotate(-.6deg);}
+
+  /* MOVE 3 — mode as grammar */
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start;}
+  .panel{border:1px solid var(--line);padding:16px 15px;min-height:280px;}
+  .panel .glab{font-family:"Space Mono";font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--meta);margin-bottom:14px;}
+  /* practice: dense/small/repeated */
+  .tallyfield{line-height:1.9;color:var(--ink);font-size:.9rem;letter-spacing:.05em;}
+  .prow{font-size:.78rem;color:var(--meta);margin-top:10px;}
+  /* learn: annotated/underlined/corrective */
+  .learnline{margin:0 0 12px;font-size:.95rem;}
+  .u{border-bottom:1.5px solid var(--ink);}
+  .ind{display:inline-block;margin-left:22px;color:var(--meta);}
+  .lstrike{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--meta);}
+  /* create: image + silence + scale */
+  .cimg{height:120px;border:1px solid var(--ink);display:flex;align-items:center;justify-content:center;color:var(--meta);font-family:"Space Mono";font-size:.58rem;transform:rotate(1deg);}
+  .ctitle{font-family:"Archivo";font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:1.5rem;line-height:1;margin-top:46px;}
+
+  .foot{margin-top:56px;border-top:1px solid var(--ink);padding-top:14px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .note{font-family:"Space Mono";font-size:.68rem;color:var(--meta);max-width:56ch;}
+  .stamp{font-family:"Archivo";text-transform:uppercase;letter-spacing:.16em;font-size:.64rem;border:1px solid var(--ink);padding:4px 10px;}
+  .tilt{display:inline-block;transform:rotate(-2.5deg);}
+  @media(max-width:640px){.doc{grid-template-columns:1fr;}.marg{border-left:none;border-top:1px dotted var(--line);padding-left:0;padding-top:16px;}.grid3{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>field-notes</h1><div class="sub">three signature moves · demo · static, no motion</div></div>
+    <div class="cav tilt" style="font-size:1.3rem;">Caveat = stand-in.<br>your real hand goes here.</div>
+  </div>
+
+  <!-- MOVE 1 -->
+  <div class="move">
+    <div class="movetag">1 · thought-correction + semantic scale — the writing performs the thinking (real changes of mind only)</div>
+    <div class="think">
+      <p>Week one I thought this was about scale.</p>
+      <p class="rev">It was about scale.<svg viewBox="0 0 200 12" preserveAspectRatio="none"><path d="M1 7 C50 3 100 10 150 6 S198 8 199 6" stroke="#1a1a18" stroke-width="1.5" fill="none"/></svg></p>
+      <div class="no">No.</div>
+      <div class="big">It was about the wall never being flat</div>
+      <p class="tiny">and me pretending it would be.</p>
+    </div>
+  </div>
+
+  <!-- MOVE 2 -->
+  <div class="move">
+    <div class="movetag">2 · the living margin — main column is what happened, margin is a second voice: what you noticed about it</div>
+    <div class="doc">
+      <div class="main">
+        <div class="jt">Mythic murals</div>
+        <p>Studied Isou for two days, came back and painted the same corner four times.</p>
+        <div class="imginline">[ opener fragment ]</div>
+        <p>The fourth one is the only one I'd show anyone, and only because the first three exist. I keep thinking that's a metaphor and keep refusing to finish the sentence.</p>
+        <p class="mono" style="font-size:.74rem;color:var(--meta)">2026·08·14 · in&nbsp;progress</p>
+      </div>
+      <div class="marg">
+        <div class="m"><div class="hand">this is where it went weird.</div><span class="when">beside §2</span></div>
+        <div class="m"><div class="cav">Isou was an excuse. I just wanted to stall.</div><span class="when">later</span></div>
+        <div class="m"><div class="hand">keep the first three.</div><span class="when">↗</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOVE 3 -->
+  <div class="move">
+    <div class="movetag">3 · mode as layout grammar — practice / learn / create don't just wear different marks, they're built differently (keyed to path)</div>
+    <div class="grid3">
+      <div class="panel">
+        <div class="glab">practice — dense · small · repeated</div>
+        <div class="tallyfield">
+          |||| &nbsp;|||| &nbsp;|||| &nbsp;|||<br>
+          |||| &nbsp;||||<br>
+          |||| &nbsp;|||| &nbsp;|||| &nbsp;||||<br>
+          |||| &nbsp;|||| &nbsp;||<br>
+          |||| &nbsp;|||| &nbsp;|||| &nbsp;|||| &nbsp;|
+        </div>
+        <div class="prow">Proko dailies · 34 days · <span class="cav" style="font-size:1.1rem">missed the 12th, didn't die</span></div>
+      </div>
+      <div class="panel">
+        <div class="glab">learn — annotated · underlined · corrective</div>
+        <div class="learnline"><span class="u">primary</span></div>
+        <div class="learnline"><span class="ind">→ secondary</span></div>
+        <div class="learnline"><span class="lstrike">complementary = opposite</span></div>
+        <div class="learnline"><span class="ind cav" style="font-size:1.2rem">no — it's about temperature</span></div>
+        <div class="learnline" style="margin-top:18px;">Decoding Isou / Lettrism</div>
+      </div>
+      <div class="panel" style="border-color:var(--ink);">
+        <div class="glab">create — image · silence · scale</div>
+        <div class="cimg">[ one image ]</div>
+        <div class="ctitle">Mythic<br>murals</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="note">Static — no hover, no scroll motion (your locked rule). Every irregularity here comes from data/hash or your hand. Caveat is a placeholder for your real scanned handwriting (M3). These three are the whole point of the day.</div>
+    <div class="stamp">build less</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,7 +1,11 @@
 ---
+// /identities/[slug] — one obsession, split into Practice / Learn / Create
+// streams by Journey.path, status marks within each. The balance mirror:
+// three columns, one glance.
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
+import ModeGlyph from '../../components/ModeGlyph.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
 
@@ -14,44 +18,67 @@ export async function getStaticPaths() {
 }
 
 const { identity } = Astro.props;
-const journeys = await getCollection('journeys');
-const ownJourneys = journeys.filter((j) => j.data.identity === identity.data.slug);
+const journeys = (await getCollection('journeys')).filter(
+  (j) => j.data.identity === identity.data.slug
+);
 
 const STATUS_ORDER = ['active', 'paused', 'abandoned', 'completed'] as const;
-const groups = STATUS_ORDER.map((status) => ({
-  status,
-  journeys: ownJourneys.filter((j) => j.data.status === status),
-})).filter((group) => group.journeys.length > 0);
+const streams = (['practice', 'learn', 'create'] as const).map((path) => ({
+  path,
+  journeys: journeys
+    .filter((j) => j.data.path === path)
+    .sort(
+      (a, b) =>
+        STATUS_ORDER.indexOf(a.data.status) - STATUS_ORDER.indexOf(b.data.status) ||
+        a.data.title.localeCompare(b.data.title)
+    ),
+}));
 ---
 
 <Base title={identity.data.title}>
-  <p><a href={withBase('/identities')}>← identities</a></p>
+  <p class="label">obsession</p>
   <h1>{identity.data.title}</h1>
   <Fragment set:html={paragraphs(identity.body ?? '')} />
 
-  {
-    groups.map((group) => (
-      <section>
-        {/* a status word, not a document heading — stays exempt from sentence case */}
-        <p class="label">{group.status}</p>
-        <ul>
-          {group.journeys.map((journey) => (
-            <li>
-              <a href={withBase(`/journeys/${journey.data.slug}/`)}>
-                <JourneyTitle
-                  title={journey.data.title}
-                  status={journey.data.status}
-                  seed={journey.data.slug}
-                />
-              </a>
-              <p class="meta">started {journey.data.started.toISOString().slice(0, 10)}</p>
-              {journey.data.status === 'abandoned' && journey.data.reason && (
-                <p class="annotation">{journey.data.reason}</p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))
-  }
+  <div class="streams">
+    {
+      streams.map((stream) => (
+        <section class="stream">
+          <h5>
+            <ModeGlyph path={stream.path} size={24} />
+            {stream.path}
+          </h5>
+          {
+            stream.journeys.length === 0 ? (
+              <div class="empty">nothing here yet.</div>
+            ) : (
+              stream.journeys.map((journey) => (
+                <div class="j">
+                  <a href={withBase(`/journeys/${journey.data.slug}/`)}>
+                    <JourneyTitle
+                      title={journey.data.title}
+                      status={journey.data.status}
+                      seed={journey.data.slug}
+                    />
+                  </a>
+                  <span class="st">
+                    {journey.data.status}
+                    {journey.data.status === 'paused' && ' · fell off'}
+                    {journey.data.status === 'completed' && ' · done'}
+                    {journey.data.status === 'active' &&
+                      ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
+                  </span>
+                  {journey.data.status === 'abandoned' && journey.data.reason && (
+                    <p class="annotation annotation--ghost">{journey.data.reason}</p>
+                  )}
+                </div>
+              ))
+            )
+          }
+        </section>
+      ))
+    }
+  </div>
+
+  <p class="annotation">three columns, one glance: am I only practising and studying, or actually making?</p>
 </Base>

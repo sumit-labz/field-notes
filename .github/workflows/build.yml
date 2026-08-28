@@ -2,7 +2,9 @@ name: build
 
 on:
   push:
-    branches: [main]
+    # Publish from main (the live archive) and from the redesign branch so
+    # the v0 demo deploys straight from the branch it was built on.
+    branches: [main, "redesign/v0"]
     # Ingest commits (every 15 minutes) touch fragments/ and .state/ only —
     # they carry no site changes, so they shouldn't trigger a rebuild/deploy.
     paths-ignore:

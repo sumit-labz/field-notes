@@ -1,21 +1,79 @@
 ---
+// / — terms → hero journeys (learn/create only, last activity) → feed.
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
+import JourneyCard from '../components/JourneyCard.astro';
 import { withBase } from '../lib/url';
+import {
+  journeyLastActivity,
+  journeyLeadLine,
+  journeyLeadImage,
+  dateLine,
+} from '../lib/content';
 
+const identityEntries = await getCollection('identities');
+const identityTitle = new Map(
+  identityEntries.map((i) => [i.data.slug, i.data.title])
+);
+
+const journeys = await getCollection('journeys');
 const posts = (await getCollection('posts')).sort(
   (a, b) => b.data.published.valueOf() - a.data.published.valueOf()
 );
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+
+// Hero: learn/create paths only (practice excluded — it'd top the feed daily),
+// ordered by most recent activity. Abandoned journeys lead honestly.
+const hero = journeys
+  .filter((j) => j.data.path !== 'practice')
+  .sort(
+    (a, b) =>
+      journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf()
+  )
+  .map(async (journey) => ({
+    journey,
+    line: journeyLeadLine(journey),
+    image: await journeyLeadImage(journey, posts, fragmentsById),
+  }));
+const heroCards = await Promise.all(hero);
 ---
 
 <Base title="Feed">
-  <h1>Feed</h1>
+  <p class="terms">
+    An archive of things I'm exploring.
+    <span class="q">Some of it goes nowhere.</span>
+  </p>
+
+  <p class="section-label">journeys</p>
+  <div class="cards">
+    {
+      heroCards.map(({ journey, line, image }) => (
+        <JourneyCard
+          slug={journey.data.slug}
+          title={journey.data.title}
+          path={journey.data.path}
+          status={journey.data.status}
+          identityLabel={identityTitle.get(journey.data.identity) ?? journey.data.identity}
+          line={line}
+          image={image}
+        />
+      ))
+    }
+  </div>
+
+  <p class="section-label">feed</p>
   <ul>
     {
       posts.map((post) => (
-        <li>
-          <a href={withBase(`/posts/${post.data.slug}/`)}>{post.data.title}</a>
-          <span class="meta">{post.data.published.toISOString().slice(0, 10)}</span>
+        <li style="margin:0 0 0.9rem;list-style:none">
+          <a href={withBase(`/posts/${post.data.slug}/`)}>
+            {post.data.title}
+            {post.data.status === 'in_progress' && (
+              <span class="inprogress">in progress</span>
+            )}
+          </a>
+          <span class="meta">{dateLine(post.data.published)}</span>
           {post.data.journey && (
             <span class="meta">
               {' '}

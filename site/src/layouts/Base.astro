@@ -18,14 +18,17 @@ const { title } = Astro.props;
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
     <nav>
-      <a href={withBase('/')}>feed</a> ·
-      <a href={withBase('/identities')}>identities</a>
+      <a class="wordmark" href={withBase('/')}>field notes</a>
+      <a href={withBase('/')}>feed</a>
+      <a href={withBase('/identities')}>obsessions</a>
+      <a href={withBase('/coordinates')}>coordinates</a>
+      <a href={withBase('/about')}>about</a>
     </nav>
     <main>
       <slot />

@@ -1,0 +1,62 @@
+---
+// /coordinates — every Post with kind:insight, newest first, spaced with
+// whitespace (no dividers between thoughts). An × marks the spot; provenance
+// says which journey it came from. An insight needs no fragments.
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { paragraphs } from '../lib/post-body';
+import { withBase } from '../lib/url';
+import { dateLine } from '../lib/content';
+
+const posts = (await getCollection('posts')).filter(
+  (p) => p.data.kind === 'insight'
+);
+const journeys = await getCollection('journeys');
+const journeyBySlug = new Map(journeys.map((j) => [j.data.slug, j]));
+const sorted = posts.sort(
+  (a, b) => b.data.published.valueOf() - a.data.published.valueOf()
+);
+---
+
+<Base title="Coordinates">
+  <h1>Coordinates</h1>
+  <p class="annotation">places I found once and want to get back to. no map, just an ×.</p>
+
+  {
+    sorted.length === 0 ? (
+      <p class="annotation annotation--ghost">no coordinates yet. they arrive when a realization gets written down.</p>
+    ) : (
+      sorted.map((post) => {
+        const journey = post.data.journey ? journeyBySlug.get(post.data.journey) : null;
+        return (
+          <div class="coord">
+            <div class="mark" aria-hidden="true">
+              <svg width="34" height="34" viewBox="0 0 34 34">
+                <circle cx="17" cy="17" r="13" stroke="var(--graphite)" stroke-width="1" fill="none" stroke-dasharray="2 4" />
+                <path d="M7 8 L27 26 M26 7 L8 27" stroke="var(--ink)" stroke-width="2.2" fill="none" stroke-linecap="round" />
+              </svg>
+            </div>
+            <div class="body">
+              <div class="title">{post.data.title}</div>
+              {post.body && <div class="text" set:html={paragraphs(post.body ?? '')} />}
+              <div class="provenance">
+                {
+                  journey && (
+                    <span>
+                      found in:{' '}
+                      <a href={withBase(`/journeys/${journey.data.slug}/`)} style="color:var(--ink)">
+                        {journey.data.title}
+                      </a>{' '}
+                      · {journey.data.path}
+                    </span>
+                  )
+                }
+                <span>{dateLine(post.data.published)}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })
+    )
+  }
+</Base>

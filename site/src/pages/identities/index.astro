@@ -1,19 +1,24 @@
 ---
+// /identities — four obsessions, the balance mirror (label "Obsessions" in the
+// UI; schema/route name stays `identity`).
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import { withBase } from '../../lib/url';
 
 const identities = (await getCollection('identities')).sort((a, b) => a.data.order - b.data.order);
+const journeys = await getCollection('journeys');
+const countFor = (slug: string) => journeys.filter((j) => j.data.identity === slug).length;
 ---
 
-<Base title="Identities">
-  <p><a href={withBase('/')}>← feed</a></p>
-  <h1>Identities</h1>
+<Base title="Obsessions">
+  <h1>Obsessions</h1>
+  <p class="meta">what am I making pictures out of, and where's it going</p>
   <ul>
     {
       identities.map((identity) => (
-        <li>
+        <li style="margin:0 0 0.9rem;list-style:none">
           <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
+          <span class="meta"> · {countFor(identity.data.slug)} journeys</span>
         </li>
       ))
     }

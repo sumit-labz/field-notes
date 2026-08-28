@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>field-notes — material vocabulary</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#F4F0E6;   /* paper */
+    --paper:#FAF8F1;    /* inserted / scan sheet — barely perceptible */
+    --ink:#181714;      /* assertion */
+    --graphite:#4E4A42; /* thinking / annotation / practice */
+    --ghost:#898277;    /* faded archive / the past */
+    --line:#C8C1B3;     /* soft paper boundary */
+    --highlight:#D8AE3E;/* significance / connection — aged yellow pencil */
+    --correction:#963F32;/* PARKED — rare red pencil, not shipping yet */
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:"Instrument Sans",sans-serif;line-height:1.6;}
+  .wrap{max-width:900px;margin:0 auto;padding:50px 26px 100px;}
+  .mono{font-family:"Space Mono",monospace;}
+  .cav{font-family:"Caveat",cursive;}
+  .arch{font-family:"Archivo";text-transform:uppercase;letter-spacing:.12em;}
+  h1{font-family:"Archivo";font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;margin:0 0 4px;}
+  .sub{font-family:"Space Mono";color:var(--graphite);font-size:.75rem;}
+  .top{border-bottom:1px solid var(--ink);padding-bottom:12px;display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;}
+  .sec{margin-top:46px;}
+  .sectag{font-family:"Space Mono";font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--graphite);border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:22px;}
+
+  .swatches{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  .sw{display:flex;gap:14px;align-items:center;}
+  .chip{width:52px;height:52px;flex:none;border:1px solid var(--line);}
+  .sw .n{font-family:"Archivo";text-transform:uppercase;letter-spacing:.08em;font-size:.82rem;}
+  .sw .h{font-family:"Space Mono";font-size:.68rem;color:var(--graphite);}
+  .sw .r{font-size:.86rem;color:var(--graphite);}
+  .parked{opacity:.5;}
+
+  /* ink aging */
+  .aging > div{padding:10px 0;border-bottom:1px dotted var(--line);}
+  .aging .lab{font-family:"Space Mono";font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--graphite);}
+  .l-ink{color:var(--ink);font-size:1.15rem;}
+  .l-graph{color:var(--graphite);font-size:1.05rem;}
+  .l-ghost{color:var(--ghost);font-size:.98rem;}
+
+  /* borders */
+  .bd{padding:14px 16px;margin-bottom:12px;}
+  .hard{border:1px solid var(--ink);}
+  .soft{border:1px solid var(--line);}
+  .none{border:none;}
+  .bd .k{font-family:"Space Mono";font-size:.64rem;color:var(--graphite);text-transform:uppercase;letter-spacing:.06em;}
+
+  /* yellow as mark */
+  .marktitle{font-family:"Archivo";font-weight:600;font-size:1.6rem;display:inline;position:relative;}
+  .hl{position:relative;display:inline;}
+  .hl::before{content:"";position:absolute;left:-4px;right:-6px;top:12%;bottom:8%;background:var(--highlight);opacity:.5;transform:rotate(-1.1deg);z-index:-1;}
+  .madenote{font-family:"Caveat";color:var(--graphite);font-size:1.4rem;margin-top:10px;}
+
+  /* mode materials mini */
+  .modes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+  .mode{padding:14px 14px 18px;min-height:150px;}
+  .mode.p{border:1px solid var(--line);}
+  .mode.l{border:1px solid var(--line);}
+  .mode.c{border:1px solid var(--ink);}
+  .mlab{font-family:"Space Mono";font-size:.62rem;color:var(--graphite);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+  .tal{color:var(--graphite);letter-spacing:.05em;font-size:.85rem;line-height:1.8;}
+  .anno{color:var(--graphite);font-size:.9rem;}
+  .anno .u{border-bottom:1.5px solid var(--graphite);}
+  .anno .ind{display:inline-block;margin-left:18px;}
+  .cimg{height:74px;border:1px solid var(--ink);display:flex;align-items:center;justify-content:center;color:var(--graphite);font-family:"Space Mono";font-size:.55rem;transform:rotate(1deg);}
+  .ct{font-family:"Archivo";font-weight:700;text-transform:uppercase;font-size:1.15rem;line-height:1;margin-top:18px;}
+
+  .foot{margin-top:52px;border-top:1px solid var(--ink);padding-top:14px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .note{font-family:"Space Mono";font-size:.68rem;color:var(--graphite);max-width:58ch;}
+  .stamp{font-family:"Archivo";text-transform:uppercase;letter-spacing:.16em;font-size:.64rem;border:1px solid var(--ink);padding:4px 10px;}
+  .tilt{display:inline-block;transform:rotate(-2.5deg);}
+  @media(max-width:640px){.swatches{grid-template-columns:1fr;}.modes{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1>field-notes</h1><div class="sub">material vocabulary · not a palette · the screen behaves like an archive of physical thought</div></div>
+    <div class="cav tilt" style="font-size:1.3rem;color:var(--graphite)">ink · graphite · yellow.<br>red is benched.</div>
+  </div>
+
+  <!-- SWATCHES -->
+  <div class="sec">
+    <div class="sectag">the materials — each color is a material with a meaning, not a UI token</div>
+    <div class="swatches">
+      <div class="sw"><span class="chip" style="background:#F4F0E6"></span><div><div class="n">Paper</div><div class="h">#F4F0E6</div><div class="r">the ground</div></div></div>
+      <div class="sw"><span class="chip" style="background:#FAF8F1"></span><div><div class="n">Inserted sheet</div><div class="h">#FAF8F1</div><div class="r">scans sit here · barely perceptible · used sparingly</div></div></div>
+      <div class="sw"><span class="chip" style="background:#181714"></span><div><div class="n">Ink</div><div class="h">#181714</div><div class="r">assertion — what happened</div></div></div>
+      <div class="sw"><span class="chip" style="background:#4E4A42"></span><div><div class="n">Graphite</div><div class="h">#4E4A42</div><div class="r">thinking — annotation, practice, marginalia</div></div></div>
+      <div class="sw"><span class="chip" style="background:#898277"></span><div><div class="n">Ghost</div><div class="h">#898277</div><div class="r">the past — faded archive (replaces opacity tricks)</div></div></div>
+      <div class="sw"><span class="chip" style="background:#C8C1B3"></span><div><div class="n">Line</div><div class="h">#C8C1B3</div><div class="r">soft paper boundary</div></div></div>
+      <div class="sw"><span class="chip" style="background:#D8AE3E"></span><div><div class="n">Yellow</div><div class="h">#D8AE3E</div><div class="r">significance / connection — "marked because it mattered." never a button.</div></div></div>
+      <div class="sw parked"><span class="chip" style="background:#963F32"></span><div><div class="n">Correction</div><div class="h">#963F32</div><div class="r">PARKED — rare red pencil, not shipping yet</div></div></div>
+    </div>
+  </div>
+
+  <!-- INK AGING -->
+  <div class="sec">
+    <div class="sectag">ink ages instead of fading — the About stack, done as material not opacity</div>
+    <div class="aging">
+      <div><span class="lab">current · ink</span><br><span class="l-ink">A developer who paints. Building a tool out of what I learned the year I got fired.</span></div>
+      <div><span class="lab">past · graphite</span><br><span class="l-graph">Mostly painting now. Still not sure what it's for.</span></div>
+      <div><span class="lab">archive · ghost</span><br><span class="l-ghost">Graphic designer, six years out from the job that ended.</span></div>
+    </div>
+  </div>
+
+  <!-- BORDERS -->
+  <div class="sec">
+    <div class="sectag">three boundaries — most of the current 1px-ink boxes become softer or disappear</div>
+    <div class="bd hard"><span class="k">hard · ink</span> — a deliberate structural division. rare.</div>
+    <div class="bd soft"><span class="k">soft · line</span> — this is just information.</div>
+    <div class="bd none"><span class="k">none · whitespace</span> — this belongs to the same thought.</div>
+  </div>
+
+  <!-- YELLOW AS MARK -->
+  <div class="sec">
+    <div class="sectag">yellow is a highlighter, not an accent — it means someone marked this</div>
+    <span class="marktitle"><span class="hl">Mythic murals</span></span>
+    <div class="madenote">marked because it mattered. in the real build this is your scanned highlighter stroke — imperfect edges, not a clean rectangle.</div>
+  </div>
+
+  <!-- MODE MATERIALS -->
+  <div class="sec">
+    <div class="sectag">materials by mode — the notebook is in a different physical state per path</div>
+    <div class="modes">
+      <div class="mode p"><div class="mlab">practice · graphite, dense</div><div class="tal">|||| ||||<br>|||| |||| ||<br>|||| |||| ||||<br>|||| |||</div></div>
+      <div class="mode l"><div class="mlab">learn · graphite + annotation</div><div class="anno"><span class="u">primary</span><br><span class="ind">→ secondary</span><br><span class="ind cav" style="font-size:1.15rem">no — temperature</span></div></div>
+      <div class="mode c"><div class="mlab">create · ink + image + yellow</div><div class="cimg">[ one image ]</div><div class="ct">Mythic<br>murals</div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="note">No fake texture, no noise overlay, no paper background, no shadows. These materials emerge only through type, marks, spacing, image treatment, and your real artifacts. Additive to the existing system — zero schema cost. Red is benched until a real correction needs it.</div>
+    <div class="stamp">build less</div>
+  </div>
+</div>
+</body>
+</html>

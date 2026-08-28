@@ -1,0 +1,51 @@
+---
+// site/src/components/JourneyCard.astro
+// The load-bearing hero object (IA reference, section D): identity+path, title
+// with status mark, one lead image, one line. Static — the tilt is hashed from
+// the journey slug and never animated.
+import ModeGlyph from './ModeGlyph.astro';
+import JourneyTitle from './JourneyTitle.astro';
+import { withBase } from '../lib/url';
+import { tiltForId } from '../lib/rotation';
+
+interface Props {
+  slug: string;
+  title: string;
+  path: 'practice' | 'learn' | 'create';
+  status: 'active' | 'paused' | 'abandoned' | 'completed';
+  identityLabel: string;
+  line: string;
+  image: { src: string; width: number; height: number } | null;
+}
+const { slug, title, path, status, identityLabel, line, image } = Astro.props;
+const tilt = tiltForId(slug);
+const href = withBase(`/journeys/${slug}/`);
+---
+
+<a class="card" href={href}>
+  {
+    image ? (
+      <img
+        class="card-photo font-arch"
+        src={image.src}
+        width={image.width}
+        height={image.height}
+        loading="lazy"
+        alt=""
+        style={`transform: rotate(${tilt}deg)`}
+      />
+    ) : (
+      <div class="card-photo card-photo--empty">[ lead image ]</div>
+    )
+  }
+  <div class="card__body">
+    <div class="card__identity">
+      <ModeGlyph path={path} size={20} color="var(--graphite)" />
+      <span>{identityLabel} · {path}</span>
+    </div>
+    <div class="card__title">
+      <JourneyTitle title={title} status={status} seed={slug} />
+    </div>
+    <p class="card__line">{line}</p>
+  </div>
+</a>

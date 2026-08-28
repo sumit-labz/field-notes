@@ -2,8 +2,10 @@
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
+import ModeGlyph from '../../components/ModeGlyph.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
+import { dateLine } from '../../lib/content';
 
 export async function getStaticPaths() {
   const journeys = await getCollection('journeys');
@@ -34,10 +36,11 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
 <Base title={data.title}>
   <p><a href={withBase('/')}>← feed</a></p>
   <JourneyTitle title={data.title} status={data.status} as="h1" seed={data.slug} />
-  <p class="meta">
-    status: {data.status}
-    {' · started '}{data.started.toISOString().slice(0, 10)}
-    {data.ended && <> · ended {data.ended.toISOString().slice(0, 10)}</>}
+  <p class="meta" style="display:flex;align-items:center;gap:0.5rem;margin-top:0.6rem">
+    <ModeGlyph path={data.path} size={18} color="var(--graphite)" />
+    {data.path} · status: {data.status}
+    {' · started '}{dateLine(data.started)}
+    {data.ended && <> · ended {dateLine(data.ended)}</>}
   </p>
   {
     emergedFrom && (
@@ -66,7 +69,7 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
       posts.map((post) => (
         <li>
           <a href={withBase(`/posts/${post.data.slug}/`)}>{post.data.title}</a>
-          <span class="meta"> · {post.data.published.toISOString().slice(0, 10)}</span>
+          <span class="meta"> · {dateLine(post.data.published)}</span>
         </li>
       ))
     }

@@ -32,6 +32,11 @@ const posts = defineCollection({
     journey: z.string().nullable(),
     // ordered; controls render order
     fragments: z.array(z.string()),
+    // IMPLEMENTATION-SPEC.md stage 1: new optional fields, defaults only.
+    // status: in_progress posts render with an honest "in progress" mark.
+    status: z.enum(['in_progress', 'published']).optional().default('published'),
+    // kind: insight posts are realizations returned to on /coordinates.
+    kind: z.enum(['post', 'insight']).optional().default('post'),
   }),
 });
 
@@ -43,6 +48,9 @@ const journeys = defineCollection({
       title: z.string(),
       identity: z.string(),
       status: z.enum(['active', 'paused', 'abandoned', 'completed']),
+      // IMPLEMENTATION-SPEC.md stage 1: how a journey behaves, drives the
+      // hero proportions + the three Obsession streams (default create).
+      path: z.enum(['practice', 'learn', 'create']).optional().default('create'),
       started: z.coerce.date(),
       ended: z.coerce.date().optional(),
       emerged_from: z.string().nullable(),
@@ -77,4 +85,17 @@ const identities = defineCollection({
   }),
 });
 
-export const collections = { fragments, posts, journeys, identities };
+// IMPLEMENTATION-SPEC stage 4: /about is a dated, append-only stack. Each file
+// in about/ is one entry, newest on top; older entries recede through ink →
+// graphite → ghost. `mix` is the ordered list of identity slugs that sized
+// that period of life (first = biggest).
+const about = defineCollection({
+  loader: glob({ pattern: '*.md', base: `${repoRoot}about` }),
+  schema: z.object({
+    date: z.coerce.date(),
+    season: z.string(),
+    mix: z.array(z.string()).optional(),
+  }),
+});
+
+export const collections = { fragments, posts, journeys, identities, about };
