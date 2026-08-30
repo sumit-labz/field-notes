@@ -66,10 +66,29 @@ const postAudioUrl = post.data.audio
 
   {
     postAudioUrl && (
-      <div class="listen">
-        <span class="listen-label">Listen</span>
-        <audio controls preload="metadata" src={postAudioUrl} />
-        <span class="listen-note">read in my voice · AI-generated</span>
+      <div class="listen" data-listen>
+        <button class="listen-play" type="button" aria-label="Play">
+          <svg class="ic-play" width="14" height="16" viewBox="0 0 14 16" aria-hidden="true">
+            <path d="M1 1 L13 8 L1 15 Z" fill="currentColor" />
+          </svg>
+          <svg class="ic-pause" width="14" height="16" viewBox="0 0 14 16" aria-hidden="true">
+            <rect x="1" y="1" width="4" height="14" fill="currentColor" />
+            <rect x="9" y="1" width="4" height="14" fill="currentColor" />
+          </svg>
+        </button>
+        <div class="listen-body">
+          <div class="listen-head">
+            <span class="listen-label">Listen</span>
+            <span class="listen-viz" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>
+            <span class="listen-note">read in my voice · AI-generated</span>
+          </div>
+          <div class="listen-track" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="listen-fill" />
+          </div>
+        </div>
+        <button class="listen-rate" type="button" title="Playback speed">0.8×</button>
+        <span class="listen-time mono">0:00</span>
+        <audio preload="metadata" src={postAudioUrl} />
       </div>
     )
   }
@@ -98,16 +117,43 @@ const postAudioUrl = post.data.audio
 </Base>
 
 <style>
-  /* "Listen" narration player at the top of a post. Static, no autoplay. */
+  /* "Listen" narration player at the top of a post. Custom controls; the only
+     motion is data-driven (progress from real playback, the visualiser from the
+     audio's own frequency data) — no decorative CSS transitions, per the site's
+     no-motion rule. */
   .listen {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 0.85rem;
     margin: 1.5rem 0 2rem;
-    padding: 0.75rem 0;
+    padding: 0.85rem 0;
     border-top: 1px solid var(--line);
     border-bottom: 1px solid var(--line);
+  }
+  .listen audio { display: none; }
+  .listen-play {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--paper);
+    background: var(--ink);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .listen-play .ic-play { margin-left: 2px; }
+  .listen-play .ic-pause { display: none; }
+  .listen.playing .listen-play .ic-play { display: none; }
+  .listen.playing .listen-play .ic-pause { display: block; }
+  .listen-body { flex: 1; min-width: 0; }
+  .listen-head {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.4rem;
   }
   .listen-label {
     font-family: 'Archivo', sans-serif;
@@ -116,14 +162,55 @@ const postAudioUrl = post.data.audio
     font-size: 0.8rem;
     color: var(--graphite);
   }
-  .listen audio {
-    height: 34px;
-    max-width: 100%;
-  }
   .listen-note {
     font-family: 'Space Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--ghost);
+    margin-left: auto;
+  }
+  /* Visualiser: bar heights are set per frame from the audio's real frequency
+     data while playing; at rest they sit flat. */
+  .listen-viz {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+  }
+  .listen-viz i {
+    display: block;
+    width: 2px;
+    height: 15%;
+    background: var(--graphite);
+  }
+  .listen-track {
+    height: 4px;
+    background: var(--line);
+    cursor: pointer;
+    position: relative;
+  }
+  .listen-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--ink);
+  }
+  .listen-rate {
+    flex: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--graphite);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 2px 7px;
+    cursor: pointer;
+  }
+  .listen-time {
+    flex: none;
+    font-size: 0.72rem;
+    color: var(--graphite);
+    white-space: nowrap;
+    min-width: 5.5em;
+    text-align: right;
   }
 
   /* Raw transcript: the "before cleanup" record. Space Mono, lighter ink,
@@ -145,3 +232,133 @@ const postAudioUrl = post.data.audio
     white-space: pre-wrap;
   }
 </style>
+
+<script>
+  // Custom "Listen" player: play/pause, data-driven progress, seek, rate toggle
+  // (default 0.8×), and a visualiser driven by the audio's own frequency data.
+  // No decorative motion — everything moves only in response to real playback.
+  function setupListen(root: HTMLElement) {
+    const audio = root.querySelector('audio') as HTMLAudioElement;
+    const playBtn = root.querySelector('.listen-play') as HTMLButtonElement;
+    const track = root.querySelector('.listen-track') as HTMLElement;
+    const fill = root.querySelector('.listen-fill') as HTMLElement;
+    const timeEl = root.querySelector('.listen-time') as HTMLElement;
+    const rateBtn = root.querySelector('.listen-rate') as HTMLButtonElement;
+    const bars = Array.from(root.querySelectorAll('.listen-viz i')) as HTMLElement[];
+    if (!audio || !playBtn) return;
+
+    const RATES = [0.8, 1, 1.25, 1.5];
+    let rateIdx = 0;
+    audio.playbackRate = RATES[0];
+    rateBtn.textContent = '0.8×';
+
+    const fmt = (s: number) => {
+      if (!isFinite(s) || s < 0) s = 0;
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${m}:${String(sec).padStart(2, '0')}`;
+    };
+    const restViz = () => bars.forEach((b) => (b.style.height = '15%'));
+
+    playBtn.addEventListener('click', () => {
+      if (audio.paused) {
+        ensureGraph(); // build the Web Audio graph inside the real user gesture
+        audio.play();
+      } else {
+        audio.pause();
+      }
+    });
+    audio.addEventListener('play', () => {
+      root.classList.add('playing');
+      playBtn.setAttribute('aria-label', 'Pause');
+      startViz();
+    });
+    const onStop = () => {
+      root.classList.remove('playing');
+      playBtn.setAttribute('aria-label', 'Play');
+    };
+    audio.addEventListener('pause', onStop);
+    audio.addEventListener('ended', onStop);
+
+    audio.addEventListener('loadedmetadata', () => {
+      timeEl.textContent = `0:00 / ${fmt(audio.duration)}`;
+    });
+    audio.addEventListener('timeupdate', () => {
+      const p = audio.duration ? audio.currentTime / audio.duration : 0;
+      fill.style.width = `${p * 100}%`;
+      track.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+      timeEl.textContent = `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`;
+    });
+
+    const seek = (clientX: number) => {
+      const r = track.getBoundingClientRect();
+      const p = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
+      if (audio.duration) audio.currentTime = p * audio.duration;
+    };
+    track.addEventListener('click', (e) => seek(e.clientX));
+    track.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + 5);
+      if (e.key === 'ArrowLeft') audio.currentTime = Math.max(0, audio.currentTime - 5);
+    });
+
+    rateBtn.addEventListener('click', () => {
+      rateIdx = (rateIdx + 1) % RATES.length;
+      audio.playbackRate = RATES[rateIdx];
+      rateBtn.textContent = `${RATES[rateIdx]}×`;
+    });
+
+    // Visualiser from the audio's real frequency data. Built ONLY inside the
+    // user gesture, and only routed through Web Audio if the graph sets up — so
+    // if any of this fails, the plain <audio> element still plays normally.
+    let analyser: AnalyserNode | null = null;
+    let data: Uint8Array<ArrayBuffer> | null = null;
+    let ac: AudioContext | null = null;
+    let graphTried = false;
+    let raf = 0;
+    function ensureGraph() {
+      if (graphTried) return;
+      graphTried = true;
+      try {
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!Ctx) return;
+        ac = new Ctx();
+        ac.resume();
+        const srcNode = ac.createMediaElementSource(audio);
+        analyser = ac.createAnalyser();
+        analyser.fftSize = 64;
+        srcNode.connect(analyser);
+        analyser.connect(ac.destination);
+        data = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
+      } catch {
+        analyser = null; // audio element keeps playing on its own
+      }
+    }
+    function startViz() {
+      if (raf || !analyser || !data) return;
+      try {
+        if (ac && ac.state === 'suspended') ac.resume();
+        const n = bars.length;
+        const loop = () => {
+          if (audio.paused || !analyser || !data) {
+            raf = 0;
+            restViz();
+            return;
+          }
+          analyser.getByteFrequencyData(data);
+          for (let i = 0; i < n; i++) {
+            const v = data[Math.floor(((i + 1) * data.length) / (n + 1))] / 255;
+            bars[i].style.height = `${15 + v * 85}%`;
+          }
+          raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+      } catch {
+        /* Web Audio unavailable — playback still works, just no visualiser. */
+      }
+    }
+
+    restViz();
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-listen]').forEach(setupListen);
+</script>
