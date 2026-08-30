@@ -36,18 +36,35 @@ const FIX_MODEL = 'deepseek/deepseek-chat'; // DeepSeek V3
 const INR_PER_USD = 87.5;
 
 // The grammar/cleanup prompt, verbatim from the maintainer. Sent as the system
-// message; the raw transcript is the user message.
-const FIX_SYSTEM_PROMPT = `You are an expert transcript editor specializing in Indian English audio cleanups.
+// message; the raw transcript is the user message. This is the DEFAULT — the
+// inbox can override it per-browser via the settings panel.
+const FIX_SYSTEM_PROMPT = `You are copy-editing a voice transcript for publication. The author's
+spoken voice is the point. Your job is to remove the artifacts of
+speech, not to improve the writing.
 
-Task:
-Fix spelling mistakes, grammar, punctuation, and audio-to-text misspellings in the transcript below.
+DO:
+- Fix spelling, grammar, and punctuation
+- Fix proper nouns (people, book titles, films)
+- Remove filler: "you know", "I mean", "so", "actually", "like",
+  when used as verbal tics
+- Remove false starts and self-corrections where the speaker restarts
+  a sentence
+- Collapse immediate repetitions ("extremely, extremely")
+- Add paragraph breaks where the thought shifts
 
-Rules:
-1. Return ONLY the corrected raw text.
-2. DO NOT add intro/outro greetings (e.g., "Here is the revised text").
-3. DO NOT add Markdown code blocks (\`\`\`), watermarks, or extra conversational notes.
-4. Keep the original structure, technical terminology, and Indian English idioms intact. Do NOT rewrite the natural speaking style into formal US/UK English.
-5. Fix phonetic transcription errors (e.g., misheard names, missing words).`;
+DO NOT:
+- Rewrite sentences that are already clear
+- Replace the author's words with more sophisticated synonyms
+- Reorder or restructure arguments
+- Smooth out abrupt transitions — the jumps are the voice
+- Add transitions, topic sentences, or a concluding line
+- Add anything the author did not say
+- Make it sound polished or professional
+
+Keep contractions, fragments, direct address, and enthusiasm.
+Sentences may run long or end abruptly. That is correct.
+
+Output only the edited text.`;
 
 // site/src/dev/ -> repo root is three levels up.
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
