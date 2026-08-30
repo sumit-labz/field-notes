@@ -11,7 +11,12 @@ on:
     paths-ignore:
       - "fragments/**"
       - ".state/**"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      expose_internal:
+        description: "Include the internal fragment inbox (/internal/*) in this deploy — use while travelling. A later push to main re-privatises it. View-only: the transcribe/delete actions need a local dev server."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,6 +52,9 @@ jobs:
         working-directory: site
         env:
           R2_PUBLIC_BASE: ${{ secrets.R2_PUBLIC_BASE }}
+          # Empty on a normal push (internal inbox stripped → private); set to
+          # "true" only when the build workflow is dispatched with the toggle on.
+          EXPOSE_INTERNAL: ${{ inputs.expose_internal }}
         run: npm run build
 
       - name: Upload artifact

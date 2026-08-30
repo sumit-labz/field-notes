@@ -5,14 +5,15 @@
 // SPEC.md governs the public reader; this tool does not follow it). Optimized
 // purely for fast scanning and copy-pasting fragment IDs into Claude Code.
 //
-// PRIVACY / DISCOVERABILITY TRADEOFF: this is a real Astro route, so it builds
-// and deploys with the rest of the site and is reachable by anyone who knows
-// the URL — it is NOT authenticated or truly private, just unlinked. It is
-// excluded from nav (Base layout, not used here) and carries a robots noindex.
-// The project currently ships no sitemap.xml and no RSS feed (no @astrojs/
-// sitemap or @astrojs/rss integration in astro.config.mjs / package.json), so
-// there is nothing to exclude it from today; if either is ever added, this
-// route must be filtered out of it.
+// PRIVACY: this route is LOCAL-ONLY by default. The internalRoutePrivacy()
+// integration in astro.config.mjs strips /internal/* from the production build,
+// so it is never deployed to GitHub Pages — a 404 for everyone. It exists only
+// under `npm run dev`. Setting EXPOSE_INTERNAL=true (a manual toggle in
+// build.yml) keeps it in a deploy on demand, e.g. while travelling; a normal
+// push re-privatises it. Even when exposed it is view-only — the transcribe/
+// fix/delete endpoints are dev-server middleware, absent from a static deploy.
+// It also carries a robots noindex and is unlinked from nav. (No sitemap.xml or
+// RSS feed exists; if either is added, exclude this route there too.)
 import { getCollection } from 'astro:content';
 import { formatCapturedAt } from '../../lib/dates';
 import { mediaUrl } from '../../lib/media-url';

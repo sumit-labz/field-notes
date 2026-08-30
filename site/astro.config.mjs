@@ -1,5 +1,6 @@
 import { defineConfig, envField } from 'astro/config';
 import { fileURLToPath } from 'node:url';
+import { rm } from 'node:fs/promises';
 import { openrouterDevPlugin } from './src/dev/openrouter-plugin.mjs';
 
 // The repo root, one level above this Astro project (site/). Committed media
@@ -10,7 +11,32 @@ import { openrouterDevPlugin } from './src/dev/openrouter-plugin.mjs';
 // workspace-root detection stops at site/ and would 403 the parent otherwise.
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
+// The /internal/* fragment inbox is a LOCAL tool. By default it is stripped
+// from the production build entirely, so it is never deployed to GitHub Pages
+// and is genuinely private (a 404 for everyone) — it only exists under
+// `npm run dev`. Setting EXPOSE_INTERNAL=true keeps it in the build, so it can
+// be deployed on demand (e.g. while travelling). The build.yml workflow exposes
+// this as a manual "Run workflow" toggle; a normal push re-privatises it.
+// Note: even when exposed it is view-only — the Transcribe/Fix/Delete endpoints
+// are dev-server middleware and do not exist in a static deploy.
+function internalRoutePrivacy() {
+  return {
+    name: 'field-notes:internal-privacy',
+    hooks: {
+      'astro:build:done': async ({ dir, logger }) => {
+        if (process.env.EXPOSE_INTERNAL === 'true') {
+          logger.warn('EXPOSE_INTERNAL=true — /internal/* IS included in this build (view-only).');
+          return;
+        }
+        await rm(new URL('internal/', dir), { recursive: true, force: true });
+        logger.info('/internal/* stripped from the build (local-only). Set EXPOSE_INTERNAL=true to include it.');
+      },
+    },
+  };
+}
+
 export default defineConfig({
+  integrations: [internalRoutePrivacy()],
   vite: {
     // openrouterDevPlugin runs ONLY under `npm run dev` (apply: 'serve') and
     // powers the internal inbox's Transcribe / Fix-grammar buttons. It reads
