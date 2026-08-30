@@ -118,6 +118,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         --stub-text: #9a9a92;
         --danger: #b91c1c;
         --danger-bg: #fbeaea;
+        --just-bg: #e8f0ff;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -130,6 +131,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           --spark: #f5b23d;
           --danger: #f87171;
           --danger-bg: #2a1717;
+          --just-bg: #1b2740;
           --stub-bg: #26262b;
           --stub-text: #6b6b64;
         }
@@ -225,6 +227,20 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       .row:nth-child(odd) { background: var(--panel); }
       .row.hidden { display: none; }
+      .row.just-added {
+        background: var(--just-bg);
+        box-shadow: inset 3px 0 0 var(--accent);
+      }
+      .just-badge {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--accent);
+        border: 1px solid var(--accent);
+        border-radius: 3px;
+        padding: 0 5px;
+        margin-left: 6px;
+      }
       .row-check { margin-top: 2px; }
       .preview { }
       .thumb {
@@ -917,12 +933,20 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         return d.id;
       }
 
+      // Remember what was just created so the reloaded page can highlight it.
+      function reloadHighlighting(ids: string[]) {
+        try {
+          sessionStorage.setItem('fn-inbox:justAdded', JSON.stringify(ids));
+        } catch {}
+        setTimeout(() => location.reload(), 700);
+      }
+
       async function captureOne(blob: Blob, type: 'photo' | 'audio' | 'video', ext: string) {
         setCaptureStatus(`saving ${type}…`);
         try {
           const id = await sendCapture(blob, type, ext);
           setCaptureStatus(`saved ${id} — reloading…`);
-          setTimeout(() => location.reload(), 700);
+          reloadHighlighting([id]);
         } catch (err) {
           setCaptureStatus(String((err as Error).message || err), true);
         }
@@ -982,7 +1006,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           }
           if (ids.length) {
             setCaptureStatus(`saved ${ids.length} — reloading…`);
-            setTimeout(() => location.reload(), 700);
+            reloadHighlighting(ids);
           }
         } catch (err) {
           setCaptureStatus(String((err as Error).message || err), true);
@@ -1000,6 +1024,31 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         const ext = (img.type.split('/')[1] || 'png').toLowerCase();
         captureOne(file, 'photo', ext);
       });
+
+      // Highlight fragments created in the previous capture (survives the reload
+      // via sessionStorage; cleared after showing so it only flags once).
+      try {
+        const raw = sessionStorage.getItem('fn-inbox:justAdded');
+        if (raw) {
+          sessionStorage.removeItem('fn-inbox:justAdded');
+          const justIds: string[] = JSON.parse(raw);
+          let firstRow: HTMLElement | null = null;
+          for (const id of justIds) {
+            const row = document.querySelector<HTMLElement>(`.row[data-id="${id}"]`);
+            if (!row) continue;
+            row.classList.add('just-added');
+            const idLine = row.querySelector('.id-line');
+            if (idLine && !idLine.querySelector('.just-badge')) {
+              const badge = document.createElement('span');
+              badge.className = 'just-badge';
+              badge.textContent = 'just added';
+              idLine.appendChild(badge);
+            }
+            if (!firstRow) firstRow = row;
+          }
+          firstRow?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      } catch {}
     </script>
   </body>
 </html>
