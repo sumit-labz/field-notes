@@ -385,7 +385,9 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         margin-bottom: 3px;
       }
       .tbox-hint { text-transform: none; letter-spacing: 0; font-style: italic; }
-      .tbox-cost { text-transform: none; letter-spacing: 0; color: var(--accent); margin-left: 6px; }
+      .tbox-cost, .voice-cost { text-transform: none; letter-spacing: 0; color: var(--accent); margin-left: 6px; }
+      .voice-box { margin-top: 8px; max-width: 520px; }
+      .voice-box .aplayer { margin-top: 4px; }
       #session-cost { color: var(--accent); }
       .transcript-text, .fixed-text {
         width: 100%;
@@ -666,7 +668,14 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                           <div class="result-actions">
                             <button class="tool-btn" type="button" data-action="copy-fixed">copy</button>
                             <button class="tool-btn" type="button" data-action="save-cleaned">save</button>
+                            {row.type === 'audio' && (
+                              <button class="tool-btn" type="button" data-action="generate-voice">🔊 generate voice</button>
+                            )}
                             <button class="tool-btn subtle" type="button" data-action="clear-fixed">clear</button>
+                          </div>
+                          <div class="voice-box" hidden>
+                            <div class="tbox-label">voice<span class="voice-cost"></span></div>
+                            <div class="voice-player"></div>
                           </div>
                         </div>
                       </div>
@@ -879,6 +888,27 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         const fixedCost = panel.querySelector<HTMLElement>('.fixed-box .tbox-cost')!;
         const costKeyT = `fn-inbox:costT:${id}`;
         const costKeyF = `fn-inbox:costF:${id}`;
+        // Generated voice (TTS of the cleaned text).
+        const voiceBox = panel.querySelector<HTMLElement>('.voice-box');
+        const voicePlayer = panel.querySelector<HTMLElement>('.voice-player');
+        const voiceCost = panel.querySelector<HTMLElement>('.voice-cost');
+        const voiceKey = `fn-inbox:voice:${id}`;
+
+        // Build a compact player for a generated narration URL and reveal it.
+        function showVoice(url: string, costText?: string) {
+          if (!voiceBox || !voicePlayer) return;
+          voicePlayer.innerHTML =
+            `<div class="aplayer" data-aplayer>` +
+            `<button class="aplayer-play" type="button" aria-label="Play">` +
+            `<svg class="ic-play" width="11" height="12" viewBox="0 0 11 12"><path d="M1 1 L10 6 L1 11 Z" fill="currentColor"/></svg>` +
+            `<svg class="ic-pause" width="11" height="12" viewBox="0 0 11 12"><rect x="1" y="1" width="3" height="10" fill="currentColor"/><rect x="7" y="1" width="3" height="10" fill="currentColor"/></svg>` +
+            `</button><div class="aplayer-track"><div class="aplayer-fill"></div></div>` +
+            `<span class="aplayer-time mono">0:00</span>` +
+            `<audio preload="metadata" src="${url}"></audio></div>`;
+          initAudioPlayer(voicePlayer.firstElementChild as HTMLElement);
+          if (voiceCost && costText !== undefined) voiceCost.textContent = costText;
+          voiceBox.hidden = false;
+        }
 
         // Persist a box's cost label so it survives reloads (the call already
         // happened — no double-counting into the session total on restore).
@@ -927,6 +957,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           if (ct && transcriptCost) transcriptCost.textContent = ct;
           const cf = localStorage.getItem(costKeyF);
           if (cf) fixedCost.textContent = cf;
+          const vurl = localStorage.getItem(voiceKey);
+          if (vurl) showVoice(vurl);
         } catch {}
 
         // Persist edits to the (editable) fixed box.
@@ -976,14 +1008,44 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             }
             return;
           }
+          if (action === 'generate-voice') {
+            const text = fixedText.value.trim();
+            if (!text) {
+              flash(btn, 'nothing to voice');
+              return;
+            }
+            btn.disabled = true;
+            const label = btn.textContent;
+            btn.textContent = 'generating…';
+            setStatus('generating voice in your clone…');
+            try {
+              const d = await postJson('/api/generate-voice', { id, text });
+              const meta = callMeta(d);
+              showVoice(d.url, meta.replace(/^ · /, ''));
+              addSessionCost(d.costInr);
+              try {
+                localStorage.setItem(voiceKey, d.url);
+              } catch {}
+              setStatus(`voice generated${meta}${d.pushed ? ' · pushed' : ''}`);
+            } catch (err) {
+              setStatus(String((err as Error).message || err), true);
+            } finally {
+              btn.disabled = false;
+              btn.textContent = label;
+            }
+            return;
+          }
           if (action === 'clear-fixed') {
             fixedText.value = '';
             fixedBox.hidden = true;
             fixedCost.textContent = '';
+            if (voiceBox) voiceBox.hidden = true;
+            if (voicePlayer) voicePlayer.innerHTML = '';
             setStatus('');
             try {
               localStorage.removeItem(fixedKey);
               localStorage.removeItem(costKeyF);
+              localStorage.removeItem(voiceKey);
             } catch {}
             return;
           }

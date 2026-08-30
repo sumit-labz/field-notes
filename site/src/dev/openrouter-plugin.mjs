@@ -16,7 +16,7 @@
 // a clear message so the UI can say "add your key" rather than silently break.
 
 import { loadEnv } from 'vite';
-import { readFile, writeFile, mkdtemp, unlink } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, mkdtemp, unlink } from 'node:fs/promises';
 import { existsSync, readdirSync, statSync, createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -25,6 +25,9 @@ import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const TTS_URL = 'https://openrouter.ai/api/v1/audio/speech';
+const GENERATION_URL = 'https://openrouter.ai/api/v1/generation';
+const TTS_MODEL = 'fish-audio/s2.1-pro'; // voice-cloning
 // gpt-4o-mini-transcribe is a transcription model — it uses the dedicated
 // OpenAI-compatible audio endpoint (multipart upload), NOT chat/completions.
 const TRANSCRIBE_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
@@ -503,15 +506,81 @@ function costInr(costUsd) {
   return typeof costUsd === 'number' ? Math.round(costUsd * INR_PER_USD * 10000) / 10000 : null;
 }
 
+// -- Cloned-voice narration (TTS) ------------------------------------------
+// Turns cleaned text into speech in the maintainer's voice via fish-audio
+// voice cloning. The reference clip is prepared + transcribed once per session
+// and cached (cloning wants a short mono WAV + its transcript).
+let voiceRefCache = null;
+
+async function ensureVoiceReference(apiKey, refPath, refText) {
+  if (voiceRefCache) return voiceRefCache;
+  if (!refPath || !existsSync(refPath)) throw new Error(`voice reference clip not found: ${refPath || '(unset)'}`);
+  const wav = path.join(os.tmpdir(), `fn-voiceref-${process.pid}.wav`);
+  const ff = await runCmd('ffmpeg', ['-y', '-i', refPath, '-t', '30', '-ar', '16000', '-ac', '1', wav]);
+  if (ff.code !== 0) throw new Error(`ffmpeg failed on reference clip: ${ff.stderr.slice(-200)}`);
+  const buf = await readFile(wav);
+  const dataUri = `data:audio/wav;base64,${buf.toString('base64')}`;
+  let text = refText;
+  if (!text) {
+    const t = await transcribeAudio(apiKey, buf, 'reference.wav', 'audio/wav');
+    text = t.text;
+  }
+  unlink(wav).catch(() => {});
+  voiceRefCache = { dataUri, text };
+  return voiceRefCache;
+}
+
+async function synthesizeVoice(apiKey, text, ref) {
+  const resp = await fetch(TTS_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: TTS_MODEL,
+      input: text,
+      response_format: 'mp3',
+      input_references: [
+        { type: 'input_audio', input_audio: { data: ref.dataUri } },
+        { type: 'text', text: ref.text },
+      ],
+    }),
+  });
+  if (!resp.ok || (resp.headers.get('content-type') || '').startsWith('application/json')) {
+    const t = await resp.text();
+    throw new Error(`TTS error ${resp.status}: ${t.slice(0, 200)}`);
+  }
+  return { buffer: Buffer.from(await resp.arrayBuffer()), genId: resp.headers.get('X-Generation-Id') };
+}
+
+async function fetchGenerationCostInr(apiKey, genId) {
+  if (!genId) return null;
+  for (let i = 0; i < 10; i++) {
+    await sleep(2000);
+    try {
+      const r = await fetch(`${GENERATION_URL}?id=${encodeURIComponent(genId)}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (r.ok) {
+        const c = (await r.json())?.data?.total_cost;
+        if (typeof c === 'number') return Math.round(c * INR_PER_USD * 10000) / 10000;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 export function openrouterDevPlugin() {
   let apiKey = '';
+  let voiceRefAudio = '';
+  let voiceRefText = '';
   return {
     name: 'field-notes:openrouter-dev',
     apply: 'serve', // dev only — never affects `astro build`
     configResolved(config) {
-      // Read the key from site/.env (config.envDir), server-side only.
+      // Read config from site/.env (config.envDir), server-side only.
       const env = loadEnv(config.mode, config.envDir, '');
       apiKey = env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '';
+      voiceRefAudio = env.VOICE_REF_AUDIO || process.env.VOICE_REF_AUDIO || '';
+      voiceRefText = env.VOICE_REF_TEXT || process.env.VOICE_REF_TEXT || '';
     },
     configureServer(server) {
       // Always-fresh local media (audio/video) for the inbox — see local-media.ts.
@@ -653,6 +722,44 @@ export function openrouterDevPlugin() {
           return sendJson(res, 502, { error: String(err?.message || err) });
         } finally {
           if (tmpPath) unlink(tmpPath).catch(() => {});
+        }
+      });
+
+      server.middlewares.use('/api/generate-voice', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          if (!apiKey) {
+            return sendJson(res, 501, { error: 'OPENROUTER_API_KEY not set in site/.env — add it and restart `npm run dev`.' });
+          }
+          if (!voiceRefAudio) {
+            return sendJson(res, 501, {
+              error: 'VOICE_REF_AUDIO not set in site/.env — point it at your reference voice clip (e.g. VOICE_REF_AUDIO=C:/…/forclaude.mp3), then restart.',
+            });
+          }
+          const { id, text } = await readJsonBody(req);
+          if (!id || !ID_RE.test(id)) return sendJson(res, 400, { error: 'missing or bad fragment id' });
+          if (typeof text !== 'string' || !text.trim()) return sendJson(res, 400, { error: 'missing text' });
+
+          const ref = await ensureVoiceReference(apiKey, voiceRefAudio, voiceRefText);
+          const { buffer, genId } = await synthesizeVoice(apiKey, text, ref);
+
+          const rel = `media/narration/${id}.mp3`;
+          await mkdir(path.join(repoRoot, 'media', 'narration'), { recursive: true });
+          await writeFile(path.join(repoRoot, rel), buffer);
+
+          // Commit + push so the narration is durable (like the other tooling).
+          await runCmd('git', ['add', rel]);
+          const commit = await runCmd('git', ['commit', '-m', `voice: narration for ${id}`]);
+          let pushed = false;
+          if (commit.code === 0) {
+            const push = await runCmd('git', ['push']);
+            pushed = push.code === 0;
+          }
+
+          const inr = await fetchGenerationCostInr(apiKey, genId);
+          return sendJson(res, 200, { ok: true, id, url: `/__localmedia/${rel}`, costInr: inr, model: TTS_MODEL, pushed });
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
         }
       });
 
