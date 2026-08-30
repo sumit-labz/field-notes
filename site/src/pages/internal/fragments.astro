@@ -41,6 +41,12 @@ function resolvePreview(
 ): Preview {
   const key = media?.[0];
   if (type === 'photo' && key) {
+    // Bot photos are R2 keys; web-captured photos are local (media/photo/…).
+    if (isLocalMedia(key)) {
+      const src = localMediaUrl(key);
+      if (!src) return { kind: 'missing', path: key };
+      return { kind: 'photo', src, raw: src };
+    }
     const src = mediaUrl(key);
     return { kind: 'photo', src, raw: src };
   }
@@ -341,6 +347,42 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       .empty-state { color: var(--muted); margin-top: 40px; }
       a { color: var(--accent); }
+      .capture {
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+        padding: 10px 20px;
+      }
+      .capture-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .capture-row .upload-label {
+        font-size: 12px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        border-radius: 4px;
+        padding: 4px 9px;
+        cursor: pointer;
+      }
+      .capture-row .upload-label:hover { border-color: var(--accent); }
+      #rec-btn.recording { background: var(--danger); color: #fff; border-color: var(--danger); }
+      #note-input {
+        font: inherit;
+        font-size: 13px;
+        padding: 4px 8px;
+        min-width: 200px;
+        flex: 1;
+        max-width: 340px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .capture-hint { color: var(--muted); font-size: 12px; }
+      #capture-status { font-size: 12px; }
+      #capture-status.error { color: var(--danger); }
     </style>
   </head>
   <body>
@@ -382,6 +424,18 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         <span id="sel-count">0 selected</span>
       </div>
     </header>
+
+    <section class="capture">
+      <div class="capture-row">
+        <button id="rec-btn" class="tool-btn" type="button">● record audio</button>
+        <label class="upload-label">⤴ upload photo/video
+          <input id="file-input" type="file" accept="image/*,video/*" multiple hidden />
+        </label>
+        <span class="capture-hint">or paste a screenshot (Ctrl/⌘+V anywhere)</span>
+        <input id="note-input" type="text" placeholder="optional note for the next capture…" />
+        <span id="capture-status"></span>
+      </div>
+    </section>
 
     <main>
       {
@@ -836,6 +890,116 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           });
         }
       }
+
+      // -- Capture new fragments: record audio / upload / paste ----------------
+      // Posts the media to /api/create-fragment (dev only), which writes it as a
+      // fragment via scripts/create_fragment.py, then reloads to show it.
+      const captureStatus = document.getElementById('capture-status')!;
+      const noteInput = document.getElementById('note-input') as HTMLInputElement;
+
+      function setCaptureStatus(msg: string, isError = false) {
+        captureStatus.textContent = msg;
+        captureStatus.classList.toggle('error', isError);
+      }
+
+      // Send one blob; returns the new fragment id (throws on failure).
+      async function sendCapture(blob: Blob, type: 'photo' | 'audio' | 'video', ext: string): Promise<string> {
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/octet-stream',
+          'X-Fragment-Type': type,
+          'X-Fragment-Ext': ext,
+        };
+        const note = noteInput.value.trim();
+        if (note) headers['X-Fragment-Note'] = encodeURIComponent(note);
+        const r = await fetch('/api/create-fragment', { method: 'POST', headers, body: blob });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || `save failed (${r.status})`);
+        return d.id;
+      }
+
+      async function captureOne(blob: Blob, type: 'photo' | 'audio' | 'video', ext: string) {
+        setCaptureStatus(`saving ${type}…`);
+        try {
+          const id = await sendCapture(blob, type, ext);
+          setCaptureStatus(`saved ${id} — reloading…`);
+          setTimeout(() => location.reload(), 700);
+        } catch (err) {
+          setCaptureStatus(String((err as Error).message || err), true);
+        }
+      }
+
+      // Record audio (MediaRecorder; localhost is a secure context so mic works).
+      const recBtn = document.getElementById('rec-btn') as HTMLButtonElement;
+      let mediaRecorder: MediaRecorder | null = null;
+      let chunks: BlobPart[] = [];
+      recBtn.addEventListener('click', async () => {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          chunks = [];
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size) chunks.push(e.data);
+          };
+          mediaRecorder.onstop = () => {
+            stream.getTracks().forEach((t) => t.stop());
+            recBtn.classList.remove('recording');
+            recBtn.textContent = '● record audio';
+            const mime = mediaRecorder?.mimeType || 'audio/webm';
+            const ext = mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'm4a' : 'webm';
+            const blob = new Blob(chunks, { type: mime });
+            if (blob.size) captureOne(blob, 'audio', ext);
+          };
+          mediaRecorder.start();
+          recBtn.classList.add('recording');
+          recBtn.textContent = '■ stop recording';
+          setCaptureStatus('recording… click stop when done');
+        } catch {
+          setCaptureStatus('microphone access denied or unavailable', true);
+        }
+      });
+
+      // Upload photo(s)/video(s).
+      const fileInput = document.getElementById('file-input') as HTMLInputElement;
+      fileInput.addEventListener('change', async () => {
+        const files = Array.from(fileInput.files || []);
+        fileInput.value = '';
+        try {
+          const ids: string[] = [];
+          for (const file of files) {
+            const type =
+              file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'photo' : null;
+            if (!type) {
+              setCaptureStatus(`skipped ${file.name}: not an image or video`, true);
+              continue;
+            }
+            setCaptureStatus(`saving ${file.name}…`);
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            ids.push(await sendCapture(file, type, ext));
+          }
+          if (ids.length) {
+            setCaptureStatus(`saved ${ids.length} — reloading…`);
+            setTimeout(() => location.reload(), 700);
+          }
+        } catch (err) {
+          setCaptureStatus(String((err as Error).message || err), true);
+        }
+      });
+
+      // Paste a screenshot from the clipboard anywhere on the page.
+      document.addEventListener('paste', (e: ClipboardEvent) => {
+        const items = Array.from(e.clipboardData?.items || []);
+        const img = items.find((it) => it.type.startsWith('image/'));
+        if (!img) return; // let normal text paste (e.g. into the note field) proceed
+        const file = img.getAsFile();
+        if (!file) return;
+        e.preventDefault();
+        const ext = (img.type.split('/')[1] || 'png').toLowerCase();
+        captureOne(file, 'photo', ext);
+      });
     </script>
   </body>
 </html>

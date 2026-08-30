@@ -16,10 +16,12 @@
 // a clear message so the UI can say "add your key" rather than silently break.
 
 import { loadEnv } from 'vite';
-import { readFile } from 'node:fs/promises';
-import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs';
+import { readFile, mkdtemp, unlink } from 'node:fs/promises';
+import { existsSync, readdirSync, statSync, createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -283,6 +285,54 @@ function runDeleteScript(id) {
   });
 }
 
+// Run scripts/create_fragment.py to turn a web-captured file into a fragment.
+function runCreateScript(type, filePath, ext, note, noPush) {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const args = ['scripts/create_fragment.py', '--type', type, '--file', filePath];
+    if (ext) args.push('--ext', ext);
+    if (note) args.push('--note', note);
+    if (noPush) args.push('--no-push');
+    args.push('--json');
+    let proc;
+    try {
+      proc = spawn(python, args, { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) =>
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      )
+    );
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(
+          new Error(
+            stderr.includes('ModuleNotFoundError')
+              ? `The Python at ${python} is missing the bot's dependencies. Install scripts/requirements.txt into it (or set INGEST_PYTHON).`
+              : `create script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`
+          )
+        );
+      }
+    });
+  });
+}
+
 // input_audio only reliably accepts wav/mp3; anything else (Telegram voice
 // notes are ogg/opus .oga) is transcoded to mp3 with ffmpeg first.
 const PASSTHROUGH_FORMATS = new Set(['mp3', 'wav']);
@@ -435,6 +485,44 @@ export function openrouterDevPlugin() {
           return sendJson(res, 200, { text });
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/create-fragment', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        // Media arrives as the raw request body; metadata rides in headers so we
+        // avoid multipart parsing. Stream it to a temp file (video can be big),
+        // then hand it to create_fragment.py.
+        let tmpPath;
+        try {
+          const type = String(req.headers['x-fragment-type'] || '');
+          if (!['photo', 'audio', 'video'].includes(type)) {
+            return sendJson(res, 400, { error: 'missing or bad X-Fragment-Type header' });
+          }
+          const ext = String(req.headers['x-fragment-ext'] || '').replace(/[^a-z0-9]/gi, '').slice(0, 8);
+          let note = '';
+          try {
+            note = decodeURIComponent(String(req.headers['x-fragment-note'] || ''));
+          } catch {
+            note = '';
+          }
+          const MAX_BYTES = 300 * 1024 * 1024;
+          const len = parseInt(String(req.headers['content-length'] || '0'), 10);
+          if (len && len > MAX_BYTES) {
+            return sendJson(res, 413, { error: 'file exceeds 300 MB' });
+          }
+          const dir = await mkdtemp(path.join(os.tmpdir(), 'fn-upload-'));
+          tmpPath = path.join(dir, `upload${ext ? '.' + ext : ''}`);
+          await pipeline(req, createWriteStream(tmpPath));
+
+          // Optional: commit but don't push (X-Fragment-No-Push: 1).
+          const noPush = String(req.headers['x-fragment-no-push'] || '') === '1';
+          const result = await runCreateScript(type, tmpPath, ext, note, noPush);
+          return sendJson(res, result.ok ? 200 : 502, result);
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        } finally {
+          if (tmpPath) unlink(tmpPath).catch(() => {});
         }
       });
 
