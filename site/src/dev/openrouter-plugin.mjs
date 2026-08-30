@@ -62,6 +62,36 @@ function resolvePython() {
   return candidates.find((p) => existsSync(p)) || 'python';
 }
 
+// Fast-forward the repo to origin so fragments the Telegram bot committed on
+// GitHub appear locally. --ff-only keeps it safe: it never makes a merge commit
+// and fails loudly if the local branch has diverged.
+function runGitPull() {
+  return new Promise((resolve) => {
+    let proc;
+    try {
+      proc = spawn('git', ['pull', '--ff-only'], { cwd: repoRoot });
+    } catch (err) {
+      resolve({ ok: false, error: `could not start git: ${err.message}` });
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) => resolve({ ok: false, error: `git not found: ${err.message}` }));
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', (code) => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      if (code !== 0) {
+        resolve({ ok: false, error: stderr || stdout || `git pull exited ${code}` });
+        return;
+      }
+      const updated = !/already up to date/i.test(stdout);
+      resolve({ ok: true, updated, summary: stdout.split('\n').slice(-3).join(' ').slice(0, 300) });
+    });
+  });
+}
+
 // Run scripts/delete_fragment.py <id> --json and return its parsed JSON result.
 function runDeleteScript(id) {
   return new Promise((resolve, reject) => {
@@ -254,6 +284,16 @@ export function openrouterDevPlugin() {
             ],
           });
           return sendJson(res, 200, { text });
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/pull', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          const result = await runGitPull();
+          return sendJson(res, result.ok ? 200 : 502, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }

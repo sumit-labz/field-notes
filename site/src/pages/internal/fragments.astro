@@ -350,6 +350,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         <span class="counts">
           {total} fragments · {unassignedCount} unassigned · internal / not indexed
         </span>
+        <button id="pull-btn" class="tool-btn" type="button">⟳ pull latest</button>
+        <span id="pull-status" class="counts"></span>
       </div>
       <div class="controls">
         <div>
@@ -777,6 +779,35 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       document.querySelectorAll<HTMLButtonElement>('[data-del-id]').forEach((btn) => {
         btn.addEventListener('click', () => openDeleteConfirm(btn));
       });
+
+      // -- Pull latest fragments from GitHub ----------------------------------
+      // The Telegram bot commits fragments to main on GitHub (via Actions), not
+      // to this machine. This runs `git pull --ff-only` server-side; when it
+      // brings in new commits the page reloads so they render.
+      const pullBtn = document.getElementById('pull-btn') as HTMLButtonElement | null;
+      if (pullBtn) {
+        const pullStatus = document.getElementById('pull-status')!;
+        pullBtn.addEventListener('click', async () => {
+          pullBtn.disabled = true;
+          pullStatus.textContent = 'pulling…';
+          try {
+            const r = await fetch('/api/pull', { method: 'POST' });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || `pull failed (${r.status})`);
+            if (d.updated) {
+              pullStatus.textContent = 'new fragments — reloading…';
+              // Give Astro's content watcher a moment to re-sync the new files.
+              setTimeout(() => location.reload(), 1000);
+            } else {
+              pullStatus.textContent = 'already up to date';
+              pullBtn.disabled = false;
+            }
+          } catch (err) {
+            pullStatus.textContent = String((err as Error).message || err);
+            pullBtn.disabled = false;
+          }
+        });
+      }
     </script>
   </body>
 </html>
