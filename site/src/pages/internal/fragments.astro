@@ -1,0 +1,841 @@
+---
+// /internal/fragments — a working inbox for Sumit, NOT a public reader page.
+//
+// Deliberately outside the site's design system (docs/design/IMPLEMENTATION-
+// SPEC.md governs the public reader; this tool does not follow it). Optimized
+// purely for fast scanning and copy-pasting fragment IDs into Claude Code.
+//
+// PRIVACY: this route is LOCAL-ONLY by default. The internalRoutePrivacy()
+// integration in astro.config.mjs strips /internal/* from the production build,
+// so it is never deployed to GitHub Pages — a 404 for everyone. It exists only
+// under `npm run dev`. Setting EXPOSE_INTERNAL=true (a manual toggle in
+// build.yml) keeps it in a deploy on demand, e.g. while travelling; a normal
+// push re-privatises it. Even when exposed it is view-only — the transcribe/
+// fix/delete endpoints are dev-server middleware, absent from a static deploy.
+// It also carries a robots noindex and is unlinked from nav. (No sitemap.xml or
+// RSS feed exists; if either is added, exclude this route there too.)
+import { getCollection } from 'astro:content';
+import { formatCapturedAt } from '../../lib/dates';
+import { mediaUrl } from '../../lib/media-url';
+import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
+
+const TYPE_ICON: Record<string, string> = {
+  photo: '🖼️',
+  video: '🎬',
+  audio: '🎙️',
+  text: '📝',
+};
+
+// One resolved preview per fragment, computed here so the template stays flat.
+type Preview =
+  | { kind: 'photo'; src: string; raw: string }
+  | { kind: 'video'; src: string; path: string }
+  | { kind: 'audio'; src: string; path: string }
+  | { kind: 'text'; excerpt: string }
+  | { kind: 'missing'; path: string };
+
+function resolvePreview(
+  type: string,
+  media: string[] | undefined,
+  body: string
+): Preview {
+  const key = media?.[0];
+  if (type === 'photo' && key) {
+    const src = mediaUrl(key);
+    return { kind: 'photo', src, raw: src };
+  }
+  if ((type === 'video' || type === 'audio') && key) {
+    if (!isLocalMedia(key)) {
+      // A video/audio fragment should always carry a local path; if it somehow
+      // holds an R2 key, fall back to serving it from R2 rather than breaking.
+      return { kind: type, src: mediaUrl(key), path: key };
+    }
+    const src = localMediaUrl(key);
+    if (!src) return { kind: 'missing', path: key };
+    return { kind: type, src, path: key };
+  }
+  const trimmed = body.trim();
+  const excerpt = trimmed.length > 100 ? trimmed.slice(0, 100) + '…' : trimmed;
+  return { kind: 'text', excerpt };
+}
+
+const fragments = await getCollection('fragments');
+
+const rows = fragments
+  .map((f) => ({
+    id: f.data.id,
+    date: f.data.id.slice(0, 10), // fragments/YYYY-MM-DD/… — folder == group key
+    capturedAt: f.data.captured_at,
+    type: f.data.type,
+    journey: f.data.journey,
+    spark: f.data.spark,
+    consumedBy: f.data.consumed_by,
+    // Full body, used by the Fix-grammar button on text rows (the preview only
+    // carries a 100-char excerpt).
+    fullText: (f.body ?? '').trim(),
+    preview: resolvePreview(f.data.type, f.data.media, f.body ?? ''),
+  }))
+  .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
+
+// Group by capture date, newest date first (rows already sorted newest-first).
+const groups: { date: string; items: typeof rows }[] = [];
+for (const row of rows) {
+  let group = groups.find((g) => g.date === row.date);
+  if (!group) {
+    group = { date: row.date, items: [] };
+    groups.push(group);
+  }
+  group.items.push(row);
+}
+
+const total = rows.length;
+const unassignedCount = rows.filter((r) => r.journey === null).length;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>fragment inbox (internal)</title>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --panel: #ffffff;
+        --border: #d9d9d4;
+        --text: #1c1c1a;
+        --muted: #6b6b64;
+        --accent: #2563eb;
+        --spark: #d97706;
+        --stub-bg: #f0f0ee;
+        --stub-text: #9a9a92;
+        --danger: #b91c1c;
+        --danger-bg: #fbeaea;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17171a;
+          --panel: #1f1f23;
+          --border: #34343a;
+          --text: #e6e6e2;
+          --muted: #9a9a92;
+          --accent: #6ea8ff;
+          --spark: #f5b23d;
+          --danger: #f87171;
+          --danger-bg: #2a1717;
+          --stub-bg: #26262b;
+          --stub-text: #6b6b64;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      code, .mono {
+        font-family: 'SFMono-Regular', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 20px;
+      }
+      .title-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      h1 { font-size: 16px; margin: 0; font-weight: 600; }
+      .counts { color: var(--muted); font-size: 12px; }
+      .controls {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .controls label { color: var(--muted); font-size: 12px; margin-right: 4px; }
+      select {
+        font: inherit;
+        font-size: 13px;
+        padding: 3px 6px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 4px 9px;
+        font-size: 12px;
+      }
+      button:hover { border-color: var(--accent); }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .selbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      main { padding: 8px 20px 80px; }
+      .date-group { margin-top: 22px; }
+      .date-head {
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 4px;
+        margin-bottom: 8px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 24px 120px 1fr;
+        gap: 12px;
+        align-items: start;
+        padding: 10px 8px;
+        border: 1px solid transparent;
+        border-radius: 6px;
+      }
+      .row:nth-child(odd) { background: var(--panel); }
+      .row.hidden { display: none; }
+      .row-check { margin-top: 2px; }
+      .preview { }
+      .thumb {
+        max-width: 110px;
+        max-height: 90px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        display: block;
+      }
+      .av { max-width: 320px; width: 100%; display: block; }
+      audio.av { height: 34px; }
+      .excerpt {
+        color: var(--text);
+        font-size: 13px;
+        white-space: pre-wrap;
+      }
+      .excerpt.empty { color: var(--muted); font-style: italic; }
+      .missing { color: var(--spark); font-size: 12px; }
+      .meta {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 0;
+      }
+      .id-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .id {
+        font-size: 13px;
+        font-weight: 600;
+        user-select: all;
+        cursor: text;
+      }
+      .copy-btn { padding: 2px 7px; font-size: 11px; }
+      .copied { border-color: var(--accent); color: var(--accent); }
+      .del-btn {
+        padding: 2px 7px;
+        font-size: 11px;
+        color: var(--danger);
+        border-color: transparent;
+        background: transparent;
+      }
+      .del-btn:hover { border-color: var(--danger); }
+      .del-confirm {
+        margin-top: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--danger);
+        border-radius: 5px;
+        background: var(--danger-bg);
+        font-size: 12px;
+        max-width: 440px;
+      }
+      .del-confirm p { margin: 0 0 6px; color: var(--text); }
+      .del-confirm input {
+        font: inherit;
+        font-size: 12px;
+        padding: 3px 6px;
+        width: 190px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--panel);
+        color: var(--text);
+      }
+      .del-confirm .del-go {
+        color: #fff;
+        background: var(--danger);
+        border-color: var(--danger);
+      }
+      .del-confirm .del-go:disabled { opacity: 0.5; cursor: not-allowed; }
+      .del-confirm .row-actions { display: flex; gap: 6px; margin-top: 7px; align-items: center; }
+      .del-confirm .del-status { font-size: 11px; color: var(--danger); }
+      .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .type-tag { color: var(--text); }
+      .journey-tag code { color: var(--text); }
+      .journey-tag.unassigned { color: var(--muted); font-style: italic; }
+      .spark-tag { color: var(--spark); font-weight: 600; }
+      .consumed { color: var(--muted); font-size: 11px; }
+      .tools { margin-top: 4px; }
+      .tool-buttons, .result-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      .tool-btn {
+        background: var(--stub-bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        font-size: 11px;
+        padding: 3px 9px;
+      }
+      .tool-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+      .tool-btn:disabled { cursor: progress; color: var(--stub-text); }
+      .tool-btn.subtle { color: var(--muted); }
+      .tool-status {
+        font-size: 11px;
+        margin-top: 5px;
+        color: var(--muted);
+      }
+      .tool-status.error { color: var(--spark); }
+      .tool-result { margin-top: 6px; }
+      .result-text {
+        width: 100%;
+        max-width: 520px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 6px 8px;
+        resize: vertical;
+        display: block;
+        margin-bottom: 5px;
+      }
+      .empty-state { color: var(--muted); margin-top: 40px; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="title-row">
+        <h1>fragment inbox</h1>
+        <span class="counts">
+          {total} fragments · {unassignedCount} unassigned · internal / not indexed
+        </span>
+        <button id="pull-btn" class="tool-btn" type="button">⟳ pull latest</button>
+        <button id="fetch-btn" class="tool-btn" type="button" title="Trigger the Telegram ingest Action on GitHub, wait for it, then pull. Takes ~1–2 min.">⤓ fetch from Telegram</button>
+        <span id="pull-status" class="counts"></span>
+      </div>
+      <div class="controls">
+        <div>
+          <label for="filter-type">type</label>
+          <select id="filter-type">
+            <option value="all">all</option>
+            <option value="photo">photo</option>
+            <option value="video">video</option>
+            <option value="audio">audio</option>
+            <option value="text">text</option>
+          </select>
+        </div>
+        <div>
+          <label for="filter-assigned">journey</label>
+          <select id="filter-assigned">
+            <option value="all">all</option>
+            <option value="unassigned">unassigned</option>
+            <option value="assigned">assigned</option>
+          </select>
+        </div>
+        <span class="counts" id="visible-count"></span>
+      </div>
+      <div class="selbar">
+        <button id="copy-selected" class="primary">copy selected IDs</button>
+        <button id="select-visible">select all visible</button>
+        <button id="clear-sel">clear</button>
+        <span id="sel-count">0 selected</span>
+      </div>
+    </header>
+
+    <main>
+      {
+        total === 0 ? (
+          <p class="empty-state">No fragments yet.</p>
+        ) : (
+          groups.map((group) => (
+            <section class="date-group">
+              <div class="date-head">{group.date}</div>
+              {group.items.map((row) => (
+                <div
+                  class="row"
+                  data-type={row.type}
+                  data-assigned={row.journey === null ? 'unassigned' : 'assigned'}
+                  data-id={row.id}
+                >
+                  <input class="row-check" type="checkbox" aria-label={`select ${row.id}`} />
+
+                  <div class="preview">
+                    {row.preview.kind === 'photo' && (
+                      <a href={row.preview.raw} target="_blank" rel="noreferrer">
+                        <img class="thumb" src={row.preview.src} alt={row.id} loading="lazy" />
+                      </a>
+                    )}
+                    {row.preview.kind === 'video' && (
+                      <video class="av" controls preload="metadata" src={row.preview.src} />
+                    )}
+                    {row.preview.kind === 'audio' && (
+                      <audio class="av" controls preload="metadata" src={row.preview.src} />
+                    )}
+                    {row.preview.kind === 'text' && (
+                      <div class={`excerpt${row.preview.excerpt ? '' : ' empty'}`}>
+                        {row.preview.excerpt || '(no text)'}
+                      </div>
+                    )}
+                    {row.preview.kind === 'missing' && (
+                      <div class="missing">
+                        ⚠ file not found: <code>{row.preview.path}</code>
+                      </div>
+                    )}
+                  </div>
+
+                  <div class="meta">
+                    <div class="id-line">
+                      <code class="id mono">{row.id}</code>
+                      <button class="copy-btn" data-copy-id={row.id}>copy</button>
+                      <button class="del-btn" type="button" data-del-id={row.id}>delete</button>
+                    </div>
+                    <div class="tags">
+                      <span class="type-tag">{TYPE_ICON[row.type] ?? ''} {row.type}</span>
+                      <span>· {formatCapturedAt(row.capturedAt)}</span>
+                      {row.journey === null ? (
+                        <span class="journey-tag unassigned">· unassigned</span>
+                      ) : (
+                        <span class="journey-tag">
+                          · <code>{row.journey}</code>
+                        </span>
+                      )}
+                      {row.spark && <span class="spark-tag">· ★ spark</span>}
+                    </div>
+                    {row.consumedBy && (
+                      <div class="consumed">consumed by: <code>{row.consumedBy}</code></div>
+                    )}
+                    {(row.type === 'audio' || row.type === 'text') && (
+                      <div class="tools" data-tools-id={row.id} data-tools-type={row.type}>
+                        <div class="tool-buttons">
+                          {row.type === 'audio' && (
+                            <button class="tool-btn" type="button" data-action="transcribe">
+                              Transcribe
+                            </button>
+                          )}
+                          {row.type === 'text' && (
+                            <button class="tool-btn" type="button" data-action="fix" data-source="body">
+                              Fix grammar
+                            </button>
+                          )}
+                        </div>
+                        {row.type === 'text' && (
+                          <div class="src-text" hidden>{row.fullText}</div>
+                        )}
+                        <div class="tool-status" role="status" hidden></div>
+                        <div class="tool-result" hidden>
+                          <textarea class="result-text mono" rows="4" spellcheck="false"></textarea>
+                          <div class="result-actions">
+                            {row.type === 'audio' && (
+                              <button class="tool-btn" type="button" data-action="fix" data-source="result">
+                                Fix grammar
+                              </button>
+                            )}
+                            <button class="tool-btn" type="button" data-action="copy-result">copy text</button>
+                            <button class="tool-btn subtle" type="button" data-action="clear-result">clear</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </section>
+          ))
+        )
+      }
+    </main>
+
+    <script>
+      // Clipboard + filtering for the internal inbox. Plain DOM, no framework —
+      // this page is a local tool, function over polish.
+
+      async function copyText(text: string): Promise<boolean> {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Clipboard API needs a secure context (localhost counts). Fall back
+          // to the legacy path so copy still works over plain http if needed.
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            return ok;
+          } catch {
+            return false;
+          }
+        }
+      }
+
+      function flash(btn: HTMLElement, label: string) {
+        const prev = btn.textContent;
+        btn.textContent = label;
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = prev;
+          btn.classList.remove('copied');
+        }, 1000);
+      }
+
+      // Per-row copy.
+      document.querySelectorAll<HTMLButtonElement>('[data-copy-id]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-copy-id') ?? '';
+          const ok = await copyText(id);
+          flash(btn, ok ? 'copied ✓' : 'failed');
+        });
+      });
+
+      const rows = Array.from(document.querySelectorAll<HTMLElement>('.row'));
+      const checks = () =>
+        rows.map((r) => r.querySelector<HTMLInputElement>('.row-check')!);
+
+      // Filters.
+      const typeSel = document.getElementById('filter-type') as HTMLSelectElement;
+      const assignedSel = document.getElementById('filter-assigned') as HTMLSelectElement;
+      const visibleCount = document.getElementById('visible-count')!;
+
+      function isVisible(row: HTMLElement): boolean {
+        const t = typeSel.value;
+        const a = assignedSel.value;
+        if (t !== 'all' && row.dataset.type !== t) return false;
+        if (a !== 'all' && row.dataset.assigned !== a) return false;
+        return true;
+      }
+
+      function applyFilter() {
+        let shown = 0;
+        for (const row of rows) {
+          const vis = isVisible(row);
+          row.classList.toggle('hidden', !vis);
+          if (vis) shown++;
+        }
+        // Hide date groups that ended up empty.
+        document.querySelectorAll<HTMLElement>('.date-group').forEach((g) => {
+          const any = Array.from(g.querySelectorAll<HTMLElement>('.row')).some(
+            (r) => !r.classList.contains('hidden')
+          );
+          g.style.display = any ? '' : 'none';
+        });
+        visibleCount.textContent = `${shown} shown`;
+        updateSelCount();
+      }
+      typeSel.addEventListener('change', applyFilter);
+      assignedSel.addEventListener('change', applyFilter);
+
+      // Selection + copy-selected.
+      const selCount = document.getElementById('sel-count')!;
+      function selectedIds(): string[] {
+        return rows
+          .filter((r) => !r.classList.contains('hidden'))
+          .filter((r) => r.querySelector<HTMLInputElement>('.row-check')!.checked)
+          .map((r) => r.dataset.id ?? '');
+      }
+      function updateSelCount() {
+        selCount.textContent = `${selectedIds().length} selected`;
+      }
+      checks().forEach((c) => c.addEventListener('change', updateSelCount));
+
+      document.getElementById('select-visible')!.addEventListener('click', () => {
+        rows
+          .filter((r) => !r.classList.contains('hidden'))
+          .forEach((r) => {
+            r.querySelector<HTMLInputElement>('.row-check')!.checked = true;
+          });
+        updateSelCount();
+      });
+      document.getElementById('clear-sel')!.addEventListener('click', () => {
+        checks().forEach((c) => (c.checked = false));
+        updateSelCount();
+      });
+      document.getElementById('copy-selected')!.addEventListener('click', async (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        const ids = selectedIds();
+        if (ids.length === 0) {
+          flash(btn, 'none selected');
+          return;
+        }
+        // Newline-separated: pastes cleanly into a Claude Code prompt as a list.
+        const ok = await copyText(ids.join('\n'));
+        flash(btn, ok ? `copied ${ids.length} ✓` : 'failed');
+      });
+
+      applyFilter();
+
+      // -- Transcribe / Fix-grammar -------------------------------------------
+      // These call the local dev-only endpoints in src/dev/openrouter-plugin.mjs
+      // (POST /api/transcribe, /api/fix-grammar). They only work under
+      // `npm run dev`; the deployed static site has no server, by design.
+      // Results are kept in localStorage per fragment id so a reload doesn't
+      // lose a transcript.
+
+      async function postJson(url: string, payload: unknown): Promise<{ text: string }> {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        let data: any = {};
+        try {
+          data = await r.json();
+        } catch {
+          throw new Error(`server returned a non-JSON response (${r.status}) — is \`npm run dev\` running?`);
+        }
+        if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
+        return data;
+      }
+
+      function initTools(panel: HTMLElement) {
+        const id = panel.dataset.toolsId ?? '';
+        const storeKey = `fn-inbox:result:${id}`;
+        const status = panel.querySelector<HTMLElement>('.tool-status')!;
+        const resultBox = panel.querySelector<HTMLElement>('.tool-result')!;
+        const textarea = panel.querySelector<HTMLTextAreaElement>('.result-text')!;
+
+        function setStatus(msg: string, isError = false) {
+          status.textContent = msg;
+          status.classList.toggle('error', isError);
+          status.hidden = !msg;
+        }
+        function showResult(text: string) {
+          textarea.value = text;
+          resultBox.hidden = false;
+          try {
+            localStorage.setItem(storeKey, text);
+          } catch {}
+        }
+
+        // Restore a saved result across reloads.
+        try {
+          const saved = localStorage.getItem(storeKey);
+          if (saved) {
+            textarea.value = saved;
+            resultBox.hidden = false;
+          }
+        } catch {}
+
+        // Persist edits the user makes in the textarea.
+        textarea.addEventListener('input', () => {
+          try {
+            localStorage.setItem(storeKey, textarea.value);
+          } catch {}
+        });
+
+        function setBusy(busy: boolean) {
+          panel
+            .querySelectorAll<HTMLButtonElement>('.tool-btn')
+            .forEach((b) => (b.disabled = busy));
+        }
+
+        panel.addEventListener('click', async (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.tool-btn');
+          if (!btn) return;
+          const action = btn.dataset.action;
+
+          if (action === 'copy-result') {
+            const ok = await copyText(textarea.value);
+            flash(btn, ok ? 'copied ✓' : 'failed');
+            return;
+          }
+          if (action === 'clear-result') {
+            textarea.value = '';
+            resultBox.hidden = true;
+            setStatus('');
+            try {
+              localStorage.removeItem(storeKey);
+            } catch {}
+            return;
+          }
+
+          setBusy(true);
+          try {
+            if (action === 'transcribe') {
+              setStatus('transcribing audio…');
+              const { text } = await postJson('/api/transcribe', { id });
+              showResult(text);
+              setStatus('transcribed. edit if needed, then Fix grammar or copy.');
+            } else if (action === 'fix') {
+              const source =
+                btn.dataset.source === 'result'
+                  ? textarea.value
+                  : panel.querySelector<HTMLElement>('.src-text')?.textContent ?? '';
+              if (!source.trim()) {
+                setStatus('nothing to fix.', true);
+                return;
+              }
+              setStatus('fixing grammar…');
+              const { text } = await postJson('/api/fix-grammar', { text: source });
+              showResult(text);
+              setStatus('cleaned up. copy when ready.');
+            }
+          } catch (err) {
+            setStatus(String((err as Error).message || err), true);
+          } finally {
+            setBusy(false);
+          }
+        });
+      }
+
+      document.querySelectorAll<HTMLElement>('.tools').forEach(initTools);
+
+      // -- Delete a fragment (R2 object + local file + .md, commit + push) -----
+      // Backed by POST /api/delete-fragment, which runs scripts/delete_fragment.py.
+      // Irreversible, so it's gated behind typing the fragment id to confirm.
+      function openDeleteConfirm(btn: HTMLButtonElement) {
+        const id = btn.getAttribute('data-del-id') ?? '';
+        const row = btn.closest<HTMLElement>('.row')!;
+        const meta = row.querySelector<HTMLElement>('.meta')!;
+        if (meta.querySelector('.del-confirm')) return; // already open
+        btn.disabled = true;
+
+        const box = document.createElement('div');
+        box.className = 'del-confirm';
+        box.innerHTML = `
+          <p>Permanently delete <strong>${id}</strong> from Cloudflare R2 and GitHub? This cannot be undone.</p>
+          <p>Type the id to confirm:</p>
+          <input type="text" class="del-input" autocomplete="off" spellcheck="false" placeholder="${id}" />
+          <div class="row-actions">
+            <button type="button" class="tool-btn del-go" disabled>delete permanently</button>
+            <button type="button" class="tool-btn subtle del-cancel">cancel</button>
+            <span class="del-status" role="status"></span>
+          </div>`;
+        meta.appendChild(box);
+
+        const input = box.querySelector<HTMLInputElement>('.del-input')!;
+        const go = box.querySelector<HTMLButtonElement>('.del-go')!;
+        const cancel = box.querySelector<HTMLButtonElement>('.del-cancel')!;
+        const status = box.querySelector<HTMLElement>('.del-status')!;
+        input.focus();
+
+        input.addEventListener('input', () => {
+          go.disabled = input.value.trim() !== id;
+        });
+        function close() {
+          box.remove();
+          btn.disabled = false;
+        }
+        cancel.addEventListener('click', close);
+        go.addEventListener('click', async () => {
+          go.disabled = true;
+          cancel.disabled = true;
+          status.textContent = 'deleting from R2 + GitHub…';
+          try {
+            await postJson('/api/delete-fragment', { id, confirm: input.value.trim() });
+            const group = row.closest<HTMLElement>('.date-group');
+            row.remove();
+            if (group && !group.querySelector('.row')) group.style.display = 'none';
+          } catch (err) {
+            status.textContent = String((err as Error).message || err);
+            cancel.disabled = false;
+          }
+        });
+      }
+
+      document.querySelectorAll<HTMLButtonElement>('[data-del-id]').forEach((btn) => {
+        btn.addEventListener('click', () => openDeleteConfirm(btn));
+      });
+
+      // -- Pull latest fragments from GitHub ----------------------------------
+      // The Telegram bot commits fragments to main on GitHub (via Actions), not
+      // to this machine. This runs `git pull --ff-only` server-side; when it
+      // brings in new commits the page reloads so they render.
+      const pullBtn = document.getElementById('pull-btn') as HTMLButtonElement | null;
+      if (pullBtn) {
+        const pullStatus = document.getElementById('pull-status')!;
+        pullBtn.addEventListener('click', async () => {
+          pullBtn.disabled = true;
+          pullStatus.textContent = 'pulling…';
+          try {
+            const r = await fetch('/api/pull', { method: 'POST' });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || `pull failed (${r.status})`);
+            if (d.updated) {
+              pullStatus.textContent = 'new fragments — reloading…';
+              // Give Astro's content watcher a moment to re-sync the new files.
+              setTimeout(() => location.reload(), 1000);
+            } else {
+              pullStatus.textContent = 'already up to date';
+              pullBtn.disabled = false;
+            }
+          } catch (err) {
+            pullStatus.textContent = String((err as Error).message || err);
+            pullBtn.disabled = false;
+          }
+        });
+
+        // "Fetch from Telegram": trigger the ingest Action, wait, then pull.
+        const fetchBtn = document.getElementById('fetch-btn') as HTMLButtonElement | null;
+        if (fetchBtn) {
+          fetchBtn.addEventListener('click', async () => {
+            fetchBtn.disabled = true;
+            pullBtn.disabled = true;
+            pullStatus.textContent = 'triggering Telegram ingest on GitHub… (~1–2 min)';
+            try {
+              const r = await fetch('/api/fetch-telegram', { method: 'POST' });
+              const d = await r.json();
+              if (!r.ok) throw new Error(d.error || `fetch failed (${r.status})`);
+              if (d.updated) {
+                pullStatus.textContent = 'new fragments — reloading…';
+                setTimeout(() => location.reload(), 1000);
+              } else {
+                pullStatus.textContent = 'ingest ran — nothing new';
+                fetchBtn.disabled = false;
+                pullBtn.disabled = false;
+              }
+            } catch (err) {
+              pullStatus.textContent = String((err as Error).message || err);
+              fetchBtn.disabled = false;
+              pullBtn.disabled = false;
+            }
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
