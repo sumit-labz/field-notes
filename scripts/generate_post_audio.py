@@ -29,7 +29,10 @@ import base64
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 import requests
@@ -45,9 +48,14 @@ load_dotenv(REPO_ROOT / ".env")
 load_dotenv(REPO_ROOT / "site" / ".env")
 
 TTS_URL = "https://openrouter.ai/api/v1/audio/speech"
+STT_URL = "https://openrouter.ai/api/v1/audio/transcriptions"
+STT_MODEL = "openai/gpt-4o-mini-transcribe"
 GENERATION_URL = "https://openrouter.ai/api/v1/generation"
 DEFAULT_MODEL = "fish-audio/s2.1-pro"
 INR_PER_USD = 87.5
+# Cloning models reject long/large references; a short mono WAV is what works.
+REF_MAX_SECONDS = 30
+REF_SAMPLE_RATE = 16000
 POSTS_DIR = REPO_ROOT / "posts"
 AUDIO_MIME = {
     "mp3": "audio/mpeg", "wav": "audio/wav", "m4a": "audio/mp4", "ogg": "audio/ogg",
@@ -94,6 +102,42 @@ def data_uri(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode()}"
 
 
+def prepare_reference(ref_audio: Path) -> Path:
+    """Trim + downsample the reference to a short mono WAV. fish-audio cloning
+    rejects long/large clips (a 2-min mp3 returns 400); ~30s mono works well."""
+    out = Path(tempfile.gettempdir()) / f"fn-ref-{os.getpid()}.wav"
+    cmd = ["ffmpeg", "-y", "-i", str(ref_audio), "-t", str(REF_MAX_SECONDS),
+           "-ar", str(REF_SAMPLE_RATE), "-ac", "1", str(out)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError as exc:
+        raise IngestError("ffmpeg not found on PATH — needed to prepare the reference clip") from exc
+    if proc.returncode != 0:
+        raise IngestError(f"ffmpeg failed to prepare reference: {proc.stderr[-300:]}")
+    return out
+
+
+def transcribe_reference(api_key: str, path: Path) -> str:
+    """Transcribe the reference clip so voice cloning has the matching text."""
+    ext = path.suffix.lstrip(".").lower()
+    mime = AUDIO_MIME.get(ext, "application/octet-stream")
+    try:
+        with path.open("rb") as fh:
+            resp = requests.post(
+                STT_URL,
+                headers={"Authorization": f"Bearer {api_key}"},
+                data={"model": STT_MODEL, "response_format": "json"},
+                files={"file": (path.name, fh, mime)},
+                timeout=300,
+            )
+        body = resp.json()
+    except Exception as exc:  # noqa: BLE001
+        raise IngestError(f"failed to transcribe reference clip: {redact_secrets(str(exc))}") from exc
+    if resp.status_code != 200 or "text" not in body:
+        raise IngestError(f"reference transcription failed ({resp.status_code}): {body.get('error', body)}")
+    return body["text"].strip()
+
+
 def synth(api_key: str, model: str, text: str, ref_audio: Path, ref_text: str) -> tuple[bytes, str | None]:
     body = {
         "model": model,
@@ -130,19 +174,26 @@ def synth(api_key: str, model: str, text: str, ref_audio: Path, ref_text: str) -
 
 
 def fetch_cost_inr(api_key: str, generation_id: str | None) -> float | None:
+    """OpenRouter computes the generation's cost a few seconds after the call,
+    so poll the generation endpoint until it's available (it 404s until then)."""
     if not generation_id:
         return None
-    try:
-        resp = requests.get(
-            GENERATION_URL,
-            params={"id": generation_id},
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=30,
-        )
-        cost = resp.json().get("data", {}).get("total_cost")
-        return round(cost * INR_PER_USD, 4) if isinstance(cost, (int, float)) else None
-    except Exception:
-        return None
+    for _ in range(10):
+        time.sleep(2)
+        try:
+            resp = requests.get(
+                GENERATION_URL,
+                params={"id": generation_id},
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                cost = resp.json().get("data", {}).get("total_cost")
+                if isinstance(cost, (int, float)):
+                    return round(cost * INR_PER_USD, 4)
+        except Exception:
+            pass
+    return None
 
 
 def upload_mp3(config, key: str, data: bytes) -> None:
@@ -153,17 +204,28 @@ def upload_mp3(config, key: str, data: bytes) -> None:
         raise IngestError(f"failed to upload {key} to R2: {redact_secrets(str(exc))}") from exc
 
 
-def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, commit: bool, no_push: bool) -> dict:
+def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, local: bool, commit: bool, no_push: bool) -> dict:
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         raise IngestError("OPENROUTER_API_KEY not set (add it to site/.env or the repo-root .env)")
     if not ref_audio.exists():
         raise IngestError(f"reference audio not found: {ref_audio}")
-    # ref-text is a file path if it exists, else treated as inline text.
-    ref_path = Path(ref_text_arg)
-    ref_text = ref_path.read_text(encoding="utf-8").strip() if ref_path.exists() else ref_text_arg
+
+    # Normalise the reference to a short mono WAV the cloning model accepts.
+    ref_clip = prepare_reference(ref_audio)
+    log(f"prepared reference clip (≤{REF_MAX_SECONDS}s mono wav)")
+
+    # Reference transcript: a file path, inline text, or (if omitted) transcribed
+    # from the prepared clip so the text matches the audio actually sent.
+    if ref_text_arg:
+        ref_path = Path(ref_text_arg)
+        ref_text = ref_path.read_text(encoding="utf-8").strip() if ref_path.exists() else ref_text_arg
+    else:
+        log("no --ref-text given — transcribing the reference clip for the clone…")
+        ref_text = transcribe_reference(api_key, ref_clip)
+        log(f"reference transcript: {ref_text[:80]}…")
     if not ref_text.strip():
-        raise IngestError("reference transcript (--ref-text) is empty")
+        raise IngestError("reference transcript is empty")
 
     path, frontmatter, body = read_post(slug)
     prose = post_prose(body)
@@ -171,11 +233,21 @@ def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, commit: 
         raise IngestError(f"post {slug} has no narratable prose")
     log(f"synthesising {len(prose)} chars for {slug} with {model}")
 
-    audio, gen_id = synth(api_key, model, prose, ref_audio, ref_text)
-    key = f"audio/posts/{slug}.mp3"
-    config = r2_config_from_env()
-    upload_mp3(config, key, audio)
-    log(f"uploaded {key} ({len(audio)} bytes)")
+    audio, gen_id = synth(api_key, model, prose, ref_clip, ref_text)
+
+    add_paths = [str(path.relative_to(REPO_ROOT)).replace("\\", "/")]
+    if local:
+        # No R2 write creds needed — save under the repo like other local media.
+        out_dir = REPO_ROOT / "media" / "posts"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{slug}.mp3").write_bytes(audio)
+        key = f"media/posts/{slug}.mp3"
+        add_paths.append("media")
+        log(f"saved {key} locally ({len(audio)} bytes)")
+    else:
+        key = f"audio/posts/{slug}.mp3"
+        upload_mp3(r2_config_from_env(), key, audio)
+        log(f"uploaded {key} to R2 ({len(audio)} bytes)")
 
     path.write_text(set_frontmatter_audio(frontmatter, key) + body, encoding="utf-8")
     log(f"set audio: {key} in {path.relative_to(REPO_ROOT)}")
@@ -183,7 +255,7 @@ def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, commit: 
     cost_inr = fetch_cost_inr(api_key, gen_id)
     pushed = False
     if commit:
-        run_git(["add", str(path.relative_to(REPO_ROOT)).replace("\\", "/")])
+        run_git(["add", *add_paths])
         run_git(["commit", "-m", f"post({slug}): add narration audio"])
         if not no_push:
             push = git(["push"])
@@ -193,7 +265,7 @@ def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, commit: 
 
     return {
         "ok": True, "slug": slug, "audio": key, "bytes": len(audio),
-        "cost_inr": cost_inr, "committed": commit, "pushed": pushed,
+        "cost_inr": cost_inr, "local": local, "committed": commit, "pushed": pushed,
     }
 
 
@@ -201,15 +273,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate voice-cloned narration for a post.")
     parser.add_argument("--slug", required=True)
     parser.add_argument("--ref-audio", required=True)
-    parser.add_argument("--ref-text", required=True, help="path to a transcript .txt, or the text inline")
+    parser.add_argument("--ref-text", default="", help="transcript .txt path or inline text; omitted → auto-transcribed")
     parser.add_argument("--voice-model", default=DEFAULT_MODEL)
-    parser.add_argument("--commit", action="store_true", help="commit the post frontmatter change")
+    parser.add_argument("--local", action="store_true", help="save under media/posts/ instead of R2 (no R2 creds needed)")
+    parser.add_argument("--commit", action="store_true", help="commit the post + audio change")
     parser.add_argument("--no-push", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     try:
-        result = generate(args.slug, Path(args.ref_audio), args.ref_text, args.voice_model, args.commit, args.no_push)
+        result = generate(args.slug, Path(args.ref_audio), args.ref_text, args.voice_model, args.local, args.commit, args.no_push)
     except Exception as exc:  # noqa: BLE001
         message = redact_secrets(str(exc))
         if args.json:
