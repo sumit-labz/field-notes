@@ -65,6 +65,28 @@ export async function journeyLeadImage(
   return null;
 }
 
+// The lead image for a single post: the first image-bearing fragment it
+// references, in fragment order. Same fallback contract as journeyLeadImage —
+// null on a stale/missing key, never a failed build.
+export async function postLeadImage(
+  post: Post,
+  fragments: Map<string, Fragment>
+): Promise<{ src: string; width: number; height: number } | null> {
+  for (const id of post.data.fragments) {
+    const fragment = fragments.get(id);
+    const key = fragment?.data?.media?.find((k) => /\.(webp|jpe?g|png|gif|avif)$/i.test(k));
+    if (!key) continue;
+    const src = mediaUrl(key);
+    try {
+      const { width, height } = await getImageDimensions(src);
+      return { src, width, height };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export function dateLine(date: Date): string {
   return date.toISOString().slice(0, 10);
 }

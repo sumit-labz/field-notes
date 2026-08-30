@@ -8,8 +8,10 @@ import {
   journeyLastActivity,
   journeyLeadLine,
   journeyLeadImage,
+  postLeadImage,
   dateLine,
 } from '../lib/content';
+import { tiltForId } from '../lib/rotation';
 
 const identityEntries = await getCollection('identities');
 const identityTitle = new Map(
@@ -37,6 +39,13 @@ const hero = journeys
     image: await journeyLeadImage(journey, posts, fragmentsById),
   }));
 const heroCards = await Promise.all(hero);
+
+const feedPosts = await Promise.all(
+  posts.map(async (post) => ({
+    post,
+    image: await postLeadImage(post, fragmentsById),
+  }))
+);
 ---
 
 <Base title="Feed">
@@ -63,25 +72,56 @@ const heroCards = await Promise.all(hero);
   </div>
 
   <p class="section-label">feed</p>
-  <ul>
+  <ul class="feed-list">
     {
-      posts.map((post) => (
-        <li style="margin:0 0 0.9rem;list-style:none">
-          <a href={withBase(`/posts/${post.data.slug}/`)}>
-            {post.data.title}
-            {post.data.status === 'in_progress' && (
-              <span class="inprogress">in progress</span>
-            )}
-          </a>
-          <span class="meta">{dateLine(post.data.published)}</span>
-          {post.data.journey && (
-            <span class="meta">
-              {' '}
-              — <a href={withBase(`/journeys/${post.data.journey}/`)}>{post.data.journey}</a>
-            </span>
+      feedPosts.map(({ post, image }) => (
+        <li class="feed-item">
+          {image && (
+            <img
+              class="feed-thumb"
+              src={image.src}
+              width={image.width}
+              height={image.height}
+              loading="lazy"
+              alt=""
+              style={`transform: rotate(${tiltForId(post.data.slug)}deg)`}
+            />
           )}
+          <span class="feed-item__body">
+            <a href={withBase(`/posts/${post.data.slug}/`)}>
+              {post.data.title}
+              {post.data.status === 'in_progress' && (
+                <span class="inprogress">in progress</span>
+              )}
+            </a>
+            <span class="meta">{dateLine(post.data.published)}</span>
+            {post.data.journey && (
+              <span class="meta">
+                {' '}
+                — <a href={withBase(`/journeys/${post.data.journey}/`)}>{post.data.journey}</a>
+              </span>
+            )}
+          </span>
         </li>
       ))
     }
   </ul>
 </Base>
+
+<style>
+  .feed-list { padding: 0; margin: 0; }
+  .feed-item {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 0 0 0.9rem;
+  }
+  .feed-thumb {
+    display: block;
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+</style>

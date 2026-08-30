@@ -5,6 +5,8 @@ published: 2026-08-30
 journey: null
 fragments:
   - 2026-08-30-144037
+  - 2026-08-30-144038
+transcript: 2026-08-30-satire-monologues.txt
 status: in_progress
 kind: post
 ---
@@ -19,4 +21,5 @@ Today something clicked. Why can't I read the book I ordered, *John Truby's The 
 
 Somehow, AI encouraged me—it said Truby is deeply psychological, and that appeals to me a lot. Let's see. Let me hop onto this journey of reading the book, creating satire. How difficult is it? Can I write a good monologue like *The Killer*? Let's give it a shot. I'm kicking off this journey today.
 
+{{fragment:2026-08-30-144038}}
 {{fragment:2026-08-30-144037}}
