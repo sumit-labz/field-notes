@@ -340,12 +340,20 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         color: var(--muted);
       }
       .tool-status.error { color: var(--spark); }
-      .tool-result { margin-top: 6px; }
-      .result-text {
+      .tbox { margin-top: 8px; }
+      .tbox-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin-bottom: 3px;
+      }
+      .tbox-hint { text-transform: none; letter-spacing: 0; font-style: italic; }
+      .transcript-text, .fixed-text {
         width: 100%;
         max-width: 520px;
         font-size: 12px;
-        line-height: 1.4;
+        line-height: 1.45;
         color: var(--text);
         background: var(--panel);
         border: 1px solid var(--border);
@@ -355,6 +363,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         display: block;
         margin-bottom: 5px;
       }
+      .transcript-text { color: var(--muted); background: var(--bg); }
       .empty-state { color: var(--muted); margin-top: 40px; }
       a { color: var(--accent); }
       .capture {
@@ -591,16 +600,24 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                           <div class="src-text" hidden>{row.fullText}</div>
                         )}
                         <div class="tool-status" role="status" hidden></div>
-                        <div class="tool-result" hidden>
-                          <textarea class="result-text mono" rows="4" spellcheck="false"></textarea>
+
+                        {row.type === 'audio' && (
+                          <div class="tbox transcript-box" hidden>
+                            <div class="tbox-label">transcribed <span class="tbox-hint">· read-only</span></div>
+                            <textarea class="transcript-text mono" rows="4" readonly spellcheck="false"></textarea>
+                            <div class="result-actions">
+                              <button class="tool-btn" type="button" data-action="fix" data-source="transcript">Fix grammar</button>
+                              <button class="tool-btn" type="button" data-action="copy-transcript">copy</button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div class="tbox fixed-box" hidden>
+                          <div class="tbox-label">after grammar</div>
+                          <textarea class="fixed-text mono" rows="4" spellcheck="false"></textarea>
                           <div class="result-actions">
-                            {row.type === 'audio' && (
-                              <button class="tool-btn" type="button" data-action="fix" data-source="result">
-                                Fix grammar
-                              </button>
-                            )}
-                            <button class="tool-btn" type="button" data-action="copy-result">copy text</button>
-                            <button class="tool-btn subtle" type="button" data-action="clear-result">clear</button>
+                            <button class="tool-btn" type="button" data-action="copy-fixed">copy</button>
+                            <button class="tool-btn subtle" type="button" data-action="clear-fixed">clear</button>
                           </div>
                         </div>
                       </div>
@@ -771,37 +788,56 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
 
       function initTools(panel: HTMLElement) {
         const id = panel.dataset.toolsId ?? '';
-        const storeKey = `fn-inbox:result:${id}`;
+        const transcriptKey = `fn-inbox:transcript:${id}`;
+        const fixedKey = `fn-inbox:fixed:${id}`;
         const status = panel.querySelector<HTMLElement>('.tool-status')!;
-        const resultBox = panel.querySelector<HTMLElement>('.tool-result')!;
-        const textarea = panel.querySelector<HTMLTextAreaElement>('.result-text')!;
+
+        // Box 1 (audio only): the raw transcript, read-only, copyable.
+        const transcriptBox = panel.querySelector<HTMLElement>('.transcript-box');
+        const transcriptText = panel.querySelector<HTMLTextAreaElement>('.transcript-text');
+        // Box 2: the grammar-fixed output.
+        const fixedBox = panel.querySelector<HTMLElement>('.fixed-box')!;
+        const fixedText = panel.querySelector<HTMLTextAreaElement>('.fixed-text')!;
 
         function setStatus(msg: string, isError = false) {
           status.textContent = msg;
           status.classList.toggle('error', isError);
           status.hidden = !msg;
         }
-        function showResult(text: string) {
-          textarea.value = text;
-          resultBox.hidden = false;
+        function showTranscript(text: string) {
+          if (!transcriptText || !transcriptBox) return;
+          transcriptText.value = text;
+          transcriptBox.hidden = false;
           try {
-            localStorage.setItem(storeKey, text);
+            localStorage.setItem(transcriptKey, text);
+          } catch {}
+        }
+        function showFixed(text: string) {
+          fixedText.value = text;
+          fixedBox.hidden = false;
+          try {
+            localStorage.setItem(fixedKey, text);
           } catch {}
         }
 
-        // Restore a saved result across reloads.
+        // Restore saved boxes across reloads.
         try {
-          const saved = localStorage.getItem(storeKey);
-          if (saved) {
-            textarea.value = saved;
-            resultBox.hidden = false;
+          const t = localStorage.getItem(transcriptKey);
+          if (t && transcriptText && transcriptBox) {
+            transcriptText.value = t;
+            transcriptBox.hidden = false;
+          }
+          const f = localStorage.getItem(fixedKey);
+          if (f) {
+            fixedText.value = f;
+            fixedBox.hidden = false;
           }
         } catch {}
 
-        // Persist edits the user makes in the textarea.
-        textarea.addEventListener('input', () => {
+        // Persist edits to the (editable) fixed box.
+        fixedText.addEventListener('input', () => {
           try {
-            localStorage.setItem(storeKey, textarea.value);
+            localStorage.setItem(fixedKey, fixedText.value);
           } catch {}
         });
 
@@ -816,17 +852,22 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           if (!btn) return;
           const action = btn.dataset.action;
 
-          if (action === 'copy-result') {
-            const ok = await copyText(textarea.value);
+          if (action === 'copy-transcript') {
+            const ok = await copyText(transcriptText?.value ?? '');
             flash(btn, ok ? 'copied ✓' : 'failed');
             return;
           }
-          if (action === 'clear-result') {
-            textarea.value = '';
-            resultBox.hidden = true;
+          if (action === 'copy-fixed') {
+            const ok = await copyText(fixedText.value);
+            flash(btn, ok ? 'copied ✓' : 'failed');
+            return;
+          }
+          if (action === 'clear-fixed') {
+            fixedText.value = '';
+            fixedBox.hidden = true;
             setStatus('');
             try {
-              localStorage.removeItem(storeKey);
+              localStorage.removeItem(fixedKey);
             } catch {}
             return;
           }
@@ -836,12 +877,13 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             if (action === 'transcribe') {
               setStatus('transcribing audio…');
               const d = await postJson('/api/transcribe', { id });
-              showResult(d.text);
-              setStatus(`transcribed${callMeta(d)} — edit, then Fix grammar or copy.`);
+              showTranscript(d.text);
+              setStatus(`transcribed${callMeta(d)} — read-only. Fix grammar or copy.`);
             } else if (action === 'fix') {
+              // Source: the transcript (audio) or the fragment body (text).
               const source =
-                btn.dataset.source === 'result'
-                  ? textarea.value
+                btn.dataset.source === 'transcript'
+                  ? transcriptText?.value ?? ''
                   : panel.querySelector<HTMLElement>('.src-text')?.textContent ?? '';
               if (!source.trim()) {
                 setStatus('nothing to fix.', true);
@@ -849,7 +891,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
               }
               setStatus('fixing grammar…');
               const d = await postJson('/api/fix-grammar', { text: source, prompt: getFixPrompt() });
-              showResult(d.text);
+              showFixed(d.text);
               setStatus(`cleaned up${callMeta(d)} — copy when ready.`);
             }
           } catch (err) {
