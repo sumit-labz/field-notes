@@ -62,6 +62,89 @@ function resolvePython() {
   return candidates.find((p) => existsSync(p)) || 'python';
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Run a command to completion, capturing output. Never rejects — returns a
+// {code, stdout, stderr} record (code -1 means the process couldn't start).
+function runCmd(cmd, args) {
+  return new Promise((resolve) => {
+    let proc;
+    try {
+      proc = spawn(cmd, args, { cwd: repoRoot });
+    } catch (err) {
+      resolve({ code: -1, stdout: '', stderr: String(err.message) });
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) =>
+      resolve({ code: -1, stdout: '', stderr: err.code === 'ENOENT' ? `${cmd} not found` : err.message })
+    );
+    proc.stdout?.on('data', (c) => out.push(c));
+    proc.stderr?.on('data', (c) => errOut.push(c));
+    proc.on('close', (code) =>
+      resolve({ code, stdout: Buffer.concat(out).toString(), stderr: Buffer.concat(errOut).toString() })
+    );
+  });
+}
+
+// Trigger the Telegram ingest GitHub Action, wait for that run to finish, then
+// pull its commit. Uses the user's `gh` auth (workflow scope) — no stored token.
+// Bounded so the request can't hang forever; on timeout it tells the user to
+// just use "pull latest" shortly, since the run may still be finishing.
+const FETCH_TIMEOUT_MS = 180_000;
+
+async function fetchFromTelegram() {
+  // Small backward skew so the run we dispatch reliably counts as "after start".
+  const startIso = new Date(Date.now() - 10_000).toISOString();
+
+  const dispatch = await runCmd('gh', ['workflow', 'run', 'ingest.yml', '--ref', 'main']);
+  if (dispatch.code !== 0) {
+    const msg = (dispatch.stderr || dispatch.stdout).trim();
+    if (dispatch.code === -1) {
+      return { ok: false, error: 'GitHub CLI (gh) not found on PATH. Install it and run `gh auth login`.' };
+    }
+    return { ok: false, error: `could not dispatch the ingest workflow: ${msg}` };
+  }
+
+  const deadline = Date.now() + FETCH_TIMEOUT_MS;
+  let run = null;
+  while (Date.now() < deadline) {
+    await sleep(4000);
+    const list = await runCmd('gh', [
+      'run', 'list', '--workflow', 'ingest.yml', '--event', 'workflow_dispatch',
+      '--limit', '5', '--json', 'databaseId,status,conclusion,createdAt',
+    ]);
+    if (list.code !== 0) continue;
+    let runs;
+    try {
+      runs = JSON.parse(list.stdout);
+    } catch {
+      continue;
+    }
+    const candidate = runs
+      .filter((r) => r.createdAt >= startIso)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (candidate) {
+      run = candidate;
+      if (candidate.status === 'completed') break;
+    }
+  }
+
+  if (!run) {
+    return { ok: false, error: 'ingest was triggered but its run did not appear in time. Try “pull latest” in a minute.' };
+  }
+  if (run.status !== 'completed') {
+    return { ok: false, error: 'ingest is still running on GitHub. Click “pull latest” once it finishes.' };
+  }
+  if (run.conclusion !== 'success') {
+    return { ok: false, error: `the ingest run finished as “${run.conclusion}” — check the Actions log.` };
+  }
+
+  const pull = await runGitPull();
+  return { ...pull, conclusion: run.conclusion };
+}
+
 // Fast-forward the repo to origin so fragments the Telegram bot committed on
 // GitHub appear locally. --ff-only keeps it safe: it never makes a merge commit
 // and fails loudly if the local branch has diverged.
@@ -284,6 +367,16 @@ export function openrouterDevPlugin() {
             ],
           });
           return sendJson(res, 200, { text });
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/fetch-telegram', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          const result = await fetchFromTelegram();
+          return sendJson(res, result.ok ? 200 : 502, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }

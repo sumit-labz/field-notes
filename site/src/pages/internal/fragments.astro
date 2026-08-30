@@ -351,6 +351,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           {total} fragments · {unassignedCount} unassigned · internal / not indexed
         </span>
         <button id="pull-btn" class="tool-btn" type="button">⟳ pull latest</button>
+        <button id="fetch-btn" class="tool-btn" type="button" title="Trigger the Telegram ingest Action on GitHub, wait for it, then pull. Takes ~1–2 min.">⤓ fetch from Telegram</button>
         <span id="pull-status" class="counts"></span>
       </div>
       <div class="controls">
@@ -807,6 +808,33 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             pullBtn.disabled = false;
           }
         });
+
+        // "Fetch from Telegram": trigger the ingest Action, wait, then pull.
+        const fetchBtn = document.getElementById('fetch-btn') as HTMLButtonElement | null;
+        if (fetchBtn) {
+          fetchBtn.addEventListener('click', async () => {
+            fetchBtn.disabled = true;
+            pullBtn.disabled = true;
+            pullStatus.textContent = 'triggering Telegram ingest on GitHub… (~1–2 min)';
+            try {
+              const r = await fetch('/api/fetch-telegram', { method: 'POST' });
+              const d = await r.json();
+              if (!r.ok) throw new Error(d.error || `fetch failed (${r.status})`);
+              if (d.updated) {
+                pullStatus.textContent = 'new fragments — reloading…';
+                setTimeout(() => location.reload(), 1000);
+              } else {
+                pullStatus.textContent = 'ingest ran — nothing new';
+                fetchBtn.disabled = false;
+                pullBtn.disabled = false;
+              }
+            } catch (err) {
+              pullStatus.textContent = String((err as Error).message || err);
+              fetchBtn.disabled = false;
+              pullBtn.disabled = false;
+            }
+          });
+        }
       }
     </script>
   </body>
