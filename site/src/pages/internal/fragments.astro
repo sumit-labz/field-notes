@@ -349,6 +349,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         margin-bottom: 3px;
       }
       .tbox-hint { text-transform: none; letter-spacing: 0; font-style: italic; }
+      .tbox-cost { text-transform: none; letter-spacing: 0; color: var(--accent); margin-left: 6px; }
+      #session-cost { color: var(--accent); }
       .transcript-text, .fixed-text {
         width: 100%;
         max-width: 520px;
@@ -456,6 +458,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         <button id="pull-btn" class="tool-btn" type="button">⟳ pull latest</button>
         <button id="fetch-btn" class="tool-btn" type="button" title="Trigger the Telegram ingest Action on GitHub, wait for it, then pull. Takes ~1–2 min.">⤓ fetch from Telegram</button>
         <span id="pull-status" class="counts"></span>
+        <span id="session-cost" class="counts" title="Approx OpenRouter spend this browser session"></span>
       </div>
       <div class="controls">
         <div>
@@ -603,7 +606,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
 
                         {row.type === 'audio' && (
                           <div class="tbox transcript-box" hidden>
-                            <div class="tbox-label">transcribed <span class="tbox-hint">· read-only</span></div>
+                            <div class="tbox-label">transcribed <span class="tbox-hint">· read-only</span><span class="tbox-cost"></span></div>
                             <textarea class="transcript-text mono" rows="4" readonly spellcheck="false"></textarea>
                             <div class="result-actions">
                               <button class="tool-btn" type="button" data-action="fix" data-source="transcript">Fix grammar</button>
@@ -614,7 +617,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                         )}
 
                         <div class="tbox fixed-box" hidden>
-                          <div class="tbox-label">after grammar</div>
+                          <div class="tbox-label">after grammar<span class="tbox-cost"></span></div>
                           <textarea class="fixed-text mono" rows="4" spellcheck="false"></textarea>
                           <div class="result-actions">
                             <button class="tool-btn" type="button" data-action="copy-fixed">copy</button>
@@ -765,12 +768,40 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       // Short model tail + cost, appended to a status line after an AI call.
       function callMeta(d: { model?: string; costInr?: number | null }): string {
         const model = d.model ? ` · ${d.model.split('/').pop()}` : '';
-        const cost =
-          typeof d.costInr === 'number'
-            ? ` · ~₹${d.costInr.toFixed(d.costInr < 1 ? 3 : 2)}`
-            : '';
-        return model + cost;
+        return model + (typeof d.costInr === 'number' ? ` · ${fmtInr(d.costInr)}` : '');
       }
+
+      function fmtInr(n: number): string {
+        return `~₹${n.toFixed(n < 1 ? 3 : 2)}`;
+      }
+      // Model + cost for a per-box label, e.g. "gpt-4o-mini-transcribe · ~₹0.019".
+      function costLabel(d: { model?: string; costInr?: number | null }): string {
+        const model = d.model ? d.model.split('/').pop() : '';
+        return `${model}${typeof d.costInr === 'number' ? ' · ' + fmtInr(d.costInr) : ''}`;
+      }
+
+      // Running OpenRouter spend for this browser session (survives reloads).
+      const SESSION_COST_KEY = 'fn-inbox:sessionCost';
+      function readSessionCost(): number {
+        try {
+          return parseFloat(sessionStorage.getItem(SESSION_COST_KEY) || '0') || 0;
+        } catch {
+          return 0;
+        }
+      }
+      function renderSessionCost() {
+        const el = document.getElementById('session-cost');
+        const total = readSessionCost();
+        if (el) el.textContent = total > 0 ? `· session ${fmtInr(total)}` : '';
+      }
+      function addSessionCost(costInr: number | null | undefined) {
+        if (typeof costInr !== 'number') return;
+        try {
+          sessionStorage.setItem(SESSION_COST_KEY, String(readSessionCost() + costInr));
+        } catch {}
+        renderSessionCost();
+      }
+      renderSessionCost();
 
       async function postJson(url: string, payload: unknown): Promise<any> {
         const r = await fetch(url, {
@@ -797,9 +828,23 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         // Box 1 (audio only): the raw transcript, read-only, copyable.
         const transcriptBox = panel.querySelector<HTMLElement>('.transcript-box');
         const transcriptText = panel.querySelector<HTMLTextAreaElement>('.transcript-text');
+        const transcriptCost = panel.querySelector<HTMLElement>('.transcript-box .tbox-cost');
         // Box 2: the grammar-fixed output.
         const fixedBox = panel.querySelector<HTMLElement>('.fixed-box')!;
         const fixedText = panel.querySelector<HTMLTextAreaElement>('.fixed-text')!;
+        const fixedCost = panel.querySelector<HTMLElement>('.fixed-box .tbox-cost')!;
+        const costKeyT = `fn-inbox:costT:${id}`;
+        const costKeyF = `fn-inbox:costF:${id}`;
+
+        // Persist a box's cost label so it survives reloads (the call already
+        // happened — no double-counting into the session total on restore).
+        function setBoxCost(el: HTMLElement | null, key: string, d: any) {
+          const label = costLabel(d);
+          if (el) el.textContent = label;
+          try {
+            localStorage.setItem(key, label);
+          } catch {}
+        }
 
         function setStatus(msg: string, isError = false) {
           status.textContent = msg;
@@ -834,6 +879,10 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             fixedText.value = f;
             fixedBox.hidden = false;
           }
+          const ct = localStorage.getItem(costKeyT);
+          if (ct && transcriptCost) transcriptCost.textContent = ct;
+          const cf = localStorage.getItem(costKeyF);
+          if (cf) fixedCost.textContent = cf;
         } catch {}
 
         // Persist edits to the (editable) fixed box.
@@ -886,9 +935,11 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           if (action === 'clear-fixed') {
             fixedText.value = '';
             fixedBox.hidden = true;
+            fixedCost.textContent = '';
             setStatus('');
             try {
               localStorage.removeItem(fixedKey);
+              localStorage.removeItem(costKeyF);
             } catch {}
             return;
           }
@@ -899,6 +950,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
               setStatus('transcribing audio…');
               const d = await postJson('/api/transcribe', { id });
               showTranscript(d.text);
+              setBoxCost(transcriptCost, costKeyT, d);
+              addSessionCost(d.costInr);
               setStatus(`transcribed${callMeta(d)} — read-only. Fix grammar or copy.`);
             } else if (action === 'fix') {
               // Source: the transcript (audio) or the fragment body (text).
@@ -913,6 +966,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
               setStatus('fixing grammar…');
               const d = await postJson('/api/fix-grammar', { text: source, prompt: getFixPrompt() });
               showFixed(d.text);
+              setBoxCost(fixedCost, costKeyF, d);
+              addSessionCost(d.costInr);
               setStatus(`cleaned up${callMeta(d)} — copy when ready.`);
             }
           } catch (err) {
