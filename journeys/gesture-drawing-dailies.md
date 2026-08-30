@@ -1,7 +1,7 @@
 ---
 slug: gesture-drawing-dailies
 title: Gesture drawing dailies
-identity: making-images
+identity: art-and-graphic-design
 path: practice
 status: active
 started: 2026-08-28

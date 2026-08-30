@@ -1,7 +1,7 @@
 ---
-slug: making-images
-title: Making images
-order: 1
+slug: art-and-graphic-design
+title: Art and graphic design
+order: 2
 ---
 
 Painting, calligraphy, mark-making, and visual communication — the still

@@ -1,7 +1,7 @@
 ---
-slug: making-tools
-title: Making tools
-order: 4
+slug: design-and-development
+title: Design and development
+order: 1
 ---
 
 Making the things that make the rest possible: Stencil & Frame, the dev
