@@ -9,21 +9,26 @@
 // starts with it. This keeps existing photo fragments untouched (no new
 // frontmatter field) while letting the renderer pick the right source.
 //
-// Vite eagerly globs the whole media/ tree as URL imports so the files are
-// emitted into the build (dist/_astro/…) and served in dev. The glob is
-// relative to this file: lib → src → site → repo, then into media/.
+// Two serving mechanisms, because the inbox is a live tool in dev but a static
+// export when exposed:
+//   - DEV: the openrouter-dev plugin serves /__localmedia/<path> straight from
+//     disk per request. New files pulled/ingested while `npm run dev` is running
+//     appear immediately — no restart. (import.meta.glob can't do this: it
+//     snapshots the folder at server start, so freshly added media 404s.)
+//   - BUILD: Vite eagerly globs the media/ tree so the files are emitted into
+//     the static output (dist/_astro/…) for an EXPOSE_INTERNAL=true deploy.
 
+const isDev = import.meta.env.DEV;
+
+// Build-time asset map (only consulted in a production build). Kept out of the
+// dev path so it doesn't matter that it's a start-time snapshot there.
 const modules = import.meta.glob<string>('../../../media/**/*', {
   eager: true,
   query: '?url',
   import: 'default',
 });
-
-// Map each frontmatter-style path ("media/video/x.mp4") to its emitted URL.
 const byRepoPath = new Map<string, string>();
 for (const [globKey, url] of Object.entries(modules)) {
-  // globKey looks like "../../../media/video/x.mp4"; strip the leading ../ hops
-  // down to the "media/…" tail that matches what frontmatter stores.
   const idx = globKey.indexOf('media/');
   if (idx === -1) continue;
   byRepoPath.set(globKey.slice(idx), url as string);
@@ -35,10 +40,16 @@ export function isLocalMedia(key: string): boolean {
 }
 
 /**
- * URL for a locally-committed media path ("media/video/x.mp4"), or null if the
- * file isn't present on disk (a fragment referencing missing media). The
- * internal inbox surfaces the missing case rather than failing the build.
+ * URL for a locally-committed media path ("media/video/x.mp4"). In dev this is
+ * the always-fresh middleware URL (the file is checked/streamed at request
+ * time). In a build it's the emitted asset URL, or null if the file wasn't
+ * present at build time (the inbox surfaces that rather than failing the build).
  */
 export function localMediaUrl(key: string): string | null {
+  if (isDev) {
+    // Root-relative (not base-prefixed); the dev middleware matches this path
+    // directly. Encode each segment but keep the slashes.
+    return '/__localmedia/' + key.split('/').map(encodeURIComponent).join('/');
+  }
   return byRepoPath.get(key) ?? null;
 }

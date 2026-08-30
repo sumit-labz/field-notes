@@ -17,7 +17,7 @@
 
 import { loadEnv } from 'vite';
 import { readFile } from 'node:fs/promises';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync, createReadStream } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +60,69 @@ function resolvePython() {
     path.join(repoRoot, '.venv', 'bin', 'python'),
   ];
   return candidates.find((p) => existsSync(p)) || 'python';
+}
+
+// Serve a locally-committed media file (media/audio|video/…) straight from disk
+// so it's always current — new files that arrive via pull/ingest while the dev
+// server runs play without a restart. Supports Range requests so <audio>/<video>
+// scrubbing works. Only paths under media/ are allowed (no traversal).
+const MEDIA_CONTENT_TYPES = {
+  oga: 'audio/ogg', ogg: 'audio/ogg', opus: 'audio/ogg', mp3: 'audio/mpeg',
+  m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', flac: 'audio/flac',
+  mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', mkv: 'video/x-matroska',
+};
+
+function serveLocalMedia(req, res) {
+  // connect strips the '/__localmedia' mount prefix, leaving e.g.
+  // "/media/audio/x.oga".
+  let rel;
+  try {
+    rel = decodeURIComponent((req.url || '').split('?')[0]).replace(/^\/+/, '');
+  } catch {
+    res.statusCode = 400;
+    res.end('bad path');
+    return;
+  }
+  if (!rel.startsWith('media/') || rel.includes('..')) {
+    res.statusCode = 400;
+    res.end('forbidden path');
+    return;
+  }
+  const abs = path.join(repoRoot, rel);
+  let stat;
+  try {
+    stat = statSync(abs);
+  } catch {
+    res.statusCode = 404;
+    res.end('not found');
+    return;
+  }
+  const ext = rel.slice(rel.lastIndexOf('.') + 1).toLowerCase();
+  res.setHeader('Content-Type', MEDIA_CONTENT_TYPES[ext] || 'application/octet-stream');
+  res.setHeader('Accept-Ranges', 'bytes');
+
+  const range = req.headers.range;
+  if (range) {
+    const m = /bytes=(\d*)-(\d*)/.exec(range);
+    let start = m && m[1] ? parseInt(m[1], 10) : 0;
+    let end = m && m[2] ? parseInt(m[2], 10) : stat.size - 1;
+    if (Number.isNaN(start)) start = 0;
+    if (Number.isNaN(end)) end = stat.size - 1;
+    end = Math.min(end, stat.size - 1);
+    if (start > end) {
+      res.statusCode = 416;
+      res.setHeader('Content-Range', `bytes */${stat.size}`);
+      res.end();
+      return;
+    }
+    res.statusCode = 206;
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+    res.setHeader('Content-Length', end - start + 1);
+    createReadStream(abs, { start, end }).pipe(res);
+  } else {
+    res.setHeader('Content-Length', stat.size);
+    createReadStream(abs).pipe(res);
+  }
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -329,6 +392,9 @@ export function openrouterDevPlugin() {
       apiKey = env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '';
     },
     configureServer(server) {
+      // Always-fresh local media (audio/video) for the inbox — see local-media.ts.
+      server.middlewares.use('/__localmedia', (req, res) => serveLocalMedia(req, res));
+
       server.middlewares.use('/api/transcribe', async (req, res, next) => {
         if (req.method !== 'POST') return next();
         try {
