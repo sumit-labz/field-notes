@@ -41,6 +41,10 @@ const posts = defineCollection({
     status: z.enum(['in_progress', 'published']).optional().default('published'),
     // kind: insight posts are realizations returned to on /coordinates.
     kind: z.enum(['post', 'insight']).optional().default('post'),
+    // Optional raw transcript: a filename in the repo-root transcripts/ dir.
+    // When present it renders at the very bottom of the post, collapsed, as the
+    // "before cleanup" record. Absent → nothing renders.
+    transcript: z.string().optional(),
   }),
 });
 

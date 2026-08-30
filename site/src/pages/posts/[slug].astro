@@ -18,6 +18,23 @@ const { post } = Astro.props;
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 const blocks = splitPostBody(post.body ?? '', post.data.fragments);
+
+// Optional raw transcript from the repo-root transcripts/ dir, read at build
+// via Vite's raw glob (posts/[slug].astro → four levels up is the repo root).
+// The `transcript` field is a pointer; a missing file renders nothing.
+const transcriptFiles = import.meta.glob<string>('../../../../transcripts/**/*', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+const transcriptByName = new Map<string, string>();
+for (const [filePath, content] of Object.entries(transcriptFiles)) {
+  const name = filePath.split('/').pop();
+  if (name) transcriptByName.set(name, content as string);
+}
+const transcriptText = post.data.transcript
+  ? transcriptByName.get(post.data.transcript) ?? null
+  : null;
 ---
 
 <Base title={post.data.title}>
@@ -50,4 +67,34 @@ const blocks = splitPostBody(post.body ?? '', post.data.fragments);
       )
     )
   }
+
+  {
+    transcriptText && (
+      <details class="transcript-raw">
+        <summary>before cleanup</summary>
+        <div class="transcript-raw-body">{transcriptText}</div>
+      </details>
+    )
+  }
 </Base>
+
+<style>
+  /* Raw transcript: the "before cleanup" record. Space Mono, lighter ink,
+     line breaks preserved, no other styling; native <details>, no motion. */
+  .transcript-raw {
+    margin-top: 3rem;
+  }
+  .transcript-raw summary {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--graphite);
+    cursor: pointer;
+  }
+  .transcript-raw-body {
+    margin-top: 1rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--graphite);
+    white-space: pre-wrap;
+  }
+</style>
