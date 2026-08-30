@@ -25,6 +25,9 @@ import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// gpt-4o-mini-transcribe is a transcription model — it uses the dedicated
+// OpenAI-compatible audio endpoint (multipart upload), NOT chat/completions.
+const TRANSCRIBE_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
 // Models chosen by the maintainer (see the fragment inbox spec):
 const STT_MODEL = 'openai/gpt-4o-mini-transcribe'; // GPT-4o Mini Transcribe
 const FIX_MODEL = 'deepseek/deepseek-chat'; // DeepSeek V3
@@ -333,9 +336,6 @@ function runCreateScript(type, filePath, ext, note, noPush) {
   });
 }
 
-// input_audio only reliably accepts wav/mp3; anything else (Telegram voice
-// notes are ogg/opus .oga) is transcoded to mp3 with ffmpeg first.
-const PASSTHROUGH_FORMATS = new Set(['mp3', 'wav']);
 const ID_RE = /^[0-9A-Za-z_-]+$/;
 
 function sendJson(res, status, obj) {
@@ -373,33 +373,38 @@ function findAudioFile(id) {
   return match ? path.join(audioDir, match) : null;
 }
 
-function transcodeToMp3(inputPath) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    const errChunks = [];
-    let proc;
-    try {
-      proc = spawn('ffmpeg', ['-i', inputPath, '-f', 'mp3', '-vn', '-']);
-    } catch (err) {
-      reject(new Error(`could not start ffmpeg: ${err.message}`));
-      return;
-    }
-    proc.on('error', (err) => {
-      reject(
-        new Error(
-          err.code === 'ENOENT'
-            ? 'ffmpeg not found on PATH — needed to convert ogg/opus voice notes to mp3 before transcription.'
-            : `ffmpeg failed to start: ${err.message}`
-        )
-      );
-    });
-    proc.stdout.on('data', (c) => chunks.push(c));
-    proc.stderr.on('data', (c) => errChunks.push(c));
-    proc.on('close', (code) => {
-      if (code === 0) resolve(Buffer.concat(chunks));
-      else reject(new Error(`ffmpeg exited ${code}: ${Buffer.concat(errChunks).toString().slice(-500)}`));
-    });
+// Transcribe an audio file via OpenRouter's OpenAI-compatible transcription
+// endpoint (multipart upload). Accepts common containers directly (ogg/opus,
+// webm, m4a, mp3, wav…) so Telegram voice notes and web recordings need no
+// transcoding.
+async function transcribeAudio(apiKey, buffer, filename, mime) {
+  const form = new FormData();
+  form.append('model', STT_MODEL);
+  form.append('response_format', 'json');
+  form.append('file', new Blob([buffer], { type: mime || 'application/octet-stream' }), filename);
+  const resp = await fetch(TRANSCRIBE_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'HTTP-Referer': 'http://localhost/field-notes/internal/fragments',
+      'X-Title': 'field-notes fragment inbox',
+    },
+    body: form,
   });
+  const raw = await resp.text();
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    throw new Error(`OpenRouter transcription returned non-JSON (${resp.status}): ${raw.slice(0, 300)}`);
+  }
+  if (!resp.ok) {
+    throw new Error(json?.error?.message || json?.error || `transcription error ${resp.status}`);
+  }
+  if (typeof json.text !== 'string') {
+    throw new Error('transcription response had no text');
+  }
+  return json.text.trim();
 }
 
 async function callOpenRouter(apiKey, body) {
@@ -460,28 +465,12 @@ export function openrouterDevPlugin() {
           if (!file) return sendJson(res, 404, { error: `no audio file found for ${id}` });
 
           const ext = file.slice(file.lastIndexOf('.') + 1).toLowerCase();
-          let audioBuffer;
-          let format;
-          if (PASSTHROUGH_FORMATS.has(ext)) {
-            audioBuffer = await readFile(file);
-            format = ext;
-          } else {
-            audioBuffer = await transcodeToMp3(file);
-            format = 'mp3';
-          }
-
-          const text = await callOpenRouter(apiKey, {
-            model: STT_MODEL,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: 'Transcribe this audio verbatim.' },
-                  { type: 'input_audio', input_audio: { data: audioBuffer.toString('base64'), format } },
-                ],
-              },
-            ],
-          });
+          const audioBuffer = await readFile(file);
+          // Some models key format off the filename extension; ".oga" is less
+          // widely recognised than ".ogg", so normalise it.
+          const sendName = `${path.basename(file, path.extname(file))}.${ext === 'oga' ? 'ogg' : ext}`;
+          const mime = MEDIA_CONTENT_TYPES[ext] || 'application/octet-stream';
+          const text = await transcribeAudio(apiKey, audioBuffer, sendName, mime);
           return sendJson(res, 200, { text });
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
