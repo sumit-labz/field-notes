@@ -608,6 +608,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                             <div class="result-actions">
                               <button class="tool-btn" type="button" data-action="fix" data-source="transcript">Fix grammar</button>
                               <button class="tool-btn" type="button" data-action="copy-transcript">copy</button>
+                              <button class="tool-btn" type="button" data-action="save-transcript">save</button>
                             </div>
                           </div>
                         )}
@@ -617,6 +618,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                           <textarea class="fixed-text mono" rows="4" spellcheck="false"></textarea>
                           <div class="result-actions">
                             <button class="tool-btn" type="button" data-action="copy-fixed">copy</button>
+                            <button class="tool-btn" type="button" data-action="save-cleaned">save</button>
                             <button class="tool-btn subtle" type="button" data-action="clear-fixed">clear</button>
                           </div>
                         </div>
@@ -860,6 +862,25 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           if (action === 'copy-fixed') {
             const ok = await copyText(fixedText.value);
             flash(btn, ok ? 'copied ✓' : 'failed');
+            return;
+          }
+          if (action === 'save-transcript' || action === 'save-cleaned') {
+            const kind = action === 'save-transcript' ? 'transcript' : 'cleaned';
+            const value = kind === 'transcript' ? transcriptText?.value ?? '' : fixedText.value;
+            if (!value.trim()) {
+              flash(btn, 'nothing to save');
+              return;
+            }
+            btn.disabled = true;
+            try {
+              const d = await postJson('/api/save-text', { id, kind, text: value });
+              setStatus(`saved ${d.file}${d.pushed ? ' · pushed' : ''}`);
+              flash(btn, 'saved ✓');
+            } catch (err) {
+              setStatus(String((err as Error).message || err), true);
+            } finally {
+              btn.disabled = false;
+            }
             return;
           }
           if (action === 'clear-fixed') {

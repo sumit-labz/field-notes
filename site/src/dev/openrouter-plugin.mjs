@@ -16,7 +16,7 @@
 // a clear message so the UI can say "add your key" rather than silently break.
 
 import { loadEnv } from 'vite';
-import { readFile, mkdtemp, unlink } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, unlink } from 'node:fs/promises';
 import { existsSync, readdirSync, statSync, createReadStream, createWriteStream } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -356,6 +356,45 @@ function runCreateScript(type, filePath, ext, note, noPush) {
   });
 }
 
+// Run scripts/save_fragment_text.py to persist a transcript/cleaned text file.
+function runSaveScript(id, kind, filePath, noPush) {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const args = ['scripts/save_fragment_text.py', '--id', id, '--kind', kind, '--file', filePath, '--json'];
+    if (noPush) args.push('--no-push');
+    let proc;
+    try {
+      proc = spawn(python, args, { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) =>
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      )
+    );
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(new Error(`save script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`));
+      }
+    });
+  });
+}
+
 const ID_RE = /^[0-9A-Za-z_-]+$/;
 
 function sendJson(res, status, obj) {
@@ -589,6 +628,31 @@ export function openrouterDevPlugin() {
           return sendJson(res, 200, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/save-text', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        let tmpPath;
+        try {
+          const { id, kind, text } = await readJsonBody(req);
+          if (!id) return sendJson(res, 400, { error: 'missing fragment id' });
+          if (kind !== 'transcript' && kind !== 'cleaned') {
+            return sendJson(res, 400, { error: 'kind must be "transcript" or "cleaned"' });
+          }
+          if (typeof text !== 'string' || !text.trim()) {
+            return sendJson(res, 400, { error: 'missing text' });
+          }
+          const dir = await mkdtemp(path.join(os.tmpdir(), 'fn-save-'));
+          tmpPath = path.join(dir, 'text.txt');
+          await writeFile(tmpPath, text, 'utf-8');
+          const noPush = String(req.headers['x-fragment-no-push'] || '') === '1';
+          const result = await runSaveScript(id, kind, tmpPath, noPush);
+          return sendJson(res, result.ok ? 200 : 502, result);
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        } finally {
+          if (tmpPath) unlink(tmpPath).catch(() => {});
         }
       });
 
