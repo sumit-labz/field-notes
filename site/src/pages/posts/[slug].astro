@@ -44,10 +44,88 @@ const postAudioUrl = post.data.audio
     ? localMediaUrl(post.data.audio)
     : mediaUrl(post.data.audio)
   : null;
+
+const IMAGE_RE = /\.(webp|jpe?g|png|gif|avif)$/i;
+function imageSrcFor(key: string): string | null {
+  if (isLocalMedia(key)) return localMediaUrl(key);
+  return mediaUrl(key);
+}
+
+// Full-bleed opener: the first image of the first fragment (in listed order)
+// that has one. That fragment is excluded from the sequence below so the image
+// doesn't appear twice. No images → no opener.
+let openerSrc: string | null = null;
+let openerFragmentId: string | null = null;
+for (const id of post.data.fragments) {
+  const f = fragmentsById.get(id);
+  const imgKey = f?.data.media?.find((k) => IMAGE_RE.test(k));
+  if (imgKey) {
+    openerSrc = imageSrcFor(imgKey);
+    openerFragmentId = id;
+    break;
+  }
+}
+
+// Derived visual rhythm for the fragment sequence — all from existing data.
+// Spacing comes from the gap to the PREVIOUS fragment's captured_at; width from
+// spark; break direction from a running non-spark index. Rotation lives in
+// lib/rotation.ts. Text blocks pass through untouched.
+type Rendered =
+  | { kind: 'text'; html: string }
+  | {
+      kind: 'fragment';
+      fragment: (typeof fragments)[number];
+      gapClass: string;
+      gapLabel: string | null;
+      widthClass: string;
+      breakClass: string;
+    };
+
+function humanGap(mins: number): string {
+  const days = Math.round(mins / 1440);
+  return days <= 1 ? 'next day' : `${days} days later`;
+}
+
+const rendered: Rendered[] = [];
+let prevCaptured: Date | null = null;
+let nonSparkIdx = 0;
+for (const block of blocks) {
+  if (block.kind === 'text') {
+    rendered.push({ kind: 'text', html: block.html });
+    continue;
+  }
+  if (block.id === openerFragmentId) continue; // opener already shown up top
+  const fragment = fragmentsById.get(block.id);
+  if (!fragment) continue;
+  const spark = fragment.data.spark;
+
+  let gapClass = 'gap-none';
+  let gapLabel: string | null = null;
+  if (prevCaptured) {
+    const mins = Math.abs(fragment.data.captured_at.getTime() - prevCaptured.getTime()) / 60000;
+    if (mins < 15) gapClass = 'gap-tight';
+    else if (mins < 180) gapClass = 'gap-normal';
+    else if (mins < 1440) gapClass = 'gap-large';
+    else {
+      gapClass = 'gap-xlarge';
+      gapLabel = humanGap(mins);
+    }
+  }
+  prevCaptured = fragment.data.captured_at;
+
+  const widthClass = spark ? 'w-full' : 'w-narrow';
+  let breakClass = '';
+  if (!spark) {
+    nonSparkIdx += 1;
+    if (nonSparkIdx % 3 === 0) breakClass = 'break-right';
+  }
+  rendered.push({ kind: 'fragment', fragment, gapClass, gapLabel, widthClass, breakClass });
+}
 ---
 
 <Base title={post.data.title}>
   <p><a href={withBase('/')}>← feed</a></p>
+  {openerSrc && <img class="opener" src={openerSrc} alt={post.data.title} />}
   <h1>
     {post.data.title}
     {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
@@ -86,7 +164,7 @@ const postAudioUrl = post.data.audio
           <div class="listen-track" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="listen-fill" />
           </div>
-          <span class="listen-note">read in my voice · AI-generated</span>
+          <span class="listen-note">AI-narrated</span>
         </div>
         <audio preload="metadata" src={postAudioUrl} />
       </div>
@@ -94,14 +172,14 @@ const postAudioUrl = post.data.audio
   }
 
   {
-    blocks.map((block) =>
-      block.kind === 'text' ? (
-        <Fragment set:html={block.html} />
+    rendered.map((item) =>
+      item.kind === 'text' ? (
+        <Fragment set:html={item.html} />
       ) : (
-        (() => {
-          const fragment = fragmentsById.get(block.id);
-          return fragment ? <FragmentBlock fragment={fragment} /> : null;
-        })()
+        <div class={`frag ${item.widthClass} ${item.breakClass} ${item.gapClass}`}>
+          {item.gapLabel && <div class="gap-label">{item.gapLabel}</div>}
+          <FragmentBlock fragment={item.fragment} />
+        </div>
       )
     )
   }
@@ -117,6 +195,37 @@ const postAudioUrl = post.data.audio
 </Base>
 
 <style>
+  /* Full-bleed opener: breaks out of the text column to full viewport width. */
+  .opener {
+    display: block;
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    height: 70vh;
+    object-fit: cover;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Derived rhythm for the fragment sequence. Static only — spacing, width and
+     break direction all come from data (spark, time gaps, index). */
+  .frag { margin-top: 3rem; }
+  .frag :global(figure) { margin: 0; }
+  .frag.gap-none { margin-top: 1.5rem; }
+  .frag.gap-tight { margin-top: 1rem; }
+  .frag.gap-normal { margin-top: 3rem; }
+  .frag.gap-large { margin-top: 8rem; }
+  .frag.gap-xlarge { margin-top: 14rem; }
+  .frag.w-full { width: 100%; }
+  .frag.w-narrow { width: 60%; margin-right: auto; }
+  .frag.w-narrow.break-right { margin-left: auto; margin-right: 0; }
+  .gap-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--ghost);
+    margin-bottom: 1rem;
+  }
+
   /* "Listen" narration player at the top of a post. Custom controls; the only
      motion is data-driven (progress from real playback, the visualiser from the
      audio's own frequency data) — no decorative CSS transitions, per the site's

@@ -162,6 +162,30 @@ def synth(api_key: str, model: str, text: str, ref_audio: Path, ref_text: str) -
         )
     except requests.RequestException as exc:
         raise IngestError(f"TTS request failed: {redact_secrets(str(exc))}") from exc
+    return _tts_result(resp)
+
+
+def synth_preset(api_key: str, model: str, text: str, voice: str) -> tuple[bytes, str | None]:
+    """TTS with a preset voice (no cloning) — e.g. openai/gpt-4o-mini-tts."""
+    body = {"model": model, "input": text, "voice": voice, "response_format": "mp3"}
+    try:
+        resp = requests.post(
+            TTS_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost/field-notes",
+                "X-Title": "field-notes post narration",
+            },
+            json=body,
+            timeout=300,
+        )
+    except requests.RequestException as exc:
+        raise IngestError(f"TTS request failed: {redact_secrets(str(exc))}") from exc
+    return _tts_result(resp)
+
+
+def _tts_result(resp) -> tuple[bytes, str | None]:
     if resp.status_code != 200 or resp.headers.get("Content-Type", "").startswith("application/json"):
         # Errors come back as JSON even on this audio endpoint.
         try:
@@ -204,36 +228,41 @@ def upload_mp3(config, key: str, data: bytes) -> None:
         raise IngestError(f"failed to upload {key} to R2: {redact_secrets(str(exc))}") from exc
 
 
-def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, local: bool, commit: bool, no_push: bool) -> dict:
+PRESET_MODEL = "hexgrad/kokoro-82m"  # cheap, many preset voices (af_* = female)
+
+
+def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, voice: str, local: bool, commit: bool, no_push: bool) -> dict:
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         raise IngestError("OPENROUTER_API_KEY not set (add it to site/.env or the repo-root .env)")
-    if not ref_audio.exists():
-        raise IngestError(f"reference audio not found: {ref_audio}")
-
-    # Normalise the reference to a short mono WAV the cloning model accepts.
-    ref_clip = prepare_reference(ref_audio)
-    log(f"prepared reference clip (≤{REF_MAX_SECONDS}s mono wav)")
-
-    # Reference transcript: a file path, inline text, or (if omitted) transcribed
-    # from the prepared clip so the text matches the audio actually sent.
-    if ref_text_arg:
-        ref_path = Path(ref_text_arg)
-        ref_text = ref_path.read_text(encoding="utf-8").strip() if ref_path.exists() else ref_text_arg
-    else:
-        log("no --ref-text given — transcribing the reference clip for the clone…")
-        ref_text = transcribe_reference(api_key, ref_clip)
-        log(f"reference transcript: {ref_text[:80]}…")
-    if not ref_text.strip():
-        raise IngestError("reference transcript is empty")
 
     path, frontmatter, body = read_post(slug)
     prose = post_prose(body)
     if not prose:
         raise IngestError(f"post {slug} has no narratable prose")
-    log(f"synthesising {len(prose)} chars for {slug} with {model}")
 
-    audio, gen_id = synth(api_key, model, prose, ref_clip, ref_text)
+    if voice:
+        # Preset voice (no cloning) — e.g. a gender-neutral/female OpenAI voice.
+        tts_model = model if model != DEFAULT_MODEL else PRESET_MODEL
+        log(f"synthesising {len(prose)} chars for {slug} with preset voice '{voice}' ({tts_model})")
+        audio, gen_id = synth_preset(api_key, tts_model, prose, voice)
+    else:
+        # Cloned voice from a reference clip.
+        if not ref_audio.exists():
+            raise IngestError(f"reference audio not found: {ref_audio} (or pass --voice for a preset voice)")
+        ref_clip = prepare_reference(ref_audio)
+        log(f"prepared reference clip (≤{REF_MAX_SECONDS}s mono wav)")
+        if ref_text_arg:
+            ref_path = Path(ref_text_arg)
+            ref_text = ref_path.read_text(encoding="utf-8").strip() if ref_path.exists() else ref_text_arg
+        else:
+            log("no --ref-text given — transcribing the reference clip for the clone…")
+            ref_text = transcribe_reference(api_key, ref_clip)
+            log(f"reference transcript: {ref_text[:80]}…")
+        if not ref_text.strip():
+            raise IngestError("reference transcript is empty")
+        log(f"synthesising {len(prose)} chars for {slug} with {model}")
+        audio, gen_id = synth(api_key, model, prose, ref_clip, ref_text)
 
     add_paths = [str(path.relative_to(REPO_ROOT)).replace("\\", "/")]
     if local:
@@ -272,8 +301,9 @@ def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, local: b
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate voice-cloned narration for a post.")
     parser.add_argument("--slug", required=True)
-    parser.add_argument("--ref-audio", required=True)
+    parser.add_argument("--ref-audio", default="", help="reference clip for voice cloning (omit when using --voice)")
     parser.add_argument("--ref-text", default="", help="transcript .txt path or inline text; omitted → auto-transcribed")
+    parser.add_argument("--voice", default="", help="preset voice name (e.g. alloy, sage, nova) → no cloning")
     parser.add_argument("--voice-model", default=DEFAULT_MODEL)
     parser.add_argument("--local", action="store_true", help="save under media/posts/ instead of R2 (no R2 creds needed)")
     parser.add_argument("--commit", action="store_true", help="commit the post + audio change")
@@ -282,7 +312,7 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        result = generate(args.slug, Path(args.ref_audio), args.ref_text, args.voice_model, args.local, args.commit, args.no_push)
+        result = generate(args.slug, Path(args.ref_audio), args.ref_text, args.voice_model, args.voice, args.local, args.commit, args.no_push)
     except Exception as exc:  # noqa: BLE001
         message = redact_secrets(str(exc))
         if args.json:
