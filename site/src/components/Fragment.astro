@@ -14,15 +14,18 @@ const { data, body } = fragment;
 const tilt = tiltForId(data.id);
 const caption = body?.trim() ?? '';
 
-const photos = data.media
-  ? await Promise.all(
-      data.media.map(async (key) => {
-        const src = mediaUrl(key);
-        const { width, height } = await getImageDimensions(src);
-        return { src, width, height };
-      })
-    )
-  : [];
+// Audio/video media (SPEC.md §4) is saved raw into the repo, not R2, and
+// isn't served or playable on the static site yet — only image keys can be
+// fetched from R2 for dimensions here.
+const imageKeys = (data.media ?? []).filter((key) => /\.(webp|jpe?g|png|gif|avif)$/i.test(key));
+
+const photos = await Promise.all(
+  imageKeys.map(async (key) => {
+    const src = mediaUrl(key);
+    const { width, height } = await getImageDimensions(src);
+    return { src, width, height };
+  })
+);
 ---
 
 <figure>
