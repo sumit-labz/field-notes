@@ -80,14 +80,14 @@ const postAudioUrl = post.data.audio
           <div class="listen-head">
             <span class="listen-label">Listen</span>
             <span class="listen-viz" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></span>
-            <span class="listen-note">read in my voice · AI-generated</span>
+            <span class="listen-time mono">0:00</span>
+            <button class="listen-rate" type="button" title="Playback speed">0.8×</button>
           </div>
           <div class="listen-track" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="listen-fill" />
           </div>
+          <span class="listen-note">read in my voice · AI-generated</span>
         </div>
-        <button class="listen-rate" type="button" title="Playback speed">0.8×</button>
-        <span class="listen-time mono">0:00</span>
         <audio preload="metadata" src={postAudioUrl} />
       </div>
     )
@@ -148,12 +148,17 @@ const postAudioUrl = post.data.audio
   .listen-play .ic-pause { display: none; }
   .listen.playing .listen-play .ic-play { display: none; }
   .listen.playing .listen-play .ic-pause { display: block; }
-  .listen-body { flex: 1; min-width: 0; }
+  .listen-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
   .listen-head {
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    margin-bottom: 0.4rem;
+    gap: 0.5rem;
   }
   .listen-label {
     font-family: 'Archivo', sans-serif;
@@ -164,9 +169,8 @@ const postAudioUrl = post.data.audio
   }
   .listen-note {
     font-family: 'Space Mono', monospace;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--ghost);
-    margin-left: auto;
   }
   /* Visualiser: bar heights are set per frame from the audio's real frequency
      data while playing; at rest they sit flat. */
@@ -206,11 +210,10 @@ const postAudioUrl = post.data.audio
   }
   .listen-time {
     flex: none;
+    margin-left: auto;
     font-size: 0.72rem;
     color: var(--graphite);
     white-space: nowrap;
-    min-width: 5.5em;
-    text-align: right;
   }
 
   /* Raw transcript: the "before cleanup" record. Space Mono, lighter ink,
