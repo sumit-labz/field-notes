@@ -1,5 +1,6 @@
 import { defineConfig, envField } from 'astro/config';
 import { fileURLToPath } from 'node:url';
+import { openrouterDevPlugin } from './src/dev/openrouter-plugin.mjs';
 
 // The repo root, one level above this Astro project (site/). Committed media
 // for video/audio fragments lives at <repo>/media/ (not in site/public/ and
@@ -11,6 +12,11 @@ const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
 export default defineConfig({
   vite: {
+    // openrouterDevPlugin runs ONLY under `npm run dev` (apply: 'serve') and
+    // powers the internal inbox's Transcribe / Fix-grammar buttons. It reads
+    // OPENROUTER_API_KEY from site/.env server-side — the key never reaches the
+    // browser and is never in the static build. See src/dev/openrouter-plugin.mjs.
+    plugins: [openrouterDevPlugin()],
     server: {
       fs: {
         allow: [repoRoot],

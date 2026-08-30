@@ -69,6 +69,9 @@ const rows = fragments
     journey: f.data.journey,
     spark: f.data.spark,
     consumedBy: f.data.consumed_by,
+    // Full body, used by the Fix-grammar button on text rows (the preview only
+    // carries a 100-char excerpt).
+    fullText: (f.body ?? '').trim(),
     preview: resolvePreview(f.data.type, f.data.media, f.body ?? ''),
   }))
   .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
@@ -262,22 +265,38 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .journey-tag.unassigned { color: var(--muted); font-style: italic; }
       .spark-tag { color: var(--spark); font-weight: 600; }
       .consumed { color: var(--muted); font-size: 11px; }
-      .stubs { display: flex; gap: 6px; margin-top: 2px; }
-      .stub {
+      .tools { margin-top: 4px; }
+      .tool-buttons, .result-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      .tool-btn {
         background: var(--stub-bg);
-        color: var(--stub-text);
-        border: 1px dashed var(--border);
-        cursor: not-allowed;
+        color: var(--text);
+        border: 1px solid var(--border);
         font-size: 11px;
-        padding: 3px 8px;
+        padding: 3px 9px;
       }
-      .stub:hover { border-color: var(--border); }
-      .stub .soon {
-        font-size: 9px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        opacity: 0.8;
-        margin-left: 4px;
+      .tool-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+      .tool-btn:disabled { cursor: progress; color: var(--stub-text); }
+      .tool-btn.subtle { color: var(--muted); }
+      .tool-status {
+        font-size: 11px;
+        margin-top: 5px;
+        color: var(--muted);
+      }
+      .tool-status.error { color: var(--spark); }
+      .tool-result { margin-top: 6px; }
+      .result-text {
+        width: 100%;
+        max-width: 520px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 6px 8px;
+        resize: vertical;
+        display: block;
+        margin-bottom: 5px;
       }
       .empty-state { color: var(--muted); margin-top: 40px; }
       a { color: var(--accent); }
@@ -382,17 +401,35 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                       <div class="consumed">consumed by: <code>{row.consumedBy}</code></div>
                     )}
                     {(row.type === 'audio' || row.type === 'text') && (
-                      <div class="stubs">
-                        {row.type === 'audio' && (
-                          <button class="stub" disabled type="button">
-                            Transcribe<span class="soon">soon</span>
-                          </button>
-                        )}
+                      <div class="tools" data-tools-id={row.id} data-tools-type={row.type}>
+                        <div class="tool-buttons">
+                          {row.type === 'audio' && (
+                            <button class="tool-btn" type="button" data-action="transcribe">
+                              Transcribe
+                            </button>
+                          )}
+                          {row.type === 'text' && (
+                            <button class="tool-btn" type="button" data-action="fix" data-source="body">
+                              Fix grammar
+                            </button>
+                          )}
+                        </div>
                         {row.type === 'text' && (
-                          <button class="stub" disabled type="button">
-                            Fix grammar<span class="soon">soon</span>
-                          </button>
+                          <div class="src-text" hidden>{row.fullText}</div>
                         )}
+                        <div class="tool-status" role="status" hidden></div>
+                        <div class="tool-result" hidden>
+                          <textarea class="result-text mono" rows="4" spellcheck="false"></textarea>
+                          <div class="result-actions">
+                            {row.type === 'audio' && (
+                              <button class="tool-btn" type="button" data-action="fix" data-source="result">
+                                Fix grammar
+                              </button>
+                            )}
+                            <button class="tool-btn" type="button" data-action="copy-result">copy text</button>
+                            <button class="tool-btn subtle" type="button" data-action="clear-result">clear</button>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -525,6 +562,122 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       });
 
       applyFilter();
+
+      // -- Transcribe / Fix-grammar -------------------------------------------
+      // These call the local dev-only endpoints in src/dev/openrouter-plugin.mjs
+      // (POST /api/transcribe, /api/fix-grammar). They only work under
+      // `npm run dev`; the deployed static site has no server, by design.
+      // Results are kept in localStorage per fragment id so a reload doesn't
+      // lose a transcript.
+
+      async function postJson(url: string, payload: unknown): Promise<{ text: string }> {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        let data: any = {};
+        try {
+          data = await r.json();
+        } catch {
+          throw new Error(`server returned a non-JSON response (${r.status}) — is \`npm run dev\` running?`);
+        }
+        if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
+        return data;
+      }
+
+      function initTools(panel: HTMLElement) {
+        const id = panel.dataset.toolsId ?? '';
+        const storeKey = `fn-inbox:result:${id}`;
+        const status = panel.querySelector<HTMLElement>('.tool-status')!;
+        const resultBox = panel.querySelector<HTMLElement>('.tool-result')!;
+        const textarea = panel.querySelector<HTMLTextAreaElement>('.result-text')!;
+
+        function setStatus(msg: string, isError = false) {
+          status.textContent = msg;
+          status.classList.toggle('error', isError);
+          status.hidden = !msg;
+        }
+        function showResult(text: string) {
+          textarea.value = text;
+          resultBox.hidden = false;
+          try {
+            localStorage.setItem(storeKey, text);
+          } catch {}
+        }
+
+        // Restore a saved result across reloads.
+        try {
+          const saved = localStorage.getItem(storeKey);
+          if (saved) {
+            textarea.value = saved;
+            resultBox.hidden = false;
+          }
+        } catch {}
+
+        // Persist edits the user makes in the textarea.
+        textarea.addEventListener('input', () => {
+          try {
+            localStorage.setItem(storeKey, textarea.value);
+          } catch {}
+        });
+
+        function setBusy(busy: boolean) {
+          panel
+            .querySelectorAll<HTMLButtonElement>('.tool-btn')
+            .forEach((b) => (b.disabled = busy));
+        }
+
+        panel.addEventListener('click', async (e) => {
+          const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.tool-btn');
+          if (!btn) return;
+          const action = btn.dataset.action;
+
+          if (action === 'copy-result') {
+            const ok = await copyText(textarea.value);
+            flash(btn, ok ? 'copied ✓' : 'failed');
+            return;
+          }
+          if (action === 'clear-result') {
+            textarea.value = '';
+            resultBox.hidden = true;
+            setStatus('');
+            try {
+              localStorage.removeItem(storeKey);
+            } catch {}
+            return;
+          }
+
+          setBusy(true);
+          try {
+            if (action === 'transcribe') {
+              setStatus('transcribing audio…');
+              const { text } = await postJson('/api/transcribe', { id });
+              showResult(text);
+              setStatus('transcribed. edit if needed, then Fix grammar or copy.');
+            } else if (action === 'fix') {
+              const source =
+                btn.dataset.source === 'result'
+                  ? textarea.value
+                  : panel.querySelector<HTMLElement>('.src-text')?.textContent ?? '';
+              if (!source.trim()) {
+                setStatus('nothing to fix.', true);
+                return;
+              }
+              setStatus('fixing grammar…');
+              const { text } = await postJson('/api/fix-grammar', { text: source });
+              showResult(text);
+              setStatus('cleaned up. copy when ready.');
+            }
+          } catch (err) {
+            setStatus(String((err as Error).message || err), true);
+          } finally {
+            setBusy(false);
+          }
+        });
+      }
+
+      document.querySelectorAll<HTMLElement>('.tools').forEach(initTools);
     </script>
   </body>
 </html>
