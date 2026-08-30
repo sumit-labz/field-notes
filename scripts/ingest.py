@@ -66,7 +66,6 @@ JOURNEYS_CONFIG_PATH = REPO_ROOT / "config" / "journeys.yml"
 
 TELEGRAM_API = "https://api.telegram.org"
 IST = timezone(timedelta(hours=5, minutes=30))
-GROUP_WINDOW_SECONDS = 120
 MAX_LONG_EDGE = 1600
 WEBP_QUALITY = 80
 TELEGRAM_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # Bot API getFile hard limit
@@ -230,53 +229,14 @@ def split_by_sender(updates: list[dict], allowed_user_id: int) -> tuple[list[dic
     return accepted, rejected
 
 
-def is_standalone_media(message: dict) -> bool:
-    """Voice/audio/video are single, self-contained captures and must never be
-    merged with anything else. Only photos (which arrive as media groups or
-    rapid singles) and text captions are allowed to group together. Without
-    this, a photo + voice note sent within the 120s window collapse into one
-    fragment with mixed media, and the second item gets hidden by the renderer."""
-    return bool(
-        message.get("voice")
-        or message.get("audio")
-        or message.get("video")
-        or message.get("video_note")
-    )
-
-
 def group_messages(updates: list[dict]) -> list[list[dict]]:
-    """Same media_group_id, OR same sender within a 120s window, become one
-    fragment (SPEC.md §4 step 3) — EXCEPT audio/video, which always stand alone."""
+    """Every message becomes its own fragment — one entry, one segment. No
+    grouping is applied: photo albums split into a fragment per photo, and a
+    caption/text sent alongside media stays its own fragment. (A caption typed
+    ON a photo is part of that single photo message and still rides with it;
+    only *separate* messages are kept apart.)"""
     messages = sorted((u["message"] for u in updates), key=lambda m: m["date"])
-    groups: list[list[dict]] = []
-
-    for message in messages:
-        media_group_id = message.get("media_group_id")
-        if media_group_id is not None:
-            existing = next(
-                (g for g in groups if g[0].get("media_group_id") == media_group_id), None
-            )
-            if existing is not None:
-                existing.append(message)
-            else:
-                groups.append([message])
-            continue
-
-        # An audio/video note is its own fragment, and nothing merges onto it.
-        if not is_standalone_media(message) and groups:
-            last_group = groups[-1]
-            last_message = last_group[-1]
-            same_sender = message_sender_id(last_message) == message_sender_id(message)
-            within_window = message["date"] - last_message["date"] <= GROUP_WINDOW_SECONDS
-            not_a_media_group = last_group[0].get("media_group_id") is None
-            last_is_standalone = is_standalone_media(last_message)
-            if same_sender and within_window and not_a_media_group and not last_is_standalone:
-                last_group.append(message)
-                continue
-
-        groups.append([message])
-
-    return groups
+    return [[message] for message in messages]
 
 
 # ---------------------------------------------------------------------------
