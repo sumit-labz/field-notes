@@ -26,43 +26,35 @@ const TYPE_ICON: Record<string, string> = {
   text: '📝',
 };
 
-// One resolved preview per fragment, computed here so the template stays flat.
+// One preview per media item. Kind is derived from the KEY itself (its
+// media/{photo,audio,video}/ prefix, or an R2 key = photo), independent of the
+// fragment's `type` field — so a fragment that ended up with mixed media (e.g.
+// the bot grouping a photo with a voice note) still surfaces every item.
 type Preview =
   | { kind: 'photo'; src: string; raw: string }
-  | { kind: 'video'; src: string; path: string }
-  | { kind: 'audio'; src: string; path: string }
-  | { kind: 'text'; excerpt: string }
+  | { kind: 'video'; src: string }
+  | { kind: 'audio'; src: string }
   | { kind: 'missing'; path: string };
 
-function resolvePreview(
-  type: string,
-  media: string[] | undefined,
-  body: string
-): Preview {
-  const key = media?.[0];
-  if (type === 'photo' && key) {
-    // Bot photos are R2 keys; web-captured photos are local (media/photo/…).
+function mediaPreviews(media: string[] | undefined): Preview[] {
+  if (!media) return [];
+  return media.map((key): Preview => {
     if (isLocalMedia(key)) {
       const src = localMediaUrl(key);
       if (!src) return { kind: 'missing', path: key };
-      return { kind: 'photo', src, raw: src };
+      if (key.startsWith('media/audio/')) return { kind: 'audio', src };
+      if (key.startsWith('media/video/')) return { kind: 'video', src };
+      return { kind: 'photo', src, raw: src }; // media/photo/
     }
+    // R2 key → photo (bot uploads).
     const src = mediaUrl(key);
     return { kind: 'photo', src, raw: src };
-  }
-  if ((type === 'video' || type === 'audio') && key) {
-    if (!isLocalMedia(key)) {
-      // A video/audio fragment should always carry a local path; if it somehow
-      // holds an R2 key, fall back to serving it from R2 rather than breaking.
-      return { kind: type, src: mediaUrl(key), path: key };
-    }
-    const src = localMediaUrl(key);
-    if (!src) return { kind: 'missing', path: key };
-    return { kind: type, src, path: key };
-  }
+  });
+}
+
+function textExcerpt(body: string): string {
   const trimmed = body.trim();
-  const excerpt = trimmed.length > 100 ? trimmed.slice(0, 100) + '…' : trimmed;
-  return { kind: 'text', excerpt };
+  return trimmed.length > 100 ? trimmed.slice(0, 100) + '…' : trimmed;
 }
 
 const fragments = await getCollection('fragments');
@@ -79,7 +71,8 @@ const rows = fragments
     // Full body, used by the Fix-grammar button on text rows (the preview only
     // carries a 100-char excerpt).
     fullText: (f.body ?? '').trim(),
-    preview: resolvePreview(f.data.type, f.data.media, f.body ?? ''),
+    previews: mediaPreviews(f.data.media),
+    excerpt: textExcerpt(f.body ?? ''),
   }))
   .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
 
@@ -218,14 +211,15 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       .row {
         display: grid;
-        grid-template-columns: 24px 120px 1fr;
-        gap: 12px;
+        grid-template-columns: 26px minmax(150px, 260px) 1fr;
+        gap: 16px;
         align-items: start;
-        padding: 10px 8px;
+        padding: 14px 12px;
         border: 1px solid transparent;
-        border-radius: 6px;
+        border-radius: 8px;
       }
       .row:nth-child(odd) { background: var(--panel); }
+      .row:hover { border-color: var(--border); }
       .row.hidden { display: none; }
       .row.just-added {
         background: var(--just-bg);
@@ -241,17 +235,17 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         padding: 0 5px;
         margin-left: 6px;
       }
-      .row-check { margin-top: 2px; }
-      .preview { }
+      .row-check { margin-top: 4px; }
+      .preview { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
       .thumb {
-        max-width: 110px;
-        max-height: 90px;
-        border-radius: 4px;
+        max-width: 100%;
+        max-height: 130px;
+        border-radius: 6px;
         border: 1px solid var(--border);
         display: block;
       }
-      .av { max-width: 320px; width: 100%; display: block; }
-      audio.av { height: 34px; }
+      .av { max-width: 100%; width: 100%; display: block; }
+      audio.av { height: 36px; }
       .excerpt {
         color: var(--text);
         font-size: 13px;
@@ -399,6 +393,48 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .capture-hint { color: var(--muted); font-size: 12px; }
       #capture-status { font-size: 12px; }
       #capture-status.error { color: var(--danger); }
+      .settings { margin-top: 10px; font-size: 12px; }
+      .settings > summary {
+        cursor: pointer;
+        color: var(--muted);
+        user-select: none;
+        width: fit-content;
+      }
+      .settings > summary:hover { color: var(--text); }
+      .settings-body {
+        margin-top: 8px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        max-width: 640px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .model-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .model-label {
+        display: inline-block;
+        min-width: 84px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-size: 10px;
+      }
+      .model-line code { color: var(--text); font-size: 12px; }
+      .model-note { color: var(--muted); font-size: 11px; }
+      .prompt-label { color: var(--muted); font-size: 11px; margin-top: 4px; }
+      #fix-prompt {
+        width: 100%;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 8px;
+        resize: vertical;
+      }
+      .prompt-actions { display: flex; gap: 8px; align-items: center; }
     </style>
   </head>
   <body>
@@ -451,6 +487,26 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         <input id="note-input" type="text" placeholder="optional note for the next capture…" />
         <span id="capture-status"></span>
       </div>
+      <details class="settings">
+        <summary>⚙ models &amp; grammar prompt</summary>
+        <div class="settings-body">
+          <div class="model-line">
+            <span class="model-label">transcribe</span>
+            <code id="transcribe-model">…</code>
+            <span class="model-note">(no prompt — audio in, text out)</span>
+          </div>
+          <div class="model-line">
+            <span class="model-label">fix grammar</span>
+            <code id="fix-model">…</code>
+          </div>
+          <label class="prompt-label" for="fix-prompt">grammar prompt (editable · saved in this browser)</label>
+          <textarea id="fix-prompt" class="mono" rows="8" spellcheck="false" placeholder="loading default prompt…"></textarea>
+          <div class="prompt-actions">
+            <button id="prompt-reset" class="tool-btn subtle" type="button">reset to default</button>
+            <span id="prompt-saved" class="model-note"></span>
+          </div>
+        </div>
+      </details>
     </section>
 
     <main>
@@ -471,25 +527,27 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                   <input class="row-check" type="checkbox" aria-label={`select ${row.id}`} />
 
                   <div class="preview">
-                    {row.preview.kind === 'photo' && (
-                      <a href={row.preview.raw} target="_blank" rel="noreferrer">
-                        <img class="thumb" src={row.preview.src} alt={row.id} loading="lazy" />
-                      </a>
-                    )}
-                    {row.preview.kind === 'video' && (
-                      <video class="av" controls preload="metadata" src={row.preview.src} />
-                    )}
-                    {row.preview.kind === 'audio' && (
-                      <audio class="av" controls preload="metadata" src={row.preview.src} />
-                    )}
-                    {row.preview.kind === 'text' && (
-                      <div class={`excerpt${row.preview.excerpt ? '' : ' empty'}`}>
-                        {row.preview.excerpt || '(no text)'}
-                      </div>
-                    )}
-                    {row.preview.kind === 'missing' && (
-                      <div class="missing">
-                        ⚠ file not found: <code>{row.preview.path}</code>
+                    {row.previews.map((preview) => (
+                      <>
+                        {preview.kind === 'photo' && (
+                          <a href={preview.raw} target="_blank" rel="noreferrer">
+                            <img class="thumb" src={preview.src} alt={row.id} loading="lazy" />
+                          </a>
+                        )}
+                        {preview.kind === 'video' && (
+                          <video class="av" controls preload="metadata" src={preview.src} />
+                        )}
+                        {preview.kind === 'audio' && (
+                          <audio class="av" controls preload="metadata" src={preview.src} />
+                        )}
+                        {preview.kind === 'missing' && (
+                          <div class="missing">⚠ file not found: <code>{preview.path}</code></div>
+                        )}
+                      </>
+                    ))}
+                    {row.previews.length === 0 && (
+                      <div class={`excerpt${row.excerpt ? '' : ' empty'}`}>
+                        {row.excerpt || '(no text)'}
                       </div>
                     )}
                   </div>
@@ -685,7 +743,17 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       // Results are kept in localStorage per fragment id so a reload doesn't
       // lose a transcript.
 
-      async function postJson(url: string, payload: unknown): Promise<{ text: string }> {
+      // Short model tail + cost, appended to a status line after an AI call.
+      function callMeta(d: { model?: string; costInr?: number | null }): string {
+        const model = d.model ? ` · ${d.model.split('/').pop()}` : '';
+        const cost =
+          typeof d.costInr === 'number'
+            ? ` · ~₹${d.costInr.toFixed(d.costInr < 1 ? 3 : 2)}`
+            : '';
+        return model + cost;
+      }
+
+      async function postJson(url: string, payload: unknown): Promise<any> {
         const r = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -767,9 +835,9 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           try {
             if (action === 'transcribe') {
               setStatus('transcribing audio…');
-              const { text } = await postJson('/api/transcribe', { id });
-              showResult(text);
-              setStatus('transcribed. edit if needed, then Fix grammar or copy.');
+              const d = await postJson('/api/transcribe', { id });
+              showResult(d.text);
+              setStatus(`transcribed${callMeta(d)} — edit, then Fix grammar or copy.`);
             } else if (action === 'fix') {
               const source =
                 btn.dataset.source === 'result'
@@ -780,9 +848,9 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                 return;
               }
               setStatus('fixing grammar…');
-              const { text } = await postJson('/api/fix-grammar', { text: source });
-              showResult(text);
-              setStatus('cleaned up. copy when ready.');
+              const d = await postJson('/api/fix-grammar', { text: source, prompt: getFixPrompt() });
+              showResult(d.text);
+              setStatus(`cleaned up${callMeta(d)} — copy when ready.`);
             }
           } catch (err) {
             setStatus(String((err as Error).message || err), true);
@@ -1049,6 +1117,56 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           firstRow?.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
       } catch {}
+
+      // -- Models & editable grammar prompt -----------------------------------
+      const FIX_PROMPT_KEY = 'fn-inbox:fixPrompt';
+      let defaultFixPrompt = '';
+      const fixPromptEl = document.getElementById('fix-prompt') as HTMLTextAreaElement | null;
+
+      // The prompt sent with a Fix-grammar call: the (possibly edited) textarea,
+      // else empty so the server falls back to its default.
+      function getFixPrompt(): string {
+        if (fixPromptEl && fixPromptEl.value.trim()) return fixPromptEl.value;
+        try {
+          return localStorage.getItem(FIX_PROMPT_KEY) || '';
+        } catch {
+          return '';
+        }
+      }
+
+      (async () => {
+        try {
+          const cfg = await (await fetch('/api/config')).json();
+          const tm = document.getElementById('transcribe-model');
+          if (tm) tm.textContent = cfg.transcribeModel;
+          const fm = document.getElementById('fix-model');
+          if (fm) fm.textContent = cfg.fixModel;
+          defaultFixPrompt = cfg.fixPrompt || '';
+          if (fixPromptEl) {
+            let saved = '';
+            try {
+              saved = localStorage.getItem(FIX_PROMPT_KEY) || '';
+            } catch {}
+            fixPromptEl.value = saved || defaultFixPrompt;
+            const savedNote = document.getElementById('prompt-saved');
+            fixPromptEl.addEventListener('input', () => {
+              try {
+                localStorage.setItem(FIX_PROMPT_KEY, fixPromptEl.value);
+              } catch {}
+              if (savedNote) savedNote.textContent = 'saved in this browser';
+            });
+          }
+        } catch {}
+      })();
+
+      document.getElementById('prompt-reset')?.addEventListener('click', () => {
+        if (fixPromptEl) fixPromptEl.value = defaultFixPrompt;
+        try {
+          localStorage.removeItem(FIX_PROMPT_KEY);
+        } catch {}
+        const savedNote = document.getElementById('prompt-saved');
+        if (savedNote) savedNote.textContent = 'reset to default';
+      });
     </script>
   </body>
 </html>

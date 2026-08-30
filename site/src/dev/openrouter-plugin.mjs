@@ -31,6 +31,9 @@ const TRANSCRIBE_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
 // Models chosen by the maintainer (see the fragment inbox spec):
 const STT_MODEL = 'openai/gpt-4o-mini-transcribe'; // GPT-4o Mini Transcribe
 const FIX_MODEL = 'deepseek/deepseek-chat'; // DeepSeek V3
+// Approximate USD→INR for showing per-call cost in rupees. OpenRouter bills in
+// USD credits; this is a display convenience, not an exact conversion.
+const INR_PER_USD = 87.5;
 
 // The grammar/cleanup prompt, verbatim from the maintainer. Sent as the system
 // message; the raw transcript is the user message.
@@ -404,7 +407,9 @@ async function transcribeAudio(apiKey, buffer, filename, mime) {
   if (typeof json.text !== 'string') {
     throw new Error('transcription response had no text');
   }
-  return json.text.trim();
+  // The audio endpoint may include usage.cost (USD) when available.
+  const costUsd = typeof json?.usage?.cost === 'number' ? json.usage.cost : null;
+  return { text: json.text.trim(), costUsd };
 }
 
 async function callOpenRouter(apiKey, body) {
@@ -417,7 +422,8 @@ async function callOpenRouter(apiKey, body) {
       'HTTP-Referer': 'http://localhost/field-notes/internal/fragments',
       'X-Title': 'field-notes fragment inbox',
     },
-    body: JSON.stringify(body),
+    // usage.include asks OpenRouter to return the actual credits spent.
+    body: JSON.stringify({ ...body, usage: { include: true } }),
   });
   const text = await resp.text();
   let json;
@@ -433,7 +439,12 @@ async function callOpenRouter(apiKey, body) {
   if (typeof content !== 'string') {
     throw new Error('OpenRouter response had no message content');
   }
-  return content.trim();
+  const costUsd = typeof json?.usage?.cost === 'number' ? json.usage.cost : null;
+  return { text: content.trim(), costUsd };
+}
+
+function costInr(costUsd) {
+  return typeof costUsd === 'number' ? Math.round(costUsd * INR_PER_USD * 10000) / 10000 : null;
 }
 
 export function openrouterDevPlugin() {
@@ -470,11 +481,22 @@ export function openrouterDevPlugin() {
           // widely recognised than ".ogg", so normalise it.
           const sendName = `${path.basename(file, path.extname(file))}.${ext === 'oga' ? 'ogg' : ext}`;
           const mime = MEDIA_CONTENT_TYPES[ext] || 'application/octet-stream';
-          const text = await transcribeAudio(apiKey, audioBuffer, sendName, mime);
-          return sendJson(res, 200, { text });
+          const { text, costUsd } = await transcribeAudio(apiKey, audioBuffer, sendName, mime);
+          return sendJson(res, 200, { text, model: STT_MODEL, costInr: costInr(costUsd) });
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }
+      });
+
+      // Models + the default (editable) grammar prompt, for the settings panel.
+      server.middlewares.use('/api/config', (req, res, next) => {
+        if (req.method !== 'GET') return next();
+        return sendJson(res, 200, {
+          transcribeModel: STT_MODEL,
+          fixModel: FIX_MODEL,
+          fixPrompt: FIX_SYSTEM_PROMPT,
+          hasKey: !!apiKey,
+        });
       });
 
       server.middlewares.use('/api/create-fragment', async (req, res, next) => {
@@ -561,17 +583,19 @@ export function openrouterDevPlugin() {
               error: 'OPENROUTER_API_KEY not set in site/.env — add it and restart `npm run dev`.',
             });
           }
-          const { text } = await readJsonBody(req);
+          const { text, prompt } = await readJsonBody(req);
           if (!text || !text.trim()) return sendJson(res, 400, { error: 'missing text' });
 
-          const fixed = await callOpenRouter(apiKey, {
+          // Use the caller's edited prompt if supplied, else the default.
+          const systemPrompt = typeof prompt === 'string' && prompt.trim() ? prompt : FIX_SYSTEM_PROMPT;
+          const { text: fixed, costUsd } = await callOpenRouter(apiKey, {
             model: FIX_MODEL,
             messages: [
-              { role: 'system', content: FIX_SYSTEM_PROMPT },
+              { role: 'system', content: systemPrompt },
               { role: 'user', content: text },
             ],
           });
-          return sendJson(res, 200, { text: fixed });
+          return sendJson(res, 200, { text: fixed, model: FIX_MODEL, costInr: costInr(costUsd) });
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }
