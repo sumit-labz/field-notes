@@ -5,6 +5,8 @@ import FragmentBlock from '../../components/Fragment.astro';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
 import { dateLine } from '../../lib/content';
+import { mediaUrl } from '../../lib/media-url';
+import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -35,6 +37,13 @@ for (const [filePath, content] of Object.entries(transcriptFiles)) {
 const transcriptText = post.data.transcript
   ? transcriptByName.get(post.data.transcript) ?? null
   : null;
+
+// Optional narration audio (R2 key, or a local media/ path).
+const postAudioUrl = post.data.audio
+  ? isLocalMedia(post.data.audio)
+    ? localMediaUrl(post.data.audio)
+    : mediaUrl(post.data.audio)
+  : null;
 ---
 
 <Base title={post.data.title}>
@@ -54,6 +63,16 @@ const transcriptText = post.data.transcript
       </>
     )}
   </p>
+
+  {
+    postAudioUrl && (
+      <div class="listen">
+        <span class="listen-label">Listen</span>
+        <audio controls preload="metadata" src={postAudioUrl} />
+        <span class="listen-note">read in my voice · AI-generated</span>
+      </div>
+    )
+  }
 
   {
     blocks.map((block) =>
@@ -79,6 +98,34 @@ const transcriptText = post.data.transcript
 </Base>
 
 <style>
+  /* "Listen" narration player at the top of a post. Static, no autoplay. */
+  .listen {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 1.5rem 0 2rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .listen-label {
+    font-family: 'Archivo', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.8rem;
+    color: var(--graphite);
+  }
+  .listen audio {
+    height: 34px;
+    max-width: 100%;
+  }
+  .listen-note {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--ghost);
+  }
+
   /* Raw transcript: the "before cleanup" record. Space Mono, lighter ink,
      line breaks preserved, no other styling; native <details>, no motion. */
   .transcript-raw {

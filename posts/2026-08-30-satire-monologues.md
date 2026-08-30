@@ -2,7 +2,7 @@
 slug: 2026-08-30-satire-monologues
 title: Kicking off the satire monologues
 published: 2026-08-30
-journey: null
+journey: satire-monologues
 fragments:
   - 2026-08-30-144037
   - 2026-08-30-144038
