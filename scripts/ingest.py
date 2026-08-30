@@ -69,6 +69,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 GROUP_WINDOW_SECONDS = 120
 MAX_LONG_EDGE = 1600
 WEBP_QUALITY = 80
+TELEGRAM_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # Bot API getFile hard limit
 EXIF_DATE_TIME_ORIGINAL = 36867
 SECRET_ENV_VARS = ("TELEGRAM_BOT_TOKEN", "R2_ACCESS_KEY", "R2_SECRET_KEY")
 PUSH_RETRY_ATTEMPTS = 3
@@ -375,6 +376,14 @@ def media_extension(file_path: str, fallback: str) -> str:
     return suffix or fallback
 
 
+def media_too_large(media_obj: dict) -> bool:
+    """Telegram's Bot API refuses getFile downloads over 20 MB. Media objects
+    (video/audio/document) carry file_size; when present and over the cap, the
+    download is impossible so callers skip it instead of failing the batch."""
+    size = media_obj.get("file_size")
+    return isinstance(size, int) and size > TELEGRAM_MAX_DOWNLOAD_BYTES
+
+
 def write_local_media(dir_path: Path, filename: str, data: bytes) -> None:
     dir_path.mkdir(parents=True, exist_ok=True)
     (dir_path / filename).write_bytes(data)
@@ -401,8 +410,15 @@ def build_fragment(client, config: Config, group: list[dict], journey_map: dict[
     for message in group:
         photo = message.get("photo")
         document = message.get("document")
+        doc_mime = (document.get("mime_type") or "") if document else ""
+        # Accept video/audio sent either as a native Telegram media message OR
+        # as an uploaded file (document) with a video/* or audio/* mime type.
         video = message.get("video") or message.get("video_note")
+        if not video and document and doc_mime.startswith("video/"):
+            video = document
         audio = message.get("voice") or message.get("audio")
+        if not audio and document and doc_mime.startswith("audio/"):
+            audio = document
 
         if photo:
             file_id = photo[-1]["file_id"]  # largest size Telegram offers
@@ -410,17 +426,27 @@ def build_fragment(client, config: Config, group: list[dict], journey_map: dict[
             if exif_dt is None:
                 exif_dt = extract_exif_datetime(original)
             items.append(MediaItem(kind="photo", data=resize_to_webp(original)))
-        elif document and (document.get("mime_type") or "").startswith("image/"):
+        elif document and doc_mime.startswith("image/"):
             file_id = document["file_id"]
             original = telegram_file_bytes(config, file_id)
             if exif_dt is None:
                 exif_dt = extract_exif_datetime(original)
             items.append(MediaItem(kind="photo", data=resize_to_webp(original)))
         elif video:
+            # Telegram's Bot API caps file downloads at 20 MB. A larger video
+            # can't be fetched by any bot, so don't abort the whole run over it
+            # (that would just retry-loop until the message ages out) — skip the
+            # media with a visible warning and keep the caption as text.
+            if media_too_large(video):
+                print(f"[ingest] message {message.get('message_id')}: video exceeds Telegram's 20MB bot-download limit — media skipped, caption kept")
+                continue
             # Saved as-is into the repo, NOT uploaded to R2 (see MEDIA_DIR).
             data, file_path = telegram_download(config, video["file_id"])
             items.append(MediaItem(kind="video", data=data, ext=media_extension(file_path, "mp4")))
         elif audio:
+            if media_too_large(audio):
+                print(f"[ingest] message {message.get('message_id')}: audio exceeds Telegram's 20MB bot-download limit — media skipped, caption kept")
+                continue
             data, file_path = telegram_download(config, audio["file_id"])
             items.append(MediaItem(kind="audio", data=data, ext=media_extension(file_path, "oga")))
         else:

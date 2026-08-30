@@ -109,6 +109,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         --spark: #d97706;
         --stub-bg: #f0f0ee;
         --stub-text: #9a9a92;
+        --danger: #b91c1c;
+        --danger-bg: #fbeaea;
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -119,6 +121,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           --muted: #9a9a92;
           --accent: #6ea8ff;
           --spark: #f5b23d;
+          --danger: #f87171;
+          --danger-bg: #2a1717;
           --stub-bg: #26262b;
           --stub-text: #6b6b64;
         }
@@ -252,6 +256,42 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       .copy-btn { padding: 2px 7px; font-size: 11px; }
       .copied { border-color: var(--accent); color: var(--accent); }
+      .del-btn {
+        padding: 2px 7px;
+        font-size: 11px;
+        color: var(--danger);
+        border-color: transparent;
+        background: transparent;
+      }
+      .del-btn:hover { border-color: var(--danger); }
+      .del-confirm {
+        margin-top: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--danger);
+        border-radius: 5px;
+        background: var(--danger-bg);
+        font-size: 12px;
+        max-width: 440px;
+      }
+      .del-confirm p { margin: 0 0 6px; color: var(--text); }
+      .del-confirm input {
+        font: inherit;
+        font-size: 12px;
+        padding: 3px 6px;
+        width: 190px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--panel);
+        color: var(--text);
+      }
+      .del-confirm .del-go {
+        color: #fff;
+        background: var(--danger);
+        border-color: var(--danger);
+      }
+      .del-confirm .del-go:disabled { opacity: 0.5; cursor: not-allowed; }
+      .del-confirm .row-actions { display: flex; gap: 6px; margin-top: 7px; align-items: center; }
+      .del-confirm .del-status { font-size: 11px; color: var(--danger); }
       .tags {
         display: flex;
         gap: 8px;
@@ -384,6 +424,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                     <div class="id-line">
                       <code class="id mono">{row.id}</code>
                       <button class="copy-btn" data-copy-id={row.id}>copy</button>
+                      <button class="del-btn" type="button" data-del-id={row.id}>delete</button>
                     </div>
                     <div class="tags">
                       <span class="type-tag">{TYPE_ICON[row.type] ?? ''} {row.type}</span>
@@ -678,6 +719,63 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
 
       document.querySelectorAll<HTMLElement>('.tools').forEach(initTools);
+
+      // -- Delete a fragment (R2 object + local file + .md, commit + push) -----
+      // Backed by POST /api/delete-fragment, which runs scripts/delete_fragment.py.
+      // Irreversible, so it's gated behind typing the fragment id to confirm.
+      function openDeleteConfirm(btn: HTMLButtonElement) {
+        const id = btn.getAttribute('data-del-id') ?? '';
+        const row = btn.closest<HTMLElement>('.row')!;
+        const meta = row.querySelector<HTMLElement>('.meta')!;
+        if (meta.querySelector('.del-confirm')) return; // already open
+        btn.disabled = true;
+
+        const box = document.createElement('div');
+        box.className = 'del-confirm';
+        box.innerHTML = `
+          <p>Permanently delete <strong>${id}</strong> from Cloudflare R2 and GitHub? This cannot be undone.</p>
+          <p>Type the id to confirm:</p>
+          <input type="text" class="del-input" autocomplete="off" spellcheck="false" placeholder="${id}" />
+          <div class="row-actions">
+            <button type="button" class="tool-btn del-go" disabled>delete permanently</button>
+            <button type="button" class="tool-btn subtle del-cancel">cancel</button>
+            <span class="del-status" role="status"></span>
+          </div>`;
+        meta.appendChild(box);
+
+        const input = box.querySelector<HTMLInputElement>('.del-input')!;
+        const go = box.querySelector<HTMLButtonElement>('.del-go')!;
+        const cancel = box.querySelector<HTMLButtonElement>('.del-cancel')!;
+        const status = box.querySelector<HTMLElement>('.del-status')!;
+        input.focus();
+
+        input.addEventListener('input', () => {
+          go.disabled = input.value.trim() !== id;
+        });
+        function close() {
+          box.remove();
+          btn.disabled = false;
+        }
+        cancel.addEventListener('click', close);
+        go.addEventListener('click', async () => {
+          go.disabled = true;
+          cancel.disabled = true;
+          status.textContent = 'deleting from R2 + GitHub…';
+          try {
+            await postJson('/api/delete-fragment', { id, confirm: input.value.trim() });
+            const group = row.closest<HTMLElement>('.date-group');
+            row.remove();
+            if (group && !group.querySelector('.row')) group.style.display = 'none';
+          } catch (err) {
+            status.textContent = String((err as Error).message || err);
+            cancel.disabled = false;
+          }
+        });
+      }
+
+      document.querySelectorAll<HTMLButtonElement>('[data-del-id]').forEach((btn) => {
+        btn.addEventListener('click', () => openDeleteConfirm(btn));
+      });
     </script>
   </body>
 </html>

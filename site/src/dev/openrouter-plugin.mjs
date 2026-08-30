@@ -45,6 +45,68 @@ Rules:
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const audioDir = path.join(repoRoot, 'media', 'audio');
 
+// scripts/delete_fragment.py needs the bot's Python deps (boto3, PyYAML, …),
+// which live in a venv, not system Python. Resolve the interpreter: an explicit
+// INGEST_PYTHON wins, then a scripts/.venv or repo-root .venv, else bare
+// `python`. The endpoint surfaces a clear error if the chosen one lacks deps.
+function resolvePython() {
+  if (process.env.INGEST_PYTHON && existsSync(process.env.INGEST_PYTHON)) {
+    return process.env.INGEST_PYTHON;
+  }
+  const candidates = [
+    path.join(repoRoot, 'scripts', '.venv', 'Scripts', 'python.exe'),
+    path.join(repoRoot, 'scripts', '.venv', 'bin', 'python'),
+    path.join(repoRoot, '.venv', 'Scripts', 'python.exe'),
+    path.join(repoRoot, '.venv', 'bin', 'python'),
+  ];
+  return candidates.find((p) => existsSync(p)) || 'python';
+}
+
+// Run scripts/delete_fragment.py <id> --json and return its parsed JSON result.
+function runDeleteScript(id) {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const script = path.join('scripts', 'delete_fragment.py');
+    let proc;
+    try {
+      proc = spawn(python, [script, id, '--json'], { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) => {
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      );
+    });
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      // The script prints exactly one JSON object on stdout (ok:true/false).
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(
+          new Error(
+            stderr.includes('ModuleNotFoundError')
+              ? `The Python at ${python} is missing the bot's dependencies. Install scripts/requirements.txt into it (or set INGEST_PYTHON).`
+              : `delete script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`
+          )
+        );
+      }
+    });
+  });
+}
+
 // input_audio only reliably accepts wav/mp3; anything else (Telegram voice
 // notes are ogg/opus .oga) is transcoded to mp3 with ffmpeg first.
 const PASSTHROUGH_FORMATS = new Set(['mp3', 'wav']);
@@ -192,6 +254,24 @@ export function openrouterDevPlugin() {
             ],
           });
           return sendJson(res, 200, { text });
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/delete-fragment', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          const { id, confirm } = await readJsonBody(req);
+          if (!id) return sendJson(res, 400, { error: 'missing fragment id' });
+          // Type-to-confirm: the browser must echo the exact id back. Guards
+          // against an accidental/programmatic call deleting a fragment.
+          if (confirm !== id) {
+            return sendJson(res, 400, { error: 'confirmation did not match the fragment id' });
+          }
+          const result = await runDeleteScript(id);
+          if (!result.ok) return sendJson(res, 502, { error: result.error || 'delete failed' });
+          return sendJson(res, 200, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }
