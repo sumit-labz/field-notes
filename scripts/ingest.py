@@ -230,9 +230,23 @@ def split_by_sender(updates: list[dict], allowed_user_id: int) -> tuple[list[dic
     return accepted, rejected
 
 
+def is_standalone_media(message: dict) -> bool:
+    """Voice/audio/video are single, self-contained captures and must never be
+    merged with anything else. Only photos (which arrive as media groups or
+    rapid singles) and text captions are allowed to group together. Without
+    this, a photo + voice note sent within the 120s window collapse into one
+    fragment with mixed media, and the second item gets hidden by the renderer."""
+    return bool(
+        message.get("voice")
+        or message.get("audio")
+        or message.get("video")
+        or message.get("video_note")
+    )
+
+
 def group_messages(updates: list[dict]) -> list[list[dict]]:
     """Same media_group_id, OR same sender within a 120s window, become one
-    fragment (SPEC.md §4 step 3)."""
+    fragment (SPEC.md §4 step 3) — EXCEPT audio/video, which always stand alone."""
     messages = sorted((u["message"] for u in updates), key=lambda m: m["date"])
     groups: list[list[dict]] = []
 
@@ -248,13 +262,15 @@ def group_messages(updates: list[dict]) -> list[list[dict]]:
                 groups.append([message])
             continue
 
-        if groups:
+        # An audio/video note is its own fragment, and nothing merges onto it.
+        if not is_standalone_media(message) and groups:
             last_group = groups[-1]
             last_message = last_group[-1]
             same_sender = message_sender_id(last_message) == message_sender_id(message)
             within_window = message["date"] - last_message["date"] <= GROUP_WINDOW_SECONDS
             not_a_media_group = last_group[0].get("media_group_id") is None
-            if same_sender and within_window and not_a_media_group:
+            last_is_standalone = is_standalone_media(last_message)
+            if same_sender and within_window and not_a_media_group and not last_is_standalone:
                 last_group.append(message)
                 continue
 
