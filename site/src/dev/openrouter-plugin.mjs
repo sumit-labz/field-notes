@@ -48,6 +48,13 @@ speech, not to improve the writing.
 DO:
 - Fix spelling, grammar, and punctuation
 - Fix proper nouns (people, book titles, films)
+- If a proper noun doesn't clearly match a real, known name/title, leave the
+  transcribed spelling as-is rather than guessing a plausible-sounding
+  replacement. A wrong guess that reads fluently is worse than an odd
+  spelling — it hides the error instead of surfacing it.
+- If a sentence is too garbled to confidently reconstruct what was meant,
+  leave it exactly as transcribed and wrap it in [unclear: ...] rather than
+  inventing a coherent version. Flag it, don't fix it.
 - Remove filler: "you know", "I mean", "so", "actually", "like",
   when used as verbal tics
 - Remove false starts and self-corrections where the speaker restarts
@@ -62,6 +69,12 @@ DO NOT:
 - Smooth out abrupt transitions — the jumps are the voice
 - Add transitions, topic sentences, or a concluding line
 - Add anything the author did not say
+- Resolve vague references ("it", "that", "this") by inferring what they
+  point to — leave them exactly as spoken, even if the antecedent is unclear
+  to a reader. That's the author's edit to make, not yours.
+- Guess the intended meaning of a sentence you can't parse with confidence.
+  When in doubt, flag it (see [unclear: ...] above) instead of smoothing it
+  into something plausible.
 - Make it sound polished or professional
 
 Keep contractions, fragments, direct address, and enthusiasm.
