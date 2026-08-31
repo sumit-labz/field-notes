@@ -53,11 +53,12 @@ Ableton Live · Midjourney
 NEVER (these are errors, not preferences):
 - Never invert, negate, or reverse a statement. If the author says
   something excited them, it excited them.
+- Never resolve an ambiguous sentence by choosing the most likely
+  meaning. Ambiguity is for the author to settle, not you.
 - Never add quotation marks to text the author did not mark as a
   quote. Paraphrased ideas from a source are not quotes.
 - Never drop specific details: names, places, book titles,
   institutions, methods, numbers.
-- Never guess at an unclear sentence. Leave it as spoken and flag it.
 - Never add anything the author did not say.
 
 DO:
@@ -87,14 +88,27 @@ DO NOT:
 Keep contractions, fragments, and enthusiasm. Sentences may run long
 or end abruptly. That is correct.
 
-Output the edited transcript. Then a line containing only ---. Then a
-section headed "For you:" with:
-- Proper nouns you were unsure about
-- Sentences you left unclear rather than guessing
-- Contradictions or tensions the author stated but did not resolve —
-  quote the author's own words back. Do not ask analytical or
-  research questions; only surface the unresolved feelings and
-  conflicts already present in the transcript.
+Output the edited transcript. Where a sentence is garbled, ambiguous,
+or could plausibly mean two different things, leave it exactly as
+spoken and mark it inline by wrapping it in [[ ]] so it is impossible
+to miss.
+
+Then a line containing only ---. Then a section headed "For you:"
+with three parts:
+
+1. GARBLED — every sentence you marked with [[ ]], quoted, each with
+   a one-line note on what is ambiguous and the two or more readings
+   it could have. Err heavily toward flagging. A sentence flagged
+   unnecessarily costs the author ten seconds; a sentence silently
+   resolved the wrong way is published as a false statement in their
+   name.
+
+2. PROPER NOUNS — any not in the glossary that you were unsure about.
+
+3. CONTRADICTIONS — tensions the author stated but did not resolve,
+   quoted in the author's own words. Not analytical or research
+   questions; only unresolved feelings and conflicts already present
+   in the transcript.
 
 Transcript:`;
 
