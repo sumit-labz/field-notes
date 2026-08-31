@@ -471,6 +471,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       .model-line code { color: var(--text); font-size: 12px; }
       .model-note { color: var(--muted); font-size: 11px; }
+      .engine-choice label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text); }
+      #local-model-select { font-size: 12px; }
       .prompt-label { color: var(--muted); font-size: 11px; margin-top: 4px; }
       #fix-prompt {
         width: 100%;
@@ -548,6 +550,16 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           <div class="model-line">
             <span class="model-label">fix grammar</span>
             <code id="fix-model">…</code>
+          </div>
+          <div class="model-line engine-choice">
+            <span class="model-label">engine</span>
+            <label><input type="radio" name="fix-engine" value="openrouter" checked /> OpenRouter (cloud)</label>
+            <label><input type="radio" name="fix-engine" value="local" /> local (in-browser, experimental)</label>
+          </div>
+          <div class="model-line local-engine-row" id="local-engine-row" hidden>
+            <span class="model-label">local model</span>
+            <select id="local-model-select"><option value="">loading model list…</option></select>
+            <span class="model-note" id="local-engine-note"></span>
           </div>
           <label class="prompt-label" for="fix-prompt">grammar prompt (editable · saved in this browser)</label>
           <textarea id="fix-prompt" class="mono" rows="8" spellcheck="false" placeholder="loading default prompt…"></textarea>
@@ -1069,12 +1081,23 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                 setStatus('nothing to fix.', true);
                 return;
               }
-              setStatus('fixing grammar…');
-              const d = await postJson('/api/fix-grammar', { text: source, prompt: getFixPrompt() });
-              showFixed(d.text);
-              setBoxCost(fixedCost, costKeyF, d);
-              addSessionCost(d.costInr);
-              setStatus(`cleaned up${callMeta(d)} — copy when ready.`);
+              const engine = getFixEngine();
+              const prompt = getFixPrompt() || defaultFixPrompt;
+              if (engine === 'local') {
+                setStatus('loading local model…');
+                const text = await fixGrammarLocal(source, prompt, (msg) => setStatus(msg));
+                showFixed(text);
+                const modelId = localSelect?.value || 'local model';
+                setBoxCost(fixedCost, costKeyF, { model: modelId, costInr: 0 });
+                setStatus(`cleaned up locally · ${modelId.split('/').pop()} — copy when ready.`);
+              } else {
+                setStatus('fixing grammar…');
+                const d = await postJson('/api/fix-grammar', { text: source, prompt });
+                showFixed(d.text);
+                setBoxCost(fixedCost, costKeyF, d);
+                addSessionCost(d.costInr);
+                setStatus(`cleaned up${callMeta(d)} — copy when ready.`);
+              }
             }
           } catch (err) {
             setStatus(String((err as Error).message || err), true);
@@ -1420,6 +1443,136 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         const savedNote = document.getElementById('prompt-saved');
         if (savedNote) savedNote.textContent = 'reset to default';
       });
+
+      // -- Local browser LLM (experimental) -----------------------------------
+      // Grammar-fix entirely client-side via WebLLM/WebGPU: no network call, no
+      // OpenRouter cost, transcript never leaves the machine. Weights (~2GB) are
+      // downloaded once per model and cached by the browser. This is a scoped
+      // experiment, not a claim that local models are "unwatermarked" — mainstream
+      // hosted models generally don't watermark plain text either; the actual win
+      // here is cost/offline/privacy, not detectability.
+      const FIX_ENGINE_KEY = 'fn-inbox:fixEngine';
+      const LOCAL_MODEL_KEY = 'fn-inbox:localModel';
+      // Curated, in preference order — first that resolves against the installed
+      // web-llm's prebuilt model list wins the dropdown's default.
+      const LOCAL_MODEL_CANDIDATES = ['qwen2.5-3b-instruct', 'llama-3.2-3b-instruct', 'phi-3.5-mini-instruct'];
+
+      const engineRadios = document.querySelectorAll<HTMLInputElement>('input[name="fix-engine"]');
+      const localRow = document.getElementById('local-engine-row') as HTMLElement | null;
+      const localSelect = document.getElementById('local-model-select') as HTMLSelectElement | null;
+      const localNote = document.getElementById('local-engine-note') as HTMLElement | null;
+
+      function getFixEngine(): string {
+        try {
+          return localStorage.getItem(FIX_ENGINE_KEY) || 'openrouter';
+        } catch {
+          return 'openrouter';
+        }
+      }
+
+      function setFixEngine(engine: string) {
+        try {
+          localStorage.setItem(FIX_ENGINE_KEY, engine);
+        } catch {}
+        if (localRow) localRow.hidden = engine !== 'local';
+      }
+
+      {
+        const saved = getFixEngine();
+        engineRadios.forEach((r) => {
+          r.checked = r.value === saved;
+        });
+        if (localRow) localRow.hidden = saved !== 'local';
+        engineRadios.forEach((r) =>
+          r.addEventListener('change', () => {
+            if (r.checked) setFixEngine(r.value);
+          })
+        );
+      }
+
+      // Lazy-loaded: the (small) web-llm module is only fetched once the local
+      // engine is actually used, so picking OpenRouter costs nothing extra.
+      let webllmModule: typeof import('@mlc-ai/web-llm') | null = null;
+      async function loadWebLLM() {
+        if (!webllmModule) webllmModule = await import('@mlc-ai/web-llm');
+        return webllmModule;
+      }
+
+      (async () => {
+        if (!localSelect) return;
+        if (!('gpu' in navigator)) {
+          localSelect.innerHTML = '<option value="">WebGPU unavailable in this browser</option>';
+          localSelect.disabled = true;
+          if (localNote) localNote.textContent = 'try a recent desktop Chrome or Edge';
+          return;
+        }
+        try {
+          const webllm = await loadWebLLM();
+          const all = webllm.prebuiltAppConfig.model_list;
+          const matches = LOCAL_MODEL_CANDIDATES.map((needle) =>
+            all.find((m) => m.model_id.toLowerCase().includes(needle))
+          ).filter((m): m is (typeof all)[number] => !!m);
+          if (matches.length === 0) {
+            localSelect.innerHTML = '<option value="">no matching prebuilt model found</option>';
+            localSelect.disabled = true;
+            return;
+          }
+          localSelect.innerHTML = matches
+            .map((m) => `<option value="${m.model_id}">${m.model_id}</option>`)
+            .join('');
+          let saved = '';
+          try {
+            saved = localStorage.getItem(LOCAL_MODEL_KEY) || '';
+          } catch {}
+          localSelect.value = matches.some((m) => m.model_id === saved) ? saved : matches[0].model_id;
+          localSelect.addEventListener('change', () => {
+            try {
+              localStorage.setItem(LOCAL_MODEL_KEY, localSelect.value);
+            } catch {}
+            localEngine = null; // model changed — reinit lazily on next fix
+          });
+        } catch (err) {
+          localSelect.innerHTML = '<option value="">failed to load model list</option>';
+          localSelect.disabled = true;
+          if (localNote) localNote.textContent = String((err as Error).message || err);
+        }
+      })();
+
+      // One MLCEngine instance, reused across fixes as long as the model is
+      // unchanged; re-created (and re-downloaded, unless browser-cached) if the
+      // user switches models.
+      let localEngine: Awaited<ReturnType<typeof import('@mlc-ai/web-llm')['CreateMLCEngine']>> | null = null;
+      let localEngineModelId = '';
+
+      async function ensureLocalEngine(modelId: string, onProgress: (msg: string) => void) {
+        if (localEngine && localEngineModelId === modelId) return localEngine;
+        const webllm = await loadWebLLM();
+        localEngine = await webllm.CreateMLCEngine(modelId, {
+          initProgressCallback: (p) => onProgress(p.text || `loading… ${Math.round((p.progress || 0) * 100)}%`),
+        });
+        localEngineModelId = modelId;
+        return localEngine;
+      }
+
+      async function fixGrammarLocal(
+        text: string,
+        systemPrompt: string,
+        onProgress: (msg: string) => void
+      ): Promise<string> {
+        if (!localSelect || !localSelect.value) throw new Error('no local model available — pick one in ⚙ models');
+        const engine = await ensureLocalEngine(localSelect.value, onProgress);
+        onProgress('running locally…');
+        const reply = await engine.chat.completions.create({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text },
+          ],
+          temperature: 0.2,
+        });
+        const content = reply.choices?.[0]?.message?.content;
+        if (typeof content !== 'string' || !content.trim()) throw new Error('local model returned no text');
+        return content.trim();
+      }
     </script>
   </body>
 </html>
