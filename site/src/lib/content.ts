@@ -5,7 +5,28 @@
 
 import type { CollectionEntry } from 'astro:content';
 import { mediaUrl } from './media-url';
-import { getImageDimensions } from './image-dimensions';
+import { isLocalMedia, localMediaUrl } from './local-media';
+import { getImageDimensions, getLocalImageDimensions } from './image-dimensions';
+
+const IMAGE_RE = /\.(webp|jpe?g|png|gif|avif)$/i;
+
+// A media[] entry is EITHER an R2 object key OR a repo-relative local path
+// (photos from the web inbox's record/upload/paste tool — lib/local-media.ts).
+async function resolveImage(
+  key: string
+): Promise<{ src: string; width: number; height: number } | null> {
+  try {
+    if (isLocalMedia(key)) {
+      const src = localMediaUrl(key);
+      if (!src) return null;
+      return { src, ...getLocalImageDimensions(key) };
+    }
+    const src = mediaUrl(key);
+    return { src, ...(await getImageDimensions(src)) };
+  } catch {
+    return null;
+  }
+}
 
 type Journey = CollectionEntry<'journeys'>;
 type Post = CollectionEntry<'posts'>;
@@ -51,16 +72,11 @@ export async function journeyLeadImage(
 
   for (const id of newest.data.fragments) {
     const fragment = fragments.get(id);
-    const key = fragment?.data?.media?.[0];
+    const key = fragment?.data?.media?.find((k) => IMAGE_RE.test(k));
     if (!key) continue;
-    const src = mediaUrl(key);
-    try {
-      const { width, height } = await getImageDimensions(src);
-      return { src, width, height };
-    } catch {
-      // media gone from R2 — try the next fragment, admit a placeholder
-      continue;
-    }
+    const image = await resolveImage(key);
+    if (image) return image;
+    // media gone from R2/repo — try the next fragment, admit a placeholder
   }
   return null;
 }
@@ -74,15 +90,10 @@ export async function postLeadImage(
 ): Promise<{ src: string; width: number; height: number } | null> {
   for (const id of post.data.fragments) {
     const fragment = fragments.get(id);
-    const key = fragment?.data?.media?.find((k) => /\.(webp|jpe?g|png|gif|avif)$/i.test(k));
+    const key = fragment?.data?.media?.find((k) => IMAGE_RE.test(k));
     if (!key) continue;
-    const src = mediaUrl(key);
-    try {
-      const { width, height } = await getImageDimensions(src);
-      return { src, width, height };
-    } catch {
-      continue;
-    }
+    const image = await resolveImage(key);
+    if (image) return image;
   }
   return null;
 }

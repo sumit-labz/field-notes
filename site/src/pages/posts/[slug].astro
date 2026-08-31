@@ -7,7 +7,7 @@ import { withBase } from '../../lib/url';
 import { dateLine } from '../../lib/content';
 import { mediaUrl } from '../../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
-import { getImageDimensions } from '../../lib/image-dimensions';
+import { getImageDimensions, getLocalImageDimensions } from '../../lib/image-dimensions';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -51,6 +51,12 @@ function imageSrcFor(key: string): string | null {
   if (isLocalMedia(key)) return localMediaUrl(key);
   return mediaUrl(key);
 }
+// Local media (photos from the web inbox, not R2) is read off disk, not
+// fetched — a build-emitted asset URL isn't fetchable during SSG.
+function imageDimensionsFor(key: string, src: string): Promise<{ width: number; height: number }> {
+  if (isLocalMedia(key)) return Promise.resolve(getLocalImageDimensions(key));
+  return getImageDimensions(src);
+}
 
 // Opener: the first image of the first fragment (in listed order) that has
 // one. That fragment is excluded from the sequence below so the image doesn't
@@ -71,7 +77,7 @@ for (const id of post.data.fragments) {
     openerFragmentId = id;
     if (openerSrc) {
       try {
-        const dims = await getImageDimensions(openerSrc);
+        const dims = await imageDimensionsFor(imgKey, openerSrc);
         openerPortrait = dims.height > dims.width;
       } catch {
         /* dimensions unavailable — fall back to the landscape treatment */
@@ -137,7 +143,7 @@ for (const block of blocks) {
   const imgKey = fragment.data.media?.find((k) => IMAGE_RE.test(k));
   if (imgKey) {
     try {
-      const dims = await getImageDimensions(imageSrcFor(imgKey) ?? '');
+      const dims = await imageDimensionsFor(imgKey, imageSrcFor(imgKey) ?? '');
       landscape = dims.width > dims.height;
     } catch {
       /* dimensions unavailable — fall back to the spark-driven width */

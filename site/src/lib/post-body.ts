@@ -10,12 +10,20 @@ function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Bare URLs (the plain way of dropping a link into prose here — no markdown
+// link syntax is parsed) render as inert text otherwise. Runs after escaping,
+// so it only ever matches plain characters, never HTML already in the string.
+const URL_RE = /https?:\/\/[^\s<]+[^\s<.,)]/g;
+function autolink(html: string): string {
+  return html.replace(URL_RE, (url) => `<a href="${url}" rel="noopener" target="_blank">${url}</a>`);
+}
+
 export function paragraphs(text: string): string {
   return text
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => `<p>${escapeHtml(p)}</p>`)
+    .map((p) => `<p>${autolink(escapeHtml(p))}</p>`)
     .join('\n');
 }
 

@@ -3,7 +3,8 @@ import type { CollectionEntry } from 'astro:content';
 import { formatCapturedAt } from '../lib/dates';
 import { tiltForId } from '../lib/rotation';
 import { mediaUrl } from '../lib/media-url';
-import { getImageDimensions } from '../lib/image-dimensions';
+import { isLocalMedia, localMediaUrl } from '../lib/local-media';
+import { getImageDimensions, getLocalImageDimensions } from '../lib/image-dimensions';
 
 interface Props {
   fragment: CollectionEntry<'fragments'>;
@@ -14,18 +15,30 @@ const { data, body } = fragment;
 const tilt = tiltForId(data.id);
 const caption = body?.trim() ?? '';
 
-// Audio/video media (SPEC.md §4) is saved raw into the repo, not R2, and
-// isn't served or playable on the static site yet — only image keys can be
-// fetched from R2 for dimensions here.
+// Audio/video media (SPEC.md §4) isn't served or playable on the static site
+// yet — only image keys are rendered here. An image key is EITHER an R2
+// object key (most photos) OR a repo-relative local path (photos captured via
+// the web inbox's record/upload/paste tool — see lib/local-media.ts).
 const imageKeys = (data.media ?? []).filter((key) => /\.(webp|jpe?g|png|gif|avif)$/i.test(key));
 
-const photos = await Promise.all(
-  imageKeys.map(async (key) => {
-    const src = mediaUrl(key);
-    const { width, height } = await getImageDimensions(src);
-    return { src, width, height };
-  })
-);
+const photos = (
+  await Promise.all(
+    imageKeys.map(async (key) => {
+      try {
+        if (isLocalMedia(key)) {
+          const src = localMediaUrl(key);
+          if (!src) return null;
+          return { src, ...getLocalImageDimensions(key) };
+        }
+        const src = mediaUrl(key);
+        return { src, ...(await getImageDimensions(src)) };
+      } catch {
+        // Missing/unreadable media shouldn't fail the whole build — skip it.
+        return null;
+      }
+    })
+  )
+).filter((p): p is { src: string; width: number; height: number } => p !== null);
 ---
 
 <figure>
