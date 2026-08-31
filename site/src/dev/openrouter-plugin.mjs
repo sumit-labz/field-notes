@@ -45,42 +45,58 @@ const FIX_SYSTEM_PROMPT = `You are copy-editing a voice transcript for publicati
 spoken voice is the point. Your job is to remove the artifacts of
 speech, not to improve the writing.
 
+GLOSSARY — these proper nouns appear often and are frequently
+mistranscribed. Correct them silently:
+Paula Scher · Stencil & Frame · John Truby · MoMA · Pentagram ·
+Ableton Live · Midjourney
+
+NEVER (these are errors, not preferences):
+- Never invert, negate, or reverse a statement. If the author says
+  something excited them, it excited them.
+- Never add quotation marks to text the author did not mark as a
+  quote. Paraphrased ideas from a source are not quotes.
+- Never drop specific details: names, places, book titles,
+  institutions, methods, numbers.
+- Never guess at an unclear sentence. Leave it as spoken and flag it.
+- Never add anything the author did not say.
+
 DO:
 - Fix spelling, grammar, and punctuation
-- Fix proper nouns (people, book titles, films)
-- If a proper noun doesn't clearly match a real, known name/title, leave the
-  transcribed spelling as-is rather than guessing a plausible-sounding
-  replacement. A wrong guess that reads fluently is worse than an odd
-  spelling — it hides the error instead of surfacing it.
-- If a sentence is too garbled to confidently reconstruct what was meant,
-  leave it exactly as transcribed and wrap it in [unclear: ...] rather than
-  inventing a coherent version. Flag it, don't fix it.
-- Remove filler: "you know", "I mean", "so", "actually", "like",
-  when used as verbal tics
-- Remove false starts and self-corrections where the speaker restarts
-  a sentence
-- Collapse immediate repetitions ("extremely, extremely")
+- Fix proper nouns, flagging any not in the glossary that you are
+  unsure about
+- Remove verbal tics: "you know", "I mean", "like", "so" as filler
+- Remove false starts and self-corrections
+- Collapse immediate repetitions
 - Add paragraph breaks where the thought shifts
+- CUT connective sentences — the parts where the speaker is working
+  their way toward a point rather than making one. Keep the vivid
+  moments and let them sit next to each other.
 
 DO NOT:
 - Rewrite sentences that are already clear
 - Replace the author's words with more sophisticated synonyms
 - Reorder or restructure arguments
-- Smooth out abrupt transitions — the jumps are the voice
+- Smooth abrupt transitions between topics — the jumps are the voice
 - Add transitions, topic sentences, or a concluding line
-- Add anything the author did not say
-- Resolve vague references ("it", "that", "this") by inferring what they
-  point to — leave them exactly as spoken, even if the antecedent is unclear
-  to a reader. That's the author's edit to make, not yours.
-- Guess the intended meaning of a sentence you can't parse with confidence.
-  When in doubt, flag it (see [unclear: ...] above) instead of smoothing it
-  into something plausible.
+- Resolve an entry that ended unresolved. If the author ends on a
+  question, a contradiction, or mid-thought, leave it there. A
+  forward-looking plan is not a resolution — do not turn one into a
+  tidy conclusion.
 - Make it sound polished or professional
 
-Keep contractions, fragments, direct address, and enthusiasm.
-Sentences may run long or end abruptly. That is correct.
+Keep contractions, fragments, and enthusiasm. Sentences may run long
+or end abruptly. That is correct.
 
-Output only the edited text.`;
+Output the edited transcript. Then a line containing only ---. Then a
+section headed "For you:" with:
+- Proper nouns you were unsure about
+- Sentences you left unclear rather than guessing
+- Contradictions or tensions the author stated but did not resolve —
+  quote the author's own words back. Do not ask analytical or
+  research questions; only surface the unresolved feelings and
+  conflicts already present in the transcript.
+
+Transcript:`;
 
 // site/src/dev/ -> repo root is three levels up.
 const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));

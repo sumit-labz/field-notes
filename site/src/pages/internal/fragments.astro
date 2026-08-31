@@ -404,6 +404,18 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         margin-bottom: 5px;
       }
       .transcript-text { color: var(--muted); background: var(--bg); }
+      .for-you-text {
+        width: 100%;
+        max-width: 520px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--muted);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 6px 8px;
+        white-space: pre-wrap;
+      }
       .empty-state { color: var(--muted); margin-top: 40px; }
       a { color: var(--accent); }
       .capture {
@@ -685,6 +697,10 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                             )}
                             <button class="tool-btn subtle" type="button" data-action="clear-fixed">clear</button>
                           </div>
+                          <div class="for-you-box" hidden>
+                            <div class="tbox-label">for you <span class="tbox-hint">· flags &amp; open questions from the model — read-only</span></div>
+                            <div class="for-you-text mono"></div>
+                          </div>
                           <div class="voice-box" hidden>
                             <div class="tbox-label">voice<span class="voice-cost"></span></div>
                             <div class="voice-player"></div>
@@ -898,6 +914,12 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         const fixedBox = panel.querySelector<HTMLElement>('.fixed-box')!;
         const fixedText = panel.querySelector<HTMLTextAreaElement>('.fixed-text')!;
         const fixedCost = panel.querySelector<HTMLElement>('.fixed-box .tbox-cost')!;
+        // "For you": the model's flags/questions, split out of the raw
+        // response (everything after a lone "---" line) so it never mixes
+        // into the editable/copyable cleaned-text box.
+        const forYouBox = panel.querySelector<HTMLElement>('.for-you-box');
+        const forYouText = panel.querySelector<HTMLElement>('.for-you-text');
+        const forYouKey = `fn-inbox:forYou:${id}`;
         const costKeyT = `fn-inbox:costT:${id}`;
         const costKeyF = `fn-inbox:costF:${id}`;
         // Generated voice (TTS of the cleaned text).
@@ -945,12 +967,36 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             localStorage.setItem(transcriptKey, text);
           } catch {}
         }
-        function showFixed(text: string) {
+        // Split "<cleaned text>\n---\n<For you: ...>" into its two parts. If
+        // the model didn't include the delimiter (e.g. an older prompt, or a
+        // weaker local model that dropped the instruction), the whole thing
+        // is treated as cleaned text and there's no "for you" section.
+        function splitFixedOutput(raw: string): { text: string; forYou: string } {
+          const m = raw.match(/\n[ \t]*-{3,}[ \t]*\n/);
+          if (!m || m.index === undefined) return { text: raw.trim(), forYou: '' };
+          const text = raw.slice(0, m.index).trim();
+          const forYou = raw
+            .slice(m.index + m[0].length)
+            .trim()
+            .replace(/^for you:?\s*/i, '');
+          return { text, forYou };
+        }
+
+        function showFixed(raw: string) {
+          const { text, forYou } = splitFixedOutput(raw);
           fixedText.value = text;
           fixedBox.hidden = false;
           try {
             localStorage.setItem(fixedKey, text);
           } catch {}
+          if (forYouBox && forYouText) {
+            forYouText.textContent = forYou;
+            forYouBox.hidden = !forYou;
+            try {
+              if (forYou) localStorage.setItem(forYouKey, forYou);
+              else localStorage.removeItem(forYouKey);
+            } catch {}
+          }
         }
 
         // Restore saved boxes across reloads.
@@ -969,6 +1015,11 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           if (ct && transcriptCost) transcriptCost.textContent = ct;
           const cf = localStorage.getItem(costKeyF);
           if (cf) fixedCost.textContent = cf;
+          const fy = localStorage.getItem(forYouKey);
+          if (fy && forYouBox && forYouText) {
+            forYouText.textContent = fy;
+            forYouBox.hidden = false;
+          }
           const vurl = localStorage.getItem(voiceKey);
           if (vurl) showVoice(vurl);
         } catch {}
@@ -1051,12 +1102,17 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             fixedText.value = '';
             fixedBox.hidden = true;
             fixedCost.textContent = '';
+            if (forYouBox && forYouText) {
+              forYouText.textContent = '';
+              forYouBox.hidden = true;
+            }
             if (voiceBox) voiceBox.hidden = true;
             if (voicePlayer) voicePlayer.innerHTML = '';
             setStatus('');
             try {
               localStorage.removeItem(fixedKey);
               localStorage.removeItem(costKeyF);
+              localStorage.removeItem(forYouKey);
               localStorage.removeItem(voiceKey);
             } catch {}
             return;
