@@ -254,7 +254,7 @@ for (const block of blocks) {
      at its own aspect ratio, capped in height — the whole photo stays
      visible instead of a cropped sliver of it. */
   .opener--portrait {
-    max-width: min(480px, 100%);
+    max-width: min(560px, 100%);
     max-height: 80vh;
     width: auto;
     height: auto;
@@ -271,7 +271,15 @@ for (const block of blocks) {
   .frag.gap-normal { margin-top: 3rem; }
   .frag.gap-large { margin-top: 8rem; }
   .frag.gap-xlarge { margin-top: 14rem; }
-  .frag.w-full { width: 100%; }
+  /* w-full breaks out past the text column — a Medium-style "grande" image,
+     wider than the prose but short of the full-bleed opener treatment. The
+     min() keeps it fluid on mobile: it just settles back to column width
+     once 94vw is narrower than 920px. */
+  .frag.w-full {
+    width: min(920px, 94vw);
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
   .frag.w-narrow { width: 60%; margin-right: auto; }
   .frag.w-narrow.break-right { margin-left: auto; margin-right: 0; }
   .gap-label {

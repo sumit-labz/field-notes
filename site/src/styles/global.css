@@ -43,15 +43,17 @@ body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 1.0625rem; /* 17px */
-  line-height: 1.6; /* body prose; headings stay 1.25 */
+  font-size: 1.125rem; /* 18px — comfortable long-form reading size */
+  line-height: 1.65; /* body prose; headings stay 1.25 */
   -webkit-font-smoothing: antialiased;
 }
 
 main {
-  /* Reading measure: ~66 characters at desktop width (was 56rem ≈ 110 chars,
-     too wide). The full-bleed opener still breaks out via viewport units. */
-  max-width: 35rem;
+  /* Reading measure: ~75 characters at desktop width — Medium's article
+     column runs ~700px; 35rem (560px, ~66ch) read as cramped on a wide
+     desktop window. Fluid below this via the 100% fallback, so mobile is
+     untouched. The full-bleed opener still breaks out via viewport units. */
+  max-width: 43.75rem; /* 700px */
   margin: 0 auto;
   padding: 2.25rem 1.5rem 7rem;
 }
@@ -80,7 +82,7 @@ a:focus {
 
 /* nav — chrome, uppercase Archivo, bottom rule in ink. Never motion. */
 nav {
-  max-width: 35rem;
+  max-width: 43.75rem; /* matches main's reading column */
   margin: 0 auto;
   padding: 1.9rem 1.5rem 0;
   display: flex;
