@@ -52,11 +52,6 @@ function mediaPreviews(media: string[] | undefined): Preview[] {
   });
 }
 
-function textExcerpt(body: string): string {
-  const trimmed = body.trim();
-  return trimmed.length > 100 ? trimmed.slice(0, 100) + '…' : trimmed;
-}
-
 const fragments = await getCollection('fragments');
 
 const rows = fragments
@@ -68,11 +63,12 @@ const rows = fragments
     journey: f.data.journey,
     spark: f.data.spark,
     consumedBy: f.data.consumed_by,
-    // Full body, used by the Fix-grammar button on text rows (the preview only
-    // carries a 100-char excerpt).
+    // Full body — used both as the Fix-grammar source and as the preview
+    // itself. Previously the preview clipped to 100 chars with no way to see
+    // the rest; a Telegram text note could easily run past that.
     fullText: (f.body ?? '').trim(),
     previews: mediaPreviews(f.data.media),
-    excerpt: textExcerpt(f.body ?? ''),
+    excerpt: (f.body ?? '').trim(),
   }))
   .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
 
