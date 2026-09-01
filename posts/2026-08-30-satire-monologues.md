@@ -3,7 +3,7 @@ slug: 2026-08-30-satire-monologues
 audio: media/posts/2026-08-30-satire-monologues.mp3
 title: Kicking off the satire monologues
 published: 2026-08-30
-journey: satire-monologues
+journey: monologue
 fragments:
   - 2026-08-30-144037
   - 2026-08-30-144038

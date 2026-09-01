@@ -1,6 +1,6 @@
 ---
-slug: satire-monologues
-title: Satire monologues
+slug: monologue
+title: Monologue
 identity: cinema-and-music
 path: create
 status: active

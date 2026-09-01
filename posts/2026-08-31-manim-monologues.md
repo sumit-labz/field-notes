@@ -2,7 +2,7 @@
 slug: 2026-08-31-manim-monologues
 title: Simple animation for monologues
 published: 2026-08-31
-journey: satire-monologues
+journey: monologue
 fragments:
   - 2026-08-31-193317
 status: published

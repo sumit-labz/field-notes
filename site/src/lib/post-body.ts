@@ -18,12 +18,31 @@ function autolink(html: string): string {
   return html.replace(URL_RE, (url) => `<a href="${url}" rel="noopener" target="_blank">${url}</a>`);
 }
 
+// A quoted aside (e.g. an AI reply worth keeping verbatim) — every line of the
+// block prefixed with "> ", markdown-blockquote style. Blank lines *inside*
+// the quote still need a lone "> " so the block-splitter above (which splits
+// on blank lines) doesn't cut it into several pieces.
+function isQuoteBlock(block: string): boolean {
+  return block.split('\n').every((line) => line.trim() === '' || line.trimStart().startsWith('>'));
+}
+function stripQuoteMarkers(block: string): string {
+  return block
+    .split('\n')
+    .map((line) => line.trimStart().replace(/^>\s?/, ''))
+    .join('\n')
+    .trim();
+}
+
 export function paragraphs(text: string): string {
   return text
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => `<p>${autolink(escapeHtml(p))}</p>`)
+    .map((block) =>
+      isQuoteBlock(block)
+        ? `<blockquote class="ai-quote">${autolink(escapeHtml(stripQuoteMarkers(block)))}</blockquote>`
+        : `<p>${autolink(escapeHtml(block))}</p>`
+    )
     .join('\n');
 }
 

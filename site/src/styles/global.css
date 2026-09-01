@@ -442,6 +442,22 @@ figure > p {
   margin: 0.5rem 0 1.25rem;
 }
 
+/* Quoted aside — an AI reply, or any verbatim text worth setting apart from
+   the author's own prose. One inserted surface (--paper, same material as a
+   scanned sheet), a plain ink rule on the left, no quote marks or italics —
+   the surface change alone signals "this wasn't written by me". */
+.ai-quote {
+  background: var(--paper);
+  border-left: 2px solid var(--ink);
+  margin: 1.75rem 0;
+  padding: 1rem 1.25rem;
+  font-family: var(--font-meta);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--graphite);
+  white-space: pre-wrap;
+}
+
 /* footer stamp */
 .foot {
   margin-top: 3.5rem;
