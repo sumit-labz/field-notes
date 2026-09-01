@@ -1,7 +1,7 @@
 ---
 slug: monologue
 title: Monologue
-identity: cinema-and-music
+identity: cinema
 path: create
 status: active
 started: 2026-08-30

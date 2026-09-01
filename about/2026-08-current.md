@@ -5,9 +5,11 @@ aside: "sound came back this month. of course it did."
 mix:
   - slug: design-and-development
     weight: dominant
-  - slug: art-and-graphic-design
+  - slug: visual-art
     weight: dominant
-  - slug: cinema-and-music
+  - slug: cinema
+    weight: emerging
+  - slug: music
     weight: emerging
 ---
 
