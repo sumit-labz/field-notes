@@ -123,4 +123,21 @@ const about = defineCollection({
   }),
 });
 
-export const collections = { fragments, posts, journeys, identities, about };
+// Marginalia: photographed index-card-sized lines — original or collected,
+// self-authored or attributed. Posted directly from Telegram (caption tagged
+// `#marginalia`) straight to a live page, not curated through fragments/posts
+// like everything else. Photo only, no OCR — the card itself is the record.
+const marginalia = defineCollection({
+  loader: glob({ pattern: '*.md', base: `${repoRoot}marginalia` }),
+  schema: z.object({
+    id: z.string(),
+    captured_at: z.coerce.date(),
+    // R2 object key (e.g. "m/2026-09-01/143022.webp") or a repo-relative
+    // media/ path — same convention as fragment media, see lib/local-media.ts.
+    media: z.string(),
+    // Attribution when collected (author/book/film); absent when original.
+    source: z.string().nullable().optional(),
+  }),
+});
+
+export const collections = { fragments, posts, journeys, identities, about, marginalia };

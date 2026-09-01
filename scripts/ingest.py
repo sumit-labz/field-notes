@@ -54,6 +54,9 @@ load_dotenv()
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_PATH = REPO_ROOT / ".state" / "telegram-offset.json"
 FRAGMENTS_DIR = REPO_ROOT / "fragments"
+# Marginalia (photographed index-card-sized lines) bypasses the fragments
+# review step entirely — a caption tagged #marginalia posts straight here.
+MARGINALIA_DIR = REPO_ROOT / "marginalia"
 # Video and audio are NOT uploaded to R2 (photos are). They are saved as-is
 # into these repo-committed folders and referenced by a repo-relative path in
 # the fragment frontmatter (e.g. "media/video/2026-08-28-192734.mp4"). The site
@@ -129,6 +132,15 @@ class Fragment:
     journey: str | None
     spark: bool
     body: str
+    path: Path
+
+
+@dataclass
+class Marginalia:
+    id: str
+    captured_at: datetime
+    media: str
+    source: str | None
     path: Path
 
 
@@ -301,6 +313,18 @@ def upload_to_r2(client, config: Config, key: str, data: bytes) -> None:
 
 
 HASHTAG_RE = re.compile(r"#(\w+)")
+MARGINALIA_RE = re.compile(r"#marginalia\b", re.IGNORECASE)
+
+
+def extract_marginalia(caption: str) -> tuple[bool, str]:
+    """A caption tagged #marginalia routes the message to marginalia/ instead
+    of fragments/ (see build_marginalia). The tag is stripped; whatever text
+    remains becomes the optional `source` (attribution), or None if empty —
+    same body the message would otherwise have carried."""
+    is_marginalia = bool(MARGINALIA_RE.search(caption))
+    remaining = MARGINALIA_RE.sub("", caption)
+    remaining = re.sub(r"[ \t]+", " ", remaining).strip()
+    return is_marginalia, remaining
 
 
 def load_journey_map() -> dict[str, str]:
@@ -345,6 +369,14 @@ def fragment_id_and_path(captured_at: datetime) -> tuple[str, Path, str, str]:
     return fragment_id, path, date_str, time_str
 
 
+def marginalia_id_and_path(captured_at: datetime) -> tuple[str, Path, str, str]:
+    date_str = captured_at.strftime("%Y-%m-%d")
+    time_str = captured_at.strftime("%H%M%S")
+    marginalia_id = f"{date_str}-{time_str}"
+    path = MARGINALIA_DIR / f"{marginalia_id}.md"
+    return marginalia_id, path, date_str, time_str
+
+
 def media_extension(file_path: str, fallback: str) -> str:
     """Extension (without dot) for a locally-saved media file, taken from
     Telegram's file_path, falling back when it carries none."""
@@ -374,6 +406,55 @@ class MediaItem:
     kind: str  # "photo" | "video" | "audio"
     data: bytes
     ext: str = ""
+
+
+def build_marginalia(client, config: Config, group: list[dict]) -> Marginalia | None:
+    """Returns a Marginalia when the group's caption is tagged #marginalia AND
+    carries a photo; None otherwise, in which case the caller should fall back
+    to build_fragment (this includes a #marginalia tag with no photo — logged
+    so the caption isn't silently lost)."""
+    first = group[0]
+    caption = first.get("caption") or first.get("text") or ""
+    is_marginalia, source_text = extract_marginalia(caption)
+    if not is_marginalia:
+        return None
+
+    photo_bytes: bytes | None = None
+    exif_dt: datetime | None = None
+    for message in group:
+        photo = message.get("photo")
+        document = message.get("document")
+        doc_mime = (document.get("mime_type") or "") if document else ""
+        if photo:
+            file_id = photo[-1]["file_id"]  # largest size Telegram offers
+        elif document and doc_mime.startswith("image/"):
+            file_id = document["file_id"]
+        else:
+            continue
+        original = telegram_file_bytes(config, file_id)
+        exif_dt = extract_exif_datetime(original)
+        photo_bytes = resize_to_webp(original)
+        break  # marginalia is one photo per entry — first one wins
+
+    if photo_bytes is None:
+        print(
+            f"[ingest] message {first.get('message_id')}: #marginalia tag with no photo "
+            "— falling back to a regular fragment"
+        )
+        return None
+
+    captured_at = exif_dt or datetime.fromtimestamp(first["date"], tz=timezone.utc).astimezone(IST)
+    marginalia_id, path, date_str, time_str = marginalia_id_and_path(captured_at)
+    key = f"m/{date_str}/{time_str}.webp"
+    upload_to_r2(client, config, key, photo_bytes)
+
+    return Marginalia(
+        id=marginalia_id,
+        captured_at=captured_at,
+        media=key,
+        source=source_text or None,
+        path=path,
+    )
 
 
 def build_fragment(client, config: Config, group: list[dict], journey_map: dict[str, str]) -> Fragment:
@@ -491,6 +572,24 @@ def write_fragment_file(fragment: Fragment) -> None:
     fragment.path.write_text(render_fragment(fragment), encoding="utf-8")
 
 
+def render_marginalia(entry: Marginalia) -> str:
+    lines = ["---", f"id: {entry.id}"]
+    lines.append(f"captured_at: {entry.captured_at.strftime('%Y-%m-%dT%H:%M:%S')}+05:30")
+    lines.append(f"media: {entry.media}")
+    # json.dumps produces a double-quoted scalar, valid YAML, safely escaping
+    # any colons/quotes a source attribution might contain (e.g. "Camus, The
+    # Stranger").
+    lines.append(f"source: {json.dumps(entry.source) if entry.source else 'null'}")
+    lines.append("---")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_marginalia_file(entry: Marginalia) -> None:
+    entry.path.parent.mkdir(parents=True, exist_ok=True)
+    entry.path.write_text(render_marginalia(entry), encoding="utf-8")
+
+
 # ---------------------------------------------------------------------------
 # git
 
@@ -540,19 +639,24 @@ def rebase_onto_remote(new_offset: int) -> None:
     run_git(["rebase", "--continue"])
 
 
-def commit_and_push(fragment_count: int, new_offset: int) -> None:
+def commit_and_push(fragment_count: int, marginalia_count: int, new_offset: int) -> None:
     # "media/" holds locally-saved video/audio. Only stage it when it exists —
     # a photos/text-only batch never creates it, and `git add` of a missing
-    # pathspec would fail the run.
+    # pathspec would fail the run. Same for marginalia/ on a batch with none.
     add_paths = ["fragments", str(STATE_PATH.relative_to(REPO_ROOT))]
     if MEDIA_DIR.exists():
         add_paths.append("media")
+    if MARGINALIA_DIR.exists():
+        add_paths.append("marginalia")
     run_git(["add", *add_paths])
+    message = f"ingest: {fragment_count} fragments"
+    if marginalia_count:
+        message += f", {marginalia_count} marginalia"
     run_git(
         [
             "-c", "user.name=field-notes-ingest",
             "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com",
-            "commit", "-m", f"ingest: {fragment_count} fragments",
+            "commit", "-m", message,
         ]
     )
     push_with_retry(new_offset)
@@ -630,16 +734,31 @@ def main() -> None:
     client = r2_client(config)
 
     # All media uploads for every group in this batch must succeed before any
-    # fragment file is written, and every file must be written before the
-    # offset is persisted — see the module docstring for why.
-    fragments = [build_fragment(client, config, group, journey_map) for group in groups]
+    # file is written, and every file must be written before the offset is
+    # persisted — see the module docstring for why. A #marginalia-tagged group
+    # with a photo routes straight to marginalia/ instead of becoming a
+    # fragment (see build_marginalia) — everything else is a fragment as before.
+    fragments: list[Fragment] = []
+    marginalia_entries: list[Marginalia] = []
+    for group in groups:
+        entry = build_marginalia(client, config, group)
+        if entry is not None:
+            marginalia_entries.append(entry)
+        else:
+            fragments.append(build_fragment(client, config, group, journey_map))
+
     for fragment in fragments:
         write_fragment_file(fragment)
+    for entry in marginalia_entries:
+        write_marginalia_file(entry)
 
     new_offset = max(u["update_id"] for u in updates) + 1
     write_offset(new_offset)
-    commit_and_push(len(fragments), new_offset)
-    print(f"[ingest] committed {len(fragments)} fragments, offset now {new_offset}")
+    commit_and_push(len(fragments), len(marginalia_entries), new_offset)
+    print(
+        f"[ingest] committed {len(fragments)} fragments, {len(marginalia_entries)} marginalia, "
+        f"offset now {new_offset}"
+    )
 
 
 if __name__ == "__main__":

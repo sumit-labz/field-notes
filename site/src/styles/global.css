@@ -257,6 +257,36 @@ h2 { font-size: 1.05rem; }
 }
 @media (max-width: 720px) { .streams { grid-template-columns: 1fr; } }
 
+/* ---- MARGINALIA — irregular photo grid, raw/brutalist, no motion ---- */
+.marginalia-grid {
+  columns: 4 220px;
+  column-gap: 1.2rem;
+  margin-top: 1.4rem;
+}
+.marginalia-card {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  margin: 0 0 1.4rem;
+}
+.marginalia-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+}
+.marginalia-card figcaption {
+  margin-top: 0.4rem;
+}
+.marginalia-empty {
+  font-family: var(--font-annotation);
+  color: var(--graphite);
+  font-size: 1.3rem;
+  padding-top: 0.5rem;
+}
+@media (max-width: 720px) { .marginalia-grid { columns: 2 160px; } }
+
 /* ---- JOURNEY / POST rhythm ---- */
 .postrow {
   display: flex;
