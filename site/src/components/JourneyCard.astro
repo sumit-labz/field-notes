@@ -1,8 +1,9 @@
 ---
 // site/src/components/JourneyCard.astro
-// The load-bearing hero object (IA reference, section D): identity+path, title
-// with status mark, one lead image, one line. Static — the tilt is hashed from
-// the journey slug and never animated.
+// The homepage's unit of content: one journey, its parent Obsession, and its
+// newest post. Three separate destinations (obsession, journey, post), so
+// this is no longer a single wrapping <a> — each link stands on its own.
+// Static — the tilt is hashed from the journey slug and never animated.
 import ModeGlyph from './ModeGlyph.astro';
 import JourneyTitle from './JourneyTitle.astro';
 import { withBase } from '../lib/url';
@@ -13,41 +14,73 @@ interface Props {
   title: string;
   path: 'practice' | 'learn' | 'create';
   status: 'active' | 'paused' | 'abandoned' | 'completed';
+  identitySlug: string;
   identityLabel: string;
-  line: string;
   image: { src: string; width: number; height: number } | null;
+  // The newest post's title/link, when the journey has one yet — null falls
+  // back to the journey's own opening line (no posts published yet).
+  postTitle: string | null;
+  postSlug: string | null;
+  postInProgress: boolean;
+  line: string;
 }
-const { slug, title, path, status, identityLabel, line, image } = Astro.props;
+const {
+  slug,
+  title,
+  path,
+  status,
+  identitySlug,
+  identityLabel,
+  image,
+  postTitle,
+  postSlug,
+  postInProgress,
+  line,
+} = Astro.props;
 const tilt = tiltForId(slug);
-const href = withBase(`/journeys/${slug}/`);
+const journeyHref = withBase(`/journeys/${slug}/`);
+const identityHref = withBase(`/identities/${identitySlug}/`);
 ---
 
-<a class="card" href={href}>
-  {
-    image ? (
-      <img
-        class="card-photo font-arch"
-        src={image.src}
-        width={image.width}
-        height={image.height}
-        loading="lazy"
-        alt=""
-        style={`transform: rotate(${tilt}deg)`}
-      />
-    ) : (
-      // No resolvable image yet — emptiness is a material, not a placeholder.
-      // Render a blank sheet, never the literal mockup string.
-      <div class="card-photo card-photo--empty" aria-hidden="true" />
-    )
-  }
+<div class="card">
+  <a class="card-photo-link" href={journeyHref} tabindex="-1" aria-hidden="true">
+    {
+      image ? (
+        <img
+          class="card-photo font-arch"
+          src={image.src}
+          width={image.width}
+          height={image.height}
+          loading="lazy"
+          alt=""
+          style={`transform: rotate(${tilt}deg)`}
+        />
+      ) : (
+        // No resolvable image yet — emptiness is a material, not a placeholder.
+        // Render a blank sheet, never the literal mockup string.
+        <div class="card-photo card-photo--empty" />
+      )
+    }
+  </a>
   <div class="card__body">
     <div class="card__identity">
       <ModeGlyph path={path} size={20} color="var(--graphite)" />
-      <span>{identityLabel} · {path}</span>
+      <a href={identityHref}>{identityLabel}</a>
+      <span> · {path}</span>
     </div>
-    <div class="card__title">
-      <JourneyTitle title={title} status={status} seed={slug} />
-    </div>
+    <h3 class="card__title">
+      <a href={journeyHref}>
+        <JourneyTitle title={title} status={status} seed={slug} />
+      </a>
+    </h3>
+    {
+      postTitle && postSlug ? (
+        <p class="card__post">
+          <a href={withBase(`/posts/${postSlug}/`)}>{postTitle}</a>
+          {postInProgress && <span class="inprogress">in progress</span>}
+        </p>
+      ) : null
+    }
     <p class="card__line">{line}</p>
   </div>
-</a>
+</div>

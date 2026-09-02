@@ -56,6 +56,31 @@ export function journeyLeadLine(journey: Journey): string {
   return firstLine ?? '';
 }
 
+// The journey's newest post (by published date) — the homepage card leads
+// with THIS post's title + excerpt rather than the journey's own opening
+// note, so the card reflects what's actually new and a long opening note no
+// longer dominates it. Null when the journey has no posts yet.
+export function journeyLeadPost(journey: Journey, posts: Post[]): Post | null {
+  return (
+    posts
+      .filter((p) => p.data.journey === journey.data.slug)
+      .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf())[0] ?? null
+  );
+}
+
+// Plain-text first line of a post's body, for the card excerpt — strips
+// fragment markers ({{fragment:ID}}) and light markdown emphasis so it reads
+// as prose rather than markup. Empty for a fragments-only post with no body.
+export function postExcerpt(post: Post): string {
+  const withoutMarkers = post.body?.replace(/\{\{fragment:[a-zA-Z0-9-]+\}\}/g, ' ') ?? '';
+  const firstBlock =
+    withoutMarkers
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .find(Boolean) ?? '';
+  return firstBlock.replace(/[*_`]/g, '');
+}
+
 // The lead image for a card: the first media-bearing fragment of the journey's
 // newest post, tilted deterministically on render. Falls back to null (card
 // renders an empty sheet) rather than failing the homepage on a stale media

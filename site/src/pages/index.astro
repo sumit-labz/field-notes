@@ -1,17 +1,22 @@
 ---
-// / — terms → hero journeys (learn/create only, last activity) → feed.
+// / — terms → journeys, most-recently-active first, each showing its
+// newest post. The homepage IS the journeys list now; there is no separate
+// flat post-by-post feed below it (see the Phase 2 homepage redesign).
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
 import JourneyCard from '../components/JourneyCard.astro';
-import { withBase } from '../lib/url';
 import {
   journeyLastActivity,
   journeyLeadLine,
   journeyLeadImage,
-  postLeadImage,
-  dateLine,
+  journeyLeadPost,
+  postExcerpt,
 } from '../lib/content';
-import { tiltForId } from '../lib/rotation';
+
+// Homepage curation: only the most recently active journeys, capped so the
+// page stays a short, scannable list rather than growing without bound as
+// the archive does.
+const MAX_JOURNEYS = 6;
 
 const identityEntries = await getCollection('identities');
 const identityTitle = new Map(
@@ -19,32 +24,35 @@ const identityTitle = new Map(
 );
 
 const journeys = await getCollection('journeys');
-const posts = (await getCollection('posts')).sort(
-  (a, b) => b.data.published.valueOf() - a.data.published.valueOf()
-);
+const posts = await getCollection('posts');
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 
-// Hero: learn/create paths only (practice excluded — it'd top the feed daily),
-// ordered by most recent activity. Abandoned journeys lead honestly.
-const hero = journeys
-  .filter((j) => j.data.path !== 'practice')
+// Every journey gets one slot regardless of path — a daily practice journey
+// no longer dominates the page the way it would in a post-by-post feed; it
+// just occupies its one slot and moves to the top when it's active.
+const ranked = journeys
+  .slice()
   .sort(
     (a, b) =>
       journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf()
   )
-  .map(async (journey) => ({
-    journey,
-    line: journeyLeadLine(journey),
-    image: await journeyLeadImage(journey, posts, fragmentsById),
-  }));
-const heroCards = await Promise.all(hero);
+  .slice(0, MAX_JOURNEYS);
 
-const feedPosts = await Promise.all(
-  posts.map(async (post) => ({
-    post,
-    image: await postLeadImage(post, fragmentsById),
-  }))
+const cards = await Promise.all(
+  ranked.map(async (journey) => {
+    const leadPost = journeyLeadPost(journey, posts);
+    return {
+      journey,
+      image: await journeyLeadImage(journey, posts, fragmentsById),
+      postTitle: leadPost?.data.title ?? null,
+      postSlug: leadPost?.data.slug ?? null,
+      postInProgress: leadPost?.data.status === 'in_progress',
+      // No post yet: fall back to the journey's own opening line so a brand
+      // new journey isn't a blank card.
+      line: leadPost ? postExcerpt(leadPost) : journeyLeadLine(journey),
+    };
+  })
 );
 ---
 
@@ -57,71 +65,21 @@ const feedPosts = await Promise.all(
   <p class="section-label">journeys</p>
   <div class="cards">
     {
-      heroCards.map(({ journey, line, image }) => (
+      cards.map(({ journey, image, postTitle, postSlug, postInProgress, line }) => (
         <JourneyCard
           slug={journey.data.slug}
           title={journey.data.title}
           path={journey.data.path}
           status={journey.data.status}
+          identitySlug={journey.data.identity}
           identityLabel={identityTitle.get(journey.data.identity) ?? journey.data.identity}
-          line={line}
           image={image}
+          postTitle={postTitle}
+          postSlug={postSlug}
+          postInProgress={postInProgress}
+          line={line}
         />
       ))
     }
   </div>
-
-  <p class="section-label">feed</p>
-  <ul class="feed-list">
-    {
-      feedPosts.map(({ post, image }) => (
-        <li class="feed-item">
-          {image && (
-            <img
-              class="feed-thumb"
-              src={image.src}
-              width={image.width}
-              height={image.height}
-              loading="lazy"
-              alt=""
-              style={`transform: rotate(${tiltForId(post.data.slug)}deg)`}
-            />
-          )}
-          <span class="feed-item__body">
-            <a href={withBase(`/posts/${post.data.slug}/`)}>
-              {post.data.title}
-              {post.data.status === 'in_progress' && (
-                <span class="inprogress">in progress</span>
-              )}
-            </a>
-            <span class="meta">{dateLine(post.data.published)}</span>
-            {post.data.journey && (
-              <span class="meta">
-                {' '}
-                — <a href={withBase(`/journeys/${post.data.journey}/`)}>{post.data.journey}</a>
-              </span>
-            )}
-          </span>
-        </li>
-      ))
-    }
-  </ul>
 </Base>
-
-<style>
-  .feed-list { padding: 0; margin: 0; }
-  .feed-item {
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    margin: 0 0 0.9rem;
-  }
-  .feed-thumb {
-    display: block;
-    width: 44px;
-    height: 44px;
-    object-fit: cover;
-    flex-shrink: 0;
-  }
-</style>

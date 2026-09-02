@@ -18,6 +18,9 @@ export async function getStaticPaths() {
 const { journey } = Astro.props;
 const { data } = journey;
 
+const identities = await getCollection('identities');
+const identity = identities.find((i) => i.data.slug === data.identity);
+
 const allJourneys = await getCollection('journeys');
 // SPEC.md 3.3: emerged_from is the only relationship field; genealogy is derived
 // from it rather than a separate graph structure.
@@ -35,6 +38,13 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
 
 <Base title={data.title}>
   <p><a href={withBase('/')}>← feed</a></p>
+  {
+    identity && (
+      <p class="journey-obsession">
+        <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
+      </p>
+    )
+  }
   <JourneyTitle title={data.title} status={data.status} as="h1" seed={data.slug} />
   <p class="meta" style="display:flex;align-items:center;gap:0.5rem;margin-top:0.6rem">
     <ModeGlyph path={data.path} size={18} color="var(--graphite)" />
