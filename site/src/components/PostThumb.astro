@@ -4,6 +4,12 @@
 // full excerpt) — used both on the homepage (grouped under a journey) and
 // on the journey detail page's post grid. A single destination (the post),
 // so this is a plain wrapping <a>, unlike JourneyCard.
+//
+// A video thumbnail is static (paused, first frame) until the viewer engages
+// with it: hover-to-play on a device with real hover (desktop), or autoplay
+// when scrolled into view otherwise (touch) — see client/thumb-video.ts. This
+// is the one deliberate exception to the site's "no motion" default.
+import type { LeadMedia } from '../lib/content';
 import { withBase } from '../lib/url';
 import { tiltForId } from '../lib/rotation';
 
@@ -11,7 +17,7 @@ interface Props {
   slug: string;
   title: string;
   teaser: string;
-  image: { src: string; width: number; height: number } | null;
+  media: LeadMedia | null;
   inProgress: boolean;
   // Waypoint number along the journey (oldest-first) — only passed on the
   // journey detail page, where the grid shows the whole arc in order and
@@ -19,21 +25,32 @@ interface Props {
   // a recent few posts show (partial, not the full arc).
   step?: number;
 }
-const { slug, title, teaser, image, inProgress, step } = Astro.props;
+const { slug, title, teaser, media, inProgress, step } = Astro.props;
 const tilt = tiltForId(slug);
 ---
 
 <a class="post-thumb" href={withBase(`/posts/${slug}/`)}>
   <div class="post-thumb__img-wrap">
     {
-      image ? (
+      media?.kind === 'image' ? (
         <img
           class="post-thumb__img"
-          src={image.src}
-          width={image.width}
-          height={image.height}
+          src={media.src}
+          width={media.width}
+          height={media.height}
           loading="lazy"
           alt=""
+          style={`transform: rotate(${tilt}deg)`}
+        />
+      ) : media?.kind === 'video' ? (
+        <video
+          class="post-thumb__img post-thumb__video"
+          data-thumb-video
+          src={media.src}
+          muted
+          loop
+          playsinline
+          preload="metadata"
           style={`transform: rotate(${tilt}deg)`}
         />
       ) : (
@@ -50,3 +67,7 @@ const tilt = tiltForId(slug);
     {teaser && <p class="post-thumb__teaser">{teaser}</p>}
   </div>
 </a>
+
+<script>
+  import '../client/thumb-video';
+</script>

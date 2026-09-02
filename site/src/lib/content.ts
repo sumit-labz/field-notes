@@ -9,6 +9,9 @@ import { isLocalMedia, localMediaUrl } from './local-media';
 import { getImageDimensions, getLocalImageDimensions } from './image-dimensions';
 
 const IMAGE_RE = /\.(webp|jpe?g|png|gif|avif)$/i;
+// Video/audio are never uploaded to R2 (see scripts/ingest.py) — a video
+// thumbnail source is always a local repo-committed media/video/ path.
+const VIDEO_RE = /\.(mp4|webm|mov|mkv)$/i;
 
 // A media[] entry is EITHER an R2 object key OR a repo-relative local path
 // (photos from the web inbox's record/upload/paste tool — lib/local-media.ts).
@@ -99,19 +102,34 @@ export function postTeaser(post: Post, maxChars = 170): string {
   return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 }
 
-// The lead image for a single post: the first image-bearing fragment it
-// references, in fragment order. Falls back to null (card renders an empty
-// sheet) rather than failing the build on a stale media key.
-export async function postLeadImage(
+export type LeadMedia =
+  | { kind: 'image'; src: string; width: number; height: number }
+  | { kind: 'video'; src: string };
+
+// The lead media for a single post's thumbnail: the first image- OR
+// video-bearing fragment it references, in fragment order — whichever kind
+// comes first wins, same as a post's fragments already render in listed
+// order. Falls back to null (card renders an empty sheet) rather than
+// failing the build on a stale media key.
+export async function postLeadMedia(
   post: Post,
   fragments: Map<string, Fragment>
-): Promise<{ src: string; width: number; height: number } | null> {
+): Promise<LeadMedia | null> {
   for (const id of post.data.fragments) {
-    const fragment = fragments.get(id);
-    const key = fragment?.data?.media?.find((k) => IMAGE_RE.test(k));
-    if (!key) continue;
-    const image = await resolveImage(key);
-    if (image) return image;
+    const media = fragments.get(id)?.data?.media;
+    if (!media) continue;
+    const imageKey = media.find((k) => IMAGE_RE.test(k));
+    if (imageKey) {
+      const image = await resolveImage(imageKey);
+      if (image) return { kind: 'image', ...image };
+    }
+    const videoKey = media.find((k) => VIDEO_RE.test(k));
+    // Videos are always local (never on R2 — see VIDEO_RE above); a stale/
+    // missing local file just falls through to the next fragment.
+    if (videoKey && isLocalMedia(videoKey)) {
+      const src = localMediaUrl(videoKey);
+      if (src) return { kind: 'video', src };
+    }
   }
   return null;
 }

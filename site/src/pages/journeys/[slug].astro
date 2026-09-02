@@ -6,7 +6,7 @@ import ModeGlyph from '../../components/ModeGlyph.astro';
 import PostThumb from '../../components/PostThumb.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
-import { dateLine, postLeadImage, postTeaser } from '../../lib/content';
+import { dateLine, postLeadMedia, postTeaser } from '../../lib/content';
 
 export async function getStaticPaths() {
   const journeys = await getCollection('journeys');
@@ -41,7 +41,7 @@ const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 const postCards = await Promise.all(
   posts.map(async (post) => ({
     post,
-    image: await postLeadImage(post, fragmentsById),
+    media: await postLeadMedia(post, fragmentsById),
     teaser: postTeaser(post),
   }))
 );
@@ -88,13 +88,13 @@ const postCards = await Promise.all(
   {
     postCards.length > 0 && (
       <div class="post-grid post-grid--sequential">
-        {postCards.map(({ post, image, teaser }, index) => (
+        {postCards.map(({ post, media, teaser }, index) => (
           <PostThumb
             slug={post.data.slug}
             title={post.data.title}
             step={index + 1}
             teaser={teaser}
-            image={image}
+            media={media}
             inProgress={post.data.status === 'in_progress'}
           />
         ))}
