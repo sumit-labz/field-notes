@@ -185,18 +185,15 @@ h2 { font-size: 1.05rem; }
 /* ---- HOMEPAGE journey sections ---- */
 .journey-section { margin: 0 0 2.6rem; }
 .journey-section__head { margin-bottom: 0.9rem; }
-.journey-section__meta {
+.journey-section__obsession {
   font-family: var(--font-structure);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 0.68rem;
-  color: var(--graphite);
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  margin: 0 0 0.25rem;
 }
-.journey-section__meta a { color: var(--graphite); }
+.journey-section__obsession a { color: var(--graphite); }
 .journey-section__title {
   font-family: var(--font-structure);
   font-weight: 600;
@@ -217,6 +214,21 @@ h2 { font-size: 1.05rem; }
   columns: 3 260px;
   column-gap: 1.4rem;
 }
+/* The journey page's own post grid needs to actually read left-to-right,
+   top-to-bottom in order — it's carrying waypoint numbers (see PostThumb's
+   `step`) so the reader feels they're traversing the journey in sequence.
+   CSS columns (used above for the homepage's masonry) fill column-by-column
+   instead, which scrambles that reading order — so this uses a row-major
+   grid instead, sacrificing the irregular masonry look for this one page. */
+.post-grid--sequential {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.4rem;
+}
+/* .post-thumb's own margin-bottom is for masonry stacking (no row-gap
+   there); a grid already spaces rows via `gap`, so drop the redundant
+   margin here or spacing between rows would double up. */
+.post-grid--sequential .post-thumb { margin-bottom: 0; }
 .post-thumb {
   display: inline-block;
   width: 100%;
@@ -226,6 +238,7 @@ h2 { font-size: 1.05rem; }
   background: var(--paper);
   color: var(--ink);
 }
+.post-thumb__img-wrap { position: relative; }
 .post-thumb__img {
   display: block;
   width: 100%;
@@ -235,6 +248,20 @@ h2 { font-size: 1.05rem; }
 }
 /* No image yet: a blank sheet, honest empty space — never placeholder text. */
 .post-thumb__img--empty { background: var(--ground); }
+/* Waypoint number — journey detail page only (the whole arc, in order), so a
+   reader can feel they're stepping through the journey rather than browsing
+   an unordered gallery. */
+.post-thumb__step {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: var(--ground);
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  font-size: 0.68rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+}
 .post-thumb__body { padding: 0.75rem 0.85rem 0.85rem; }
 .post-thumb__title {
   font-family: var(--font-structure);

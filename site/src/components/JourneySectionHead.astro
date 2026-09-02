@@ -1,31 +1,28 @@
 ---
-// site/src/components/JourneyCard.astro
+// site/src/components/JourneySectionHead.astro
 // A journey's section header on the homepage: which Obsession it sits under
-// + its title, both linked independently. The posts themselves render below
-// this, as a grid of PostThumb — see index.astro.
-import ModeGlyph from './ModeGlyph.astro';
+// + its title, both linked independently. Just the obsession name — no path
+// label, no glyph — matching the clean treatment on the journey page itself.
+// The posts render below this, as a grid of PostThumb — see index.astro.
 import JourneyTitle from './JourneyTitle.astro';
 import { withBase } from '../lib/url';
 
 interface Props {
   slug: string;
   title: string;
-  path: 'practice' | 'learn' | 'create';
   status: 'active' | 'paused' | 'abandoned' | 'completed';
   identitySlug: string;
   identityLabel: string;
 }
-const { slug, title, path, status, identitySlug, identityLabel } = Astro.props;
+const { slug, title, status, identitySlug, identityLabel } = Astro.props;
 const journeyHref = withBase(`/journeys/${slug}/`);
 const identityHref = withBase(`/identities/${identitySlug}/`);
 ---
 
 <div class="journey-section__head">
-  <div class="journey-section__meta">
-    <ModeGlyph path={path} size={20} color="var(--graphite)" />
+  <p class="journey-section__obsession">
     <a href={identityHref}>{identityLabel}</a>
-    <span> · {path}</span>
-  </div>
+  </p>
   <h2 class="journey-section__title">
     <a href={journeyHref}>
       <JourneyTitle title={title} status={status} seed={slug} />

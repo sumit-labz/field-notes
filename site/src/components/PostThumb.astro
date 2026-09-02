@@ -13,27 +13,35 @@ interface Props {
   teaser: string;
   image: { src: string; width: number; height: number } | null;
   inProgress: boolean;
+  // Waypoint number along the journey (oldest-first) — only passed on the
+  // journey detail page, where the grid shows the whole arc in order and
+  // should read as steps being traversed, not on the homepage where only
+  // a recent few posts show (partial, not the full arc).
+  step?: number;
 }
-const { slug, title, teaser, image, inProgress } = Astro.props;
+const { slug, title, teaser, image, inProgress, step } = Astro.props;
 const tilt = tiltForId(slug);
 ---
 
 <a class="post-thumb" href={withBase(`/posts/${slug}/`)}>
-  {
-    image ? (
-      <img
-        class="post-thumb__img"
-        src={image.src}
-        width={image.width}
-        height={image.height}
-        loading="lazy"
-        alt=""
-        style={`transform: rotate(${tilt}deg)`}
-      />
-    ) : (
-      <div class="post-thumb__img post-thumb__img--empty" />
-    )
-  }
+  <div class="post-thumb__img-wrap">
+    {
+      image ? (
+        <img
+          class="post-thumb__img"
+          src={image.src}
+          width={image.width}
+          height={image.height}
+          loading="lazy"
+          alt=""
+          style={`transform: rotate(${tilt}deg)`}
+        />
+      ) : (
+        <div class="post-thumb__img post-thumb__img--empty" />
+      )
+    }
+    {step && <span class="post-thumb__step font-mono">{String(step).padStart(2, '0')}</span>}
+  </div>
   <div class="post-thumb__body">
     <p class="post-thumb__title">
       {title}

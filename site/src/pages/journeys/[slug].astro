@@ -87,11 +87,12 @@ const postCards = await Promise.all(
   <p class="meta">{posts.length} posts · {fragmentCount} fragments</p>
   {
     postCards.length > 0 && (
-      <div class="post-grid">
-        {postCards.map(({ post, image, teaser }) => (
+      <div class="post-grid post-grid--sequential">
+        {postCards.map(({ post, image, teaser }, index) => (
           <PostThumb
             slug={post.data.slug}
             title={post.data.title}
+            step={index + 1}
             teaser={teaser}
             image={image}
             inProgress={post.data.status === 'in_progress'}

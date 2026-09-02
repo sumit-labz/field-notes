@@ -79,7 +79,6 @@ const sections = await Promise.all(
         <JourneySectionHead
           slug={journey.data.slug}
           title={journey.data.title}
-          path={journey.data.path}
           status={journey.data.status}
           identitySlug={journey.data.identity}
           identityLabel={identityTitle.get(journey.data.identity) ?? journey.data.identity}
