@@ -1,22 +1,26 @@
 ---
-// / — terms → journeys, most-recently-active first, each showing its
-// newest post. The homepage IS the journeys list now; there is no separate
-// flat post-by-post feed below it (see the Phase 2 homepage redesign).
+// / — journeys, most-recently-active first, each as a section: its Obsession
+// + title as a header, then a capped grid of its own most recent posts as
+// medium thumbnails with a short teaser. Gives the visitor something to
+// actually read, not just one card per journey (see the Phase 2 homepage
+// redesign — this replaced an earlier one-card-per-journey layout).
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
-import JourneyCard from '../components/JourneyCard.astro';
+import JourneySectionHead from '../components/JourneySectionHead.astro';
+import PostThumb from '../components/PostThumb.astro';
 import {
   journeyLastActivity,
   journeyLeadLine,
-  journeyLeadImage,
-  journeyLeadPost,
-  postExcerpt,
+  postsForJourney,
+  postLeadImage,
+  postTeaser,
 } from '../lib/content';
 
-// Homepage curation: only the most recently active journeys, capped so the
-// page stays a short, scannable list rather than growing without bound as
-// the archive does.
+// Homepage curation: only the most recently active journeys, and only the
+// most recent few posts per journey, so the page stays a bounded, scannable
+// stream rather than growing without limit as the archive does.
 const MAX_JOURNEYS = 6;
+const POSTS_PER_JOURNEY = 3;
 
 const identityEntries = await getCollection('identities');
 const identityTitle = new Map(
@@ -28,9 +32,9 @@ const posts = await getCollection('posts');
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 
-// Every journey gets one slot regardless of path — a daily practice journey
-// no longer dominates the page the way it would in a post-by-post feed; it
-// just occupies its one slot and moves to the top when it's active.
+// Every journey gets ranked regardless of path — a daily practice journey no
+// longer dominates the page the way it would in a flat post-by-post feed; it
+// just occupies its one section and moves to the top when it's active.
 const ranked = journeys
   .slice()
   .sort(
@@ -39,18 +43,25 @@ const ranked = journeys
   )
   .slice(0, MAX_JOURNEYS);
 
-const cards = await Promise.all(
+const sections = await Promise.all(
   ranked.map(async (journey) => {
-    const leadPost = journeyLeadPost(journey, posts);
+    const journeyPosts = postsForJourney(journey, posts, {
+      limit: POSTS_PER_JOURNEY,
+      order: 'newest',
+    });
+    const postCards = await Promise.all(
+      journeyPosts.map(async (post) => ({
+        post,
+        image: await postLeadImage(post, fragmentsById),
+        teaser: postTeaser(post),
+      }))
+    );
     return {
       journey,
-      image: await journeyLeadImage(journey, posts, fragmentsById),
-      postTitle: leadPost?.data.title ?? null,
-      postSlug: leadPost?.data.slug ?? null,
-      postInProgress: leadPost?.data.status === 'in_progress',
-      // No post yet: fall back to the journey's own opening line so a brand
-      // new journey isn't a blank card.
-      line: leadPost ? postExcerpt(leadPost) : journeyLeadLine(journey),
+      postCards,
+      // No posts yet: fall back to the journey's own opening line so a
+      // brand new journey still shows up as something, not an empty section.
+      emptyLine: journeyPosts.length === 0 ? journeyLeadLine(journey) : null,
     };
   })
 );
@@ -62,24 +73,33 @@ const cards = await Promise.all(
     <span class="q">Some of it goes nowhere.</span>
   </p>
 
-  <p class="section-label">journeys</p>
-  <div class="cards">
-    {
-      cards.map(({ journey, image, postTitle, postSlug, postInProgress, line }) => (
-        <JourneyCard
+  {
+    sections.map(({ journey, postCards, emptyLine }) => (
+      <section class="journey-section">
+        <JourneySectionHead
           slug={journey.data.slug}
           title={journey.data.title}
           path={journey.data.path}
           status={journey.data.status}
           identitySlug={journey.data.identity}
           identityLabel={identityTitle.get(journey.data.identity) ?? journey.data.identity}
-          image={image}
-          postTitle={postTitle}
-          postSlug={postSlug}
-          postInProgress={postInProgress}
-          line={line}
         />
-      ))
-    }
-  </div>
+        {postCards.length > 0 ? (
+          <div class="post-grid">
+            {postCards.map(({ post, image, teaser }) => (
+              <PostThumb
+                slug={post.data.slug}
+                title={post.data.title}
+                teaser={teaser}
+                image={image}
+                inProgress={post.data.status === 'in_progress'}
+              />
+            ))}
+          </div>
+        ) : (
+          <p class="journey-section__empty">{emptyLine}</p>
+        )}
+      </section>
+    ))
+  }
 </Base>

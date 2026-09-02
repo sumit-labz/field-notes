@@ -32,9 +32,10 @@ type Journey = CollectionEntry<'journeys'>;
 type Post = CollectionEntry<'posts'>;
 type Fragment = CollectionEntry<'fragments'>;
 
-// Ordering signal for the homepage hero: the most recent post in a journey,
-// else when the journey itself started. Practice-path journeys are handled by
-// the caller (excluded from the hero, shown on Obsession pages + feed).
+// Ordering signal for the homepage: the most recent post in a journey, else
+// when the journey itself started. Every journey (any path) ranks by this —
+// a journey occupies one slot regardless of how often it's posted to, so
+// there's no reason to exclude any path from the ranking.
 export function journeyLastActivity(journey: Journey, posts: Post[]): Date {
   const postDates = posts
     .filter((p) => p.data.journey === journey.data.slug)
@@ -56,21 +57,26 @@ export function journeyLeadLine(journey: Journey): string {
   return firstLine ?? '';
 }
 
-// The journey's newest post (by published date) — the homepage card leads
-// with THIS post's title + excerpt rather than the journey's own opening
-// note, so the card reflects what's actually new and a long opening note no
-// longer dominates it. Null when the journey has no posts yet.
-export function journeyLeadPost(journey: Journey, posts: Post[]): Post | null {
-  return (
-    posts
-      .filter((p) => p.data.journey === journey.data.slug)
-      .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf())[0] ?? null
-  );
+// A journey's posts, newest-or-oldest first, optionally capped. Homepage
+// sections want newest-first + a per-journey cap (discovery: what's fresh);
+// the journey detail page wants all of them oldest-first (reading the arc
+// from the start) — see SPEC.md's "/journeys/[slug] — posts oldest-first".
+export function postsForJourney(
+  journey: Journey,
+  posts: Post[],
+  opts: { limit?: number; order?: 'newest' | 'oldest' } = {}
+): Post[] {
+  const { limit, order = 'newest' } = opts;
+  const sign = order === 'newest' ? -1 : 1;
+  const sorted = posts
+    .filter((p) => p.data.journey === journey.data.slug)
+    .sort((a, b) => sign * (a.data.published.valueOf() - b.data.published.valueOf()));
+  return limit ? sorted.slice(0, limit) : sorted;
 }
 
-// Plain-text first line of a post's body, for the card excerpt — strips
-// fragment markers ({{fragment:ID}}) and light markdown emphasis so it reads
-// as prose rather than markup. Empty for a fragments-only post with no body.
+// Plain-text first line of a post's body, for its card — strips fragment
+// markers ({{fragment:ID}}) and light markdown emphasis so it reads as prose
+// rather than markup. Empty for a fragments-only post with no body.
 export function postExcerpt(post: Post): string {
   const withoutMarkers = post.body?.replace(/\{\{fragment:[a-zA-Z0-9-]+\}\}/g, ' ') ?? '';
   const firstBlock =
@@ -81,34 +87,21 @@ export function postExcerpt(post: Post): string {
   return firstBlock.replace(/[*_`]/g, '');
 }
 
-// The lead image for a card: the first media-bearing fragment of the journey's
-// newest post, tilted deterministically on render. Falls back to null (card
-// renders an empty sheet) rather than failing the homepage on a stale media
-// key — post pages still fail loudly via the Fragment component.
-export async function journeyLeadImage(
-  journey: Journey,
-  posts: Post[],
-  fragments: Map<string, Fragment>
-): Promise<{ src: string; width: number; height: number } | null> {
-  const newest = posts
-    .filter((p) => p.data.journey === journey.data.slug)
-    .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf())[0];
-  if (!newest) return null;
-
-  for (const id of newest.data.fragments) {
-    const fragment = fragments.get(id);
-    const key = fragment?.data?.media?.find((k) => IMAGE_RE.test(k));
-    if (!key) continue;
-    const image = await resolveImage(key);
-    if (image) return image;
-    // media gone from R2/repo — try the next fragment, admit a placeholder
-  }
-  return null;
+// A short teaser (2-3 lines) from the post's excerpt, for the homepage grid —
+// a full first paragraph reads as a wall of text and gives away the post
+// rather than pulling the reader in. Cuts at the last whole word before
+// maxChars, never mid-word.
+export function postTeaser(post: Post, maxChars = 170): string {
+  const excerpt = postExcerpt(post);
+  if (excerpt.length <= maxChars) return excerpt;
+  const cut = excerpt.slice(0, maxChars);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
 }
 
 // The lead image for a single post: the first image-bearing fragment it
-// references, in fragment order. Same fallback contract as journeyLeadImage —
-// null on a stale/missing key, never a failed build.
+// references, in fragment order. Falls back to null (card renders an empty
+// sheet) rather than failing the build on a stale media key.
 export async function postLeadImage(
   post: Post,
   fragments: Map<string, Fragment>

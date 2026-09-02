@@ -1,0 +1,44 @@
+---
+// site/src/components/PostThumb.astro
+// One post, shown as a medium thumbnail + title + a short teaser (not the
+// full excerpt) — used both on the homepage (grouped under a journey) and
+// on the journey detail page's post grid. A single destination (the post),
+// so this is a plain wrapping <a>, unlike JourneyCard.
+import { withBase } from '../lib/url';
+import { tiltForId } from '../lib/rotation';
+
+interface Props {
+  slug: string;
+  title: string;
+  teaser: string;
+  image: { src: string; width: number; height: number } | null;
+  inProgress: boolean;
+}
+const { slug, title, teaser, image, inProgress } = Astro.props;
+const tilt = tiltForId(slug);
+---
+
+<a class="post-thumb" href={withBase(`/posts/${slug}/`)}>
+  {
+    image ? (
+      <img
+        class="post-thumb__img"
+        src={image.src}
+        width={image.width}
+        height={image.height}
+        loading="lazy"
+        alt=""
+        style={`transform: rotate(${tilt}deg)`}
+      />
+    ) : (
+      <div class="post-thumb__img post-thumb__img--empty" />
+    )
+  }
+  <div class="post-thumb__body">
+    <p class="post-thumb__title">
+      {title}
+      {inProgress && <span class="inprogress">in progress</span>}
+    </p>
+    {teaser && <p class="post-thumb__teaser">{teaser}</p>}
+  </div>
+</a>

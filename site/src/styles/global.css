@@ -182,68 +182,75 @@ h2 { font-size: 1.05rem; }
   margin: 2.5rem 0 0.9rem;
 }
 
-/* journey cards — hero proportion, learn/create only, no motion */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1.4rem;
-}
-.card {
-  border: 1px solid var(--ink);
-  background: var(--paper);
-  display: block;
-  color: var(--ink);
-}
-/* No longer a single wrapping <a> — obsession, journey, and post each link
-   independently, so only the specific <a> underlines on hover. */
-.card-photo-link { display: block; }
-.card-photo {
-  display: block;
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  border-bottom: 1px solid var(--ink);
-}
-/* No image yet: a blank sheet, honest empty space — never placeholder text. */
-.card-photo--empty {
-  height: 180px;
-  background: var(--ground);
-  border-bottom: 1px solid var(--ink);
-}
-.card__body { padding: 0.85rem 0.95rem 0.95rem; }
-.card__identity {
+/* ---- HOMEPAGE journey sections ---- */
+.journey-section { margin: 0 0 2.6rem; }
+.journey-section__head { margin-bottom: 0.9rem; }
+.journey-section__meta {
   font-family: var(--font-structure);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 0.6rem;
+  font-size: 0.68rem;
   color: var(--graphite);
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.25rem;
 }
-.card__identity a { color: var(--graphite); }
-.card__title {
+.journey-section__meta a { color: var(--graphite); }
+.journey-section__title {
   font-family: var(--font-structure);
   font-weight: 600;
-  font-size: 1.08rem;
-  line-height: 1.15;
-  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  line-height: 1.2;
+  margin: 0;
 }
-.card__title a { color: var(--ink); }
-.card__post {
-  font-family: var(--font-body);
-  font-size: 0.92rem;
-  line-height: 1.3;
-  margin: 0 0 0.35rem;
-}
-.card__line {
+.journey-section__title a { color: var(--ink); }
+.journey-section__empty {
   font-family: var(--font-annotation);
-  font-size: 1.15rem;
-  line-height: 1.3;
+  font-size: 1.2rem;
   color: var(--graphite);
   margin: 0;
 }
+
+/* ---- POST THUMBNAILS — medium, teaser text, irregular grid ---- */
+.post-grid {
+  columns: 3 260px;
+  column-gap: 1.4rem;
+}
+.post-thumb {
+  display: inline-block;
+  width: 100%;
+  break-inside: avoid;
+  margin: 0 0 1.4rem;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+}
+.post-thumb__img {
+  display: block;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--ink);
+}
+/* No image yet: a blank sheet, honest empty space — never placeholder text. */
+.post-thumb__img--empty { background: var(--ground); }
+.post-thumb__body { padding: 0.75rem 0.85rem 0.85rem; }
+.post-thumb__title {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.2;
+  margin: 0 0 0.4rem;
+}
+.post-thumb__teaser {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--graphite);
+  margin: 0;
+}
+@media (max-width: 720px) { .post-grid { columns: 1 auto; } }
 
 /* ---- OBSESSION (identity) streams ---- */
 .streams {

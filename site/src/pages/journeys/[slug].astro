@@ -3,9 +3,10 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
 import ModeGlyph from '../../components/ModeGlyph.astro';
+import PostThumb from '../../components/PostThumb.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
-import { dateLine } from '../../lib/content';
+import { dateLine, postLeadImage, postTeaser } from '../../lib/content';
 
 export async function getStaticPaths() {
   const journeys = await getCollection('journeys');
@@ -34,6 +35,16 @@ const posts = allPosts
   .filter((p) => p.data.journey === data.slug)
   .sort((a, b) => a.data.published.valueOf() - b.data.published.valueOf());
 const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.length, 0);
+
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+const postCards = await Promise.all(
+  posts.map(async (post) => ({
+    post,
+    image: await postLeadImage(post, fragmentsById),
+    teaser: postTeaser(post),
+  }))
+);
 ---
 
 <Base title={data.title}>
@@ -74,14 +85,19 @@ const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.
 
   <h2>Posts</h2>
   <p class="meta">{posts.length} posts · {fragmentCount} fragments</p>
-  <ul>
-    {
-      posts.map((post) => (
-        <li>
-          <a href={withBase(`/posts/${post.data.slug}/`)}>{post.data.title}</a>
-          <span class="meta"> · {dateLine(post.data.published)}</span>
-        </li>
-      ))
-    }
-  </ul>
+  {
+    postCards.length > 0 && (
+      <div class="post-grid">
+        {postCards.map(({ post, image, teaser }) => (
+          <PostThumb
+            slug={post.data.slug}
+            title={post.data.title}
+            teaser={teaser}
+            image={image}
+            inProgress={post.data.status === 'in_progress'}
+          />
+        ))}
+      </div>
+    )
+  }
 </Base>
