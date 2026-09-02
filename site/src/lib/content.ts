@@ -35,6 +35,16 @@ type Journey = CollectionEntry<'journeys'>;
 type Post = CollectionEntry<'posts'>;
 type Fragment = CollectionEntry<'fragments'>;
 
+// The key to actually render for a fragment's media[index] — the graded copy
+// if that photo has one, else the untouched original. media[] itself is
+// never rewritten by grading (see content/config.ts's `graded` field docs),
+// so this is the one place that decides which of the two wins; every
+// caller that resolves a fragment's photo should go through this rather
+// than reading media[index] directly.
+export function gradedOrOriginal(fragment: Fragment, index: number): string {
+  return fragment.data.graded?.[String(index)] ?? fragment.data.media![index];
+}
+
 // Ordering signal for the homepage: the most recent post in a journey, else
 // when the journey itself started. Every journey (any path) ranks by this —
 // a journey occupies one slot regardless of how often it's posted to, so
@@ -116,16 +126,18 @@ export async function postLeadMedia(
   fragments: Map<string, Fragment>
 ): Promise<LeadMedia | null> {
   for (const id of post.data.fragments) {
-    const media = fragments.get(id)?.data?.media;
-    if (!media) continue;
-    const imageKey = media.find((k) => IMAGE_RE.test(k));
-    if (imageKey) {
-      const image = await resolveImage(imageKey);
+    const fragment = fragments.get(id);
+    const media = fragment?.data?.media;
+    if (!fragment || !media) continue;
+    const imageIndex = media.findIndex((k) => IMAGE_RE.test(k));
+    if (imageIndex !== -1) {
+      const image = await resolveImage(gradedOrOriginal(fragment, imageIndex));
       if (image) return { kind: 'image', ...image };
     }
     const videoKey = media.find((k) => VIDEO_RE.test(k));
     // Videos are always local (never on R2 — see VIDEO_RE above); a stale/
-    // missing local file just falls through to the next fragment.
+    // missing local file just falls through to the next fragment. Grading
+    // only applies to photos, so no gradedOrOriginal() lookup needed here.
     if (videoKey && isLocalMedia(videoKey)) {
       const src = localMediaUrl(videoKey);
       if (src) return { kind: 'video', src };

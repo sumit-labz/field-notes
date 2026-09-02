@@ -1,28 +1,38 @@
 #!/usr/bin/env python3
-"""Bake a cinematic color grade into a fragment's photo.
+"""Bake a cinematic color grade into a fragment's photo — non-destructively.
 
 Usage:
     python scripts/apply_cinematic_grade.py <fragment-id> <media-index> <preset> [--no-push] [--json]
 
-preset is one of: muted, teal_orange, noir, grayscale, vivid, sketch (see
-PRESETS below).
+preset is one of: muted, teal_orange, noir, grayscale, vivid, sketch, or the
+special value "original" (see PRESETS and REVERT below).
 
 Invoked one-click from the internal fragment inbox (site/src/dev/
 openrouter-plugin.mjs -> POST /api/apply-grade), which shows a live CSS-filter
 preview first — this script is only run once the maintainer accepts a preset,
 and it is what actually changes the stored image.
 
-R2 photos: uploaded under a NEW key (never the same one twice) and the
-fragment file's media[] entry is updated to point at it, then committed and
-pushed — overwriting the same key left old cached bytes visible at that URL
-indefinitely for anyone who'd already loaded it (browser cache, any CDN in
-front of R2), since a PUT to an existing key doesn't reliably invalidate
-those. The old object is deleted afterwards (best-effort cleanup).
+media[media_index] in the fragment's frontmatter is the ORIGINAL and this
+script never touches it. Grading instead maintains a separate "graded" map in
+the frontmatter (see site/src/content/config.ts) pointing each graded photo's
+index at a derived copy; a preset always grades fresh from the untouched
+original, uploads the result under a brand-new key (never the same key
+twice — see graded_key_for), deletes whichever graded copy previously existed
+for that index (independent of git succeeding — pure storage housekeeping),
+and updates the map. "original" (preset="original") reverts: it removes the
+index's map entry and deletes its graded copy, so rendering falls back to the
+untouched media[index] — nothing is ever re-derived FROM a graded copy, only
+ever from the true original, so repeated grading/reverting never compounds
+quality loss or drifts from what was actually captured.
 
-Local media/photo/ files: overwritten in place and committed — a local dev
-path doesn't have the same caching exposure. There is no undo either way: the
-original bytes are gone once this runs; only git history keeps the fragment
-file's own edit (the media path swap), not the image bytes themselves.
+The new-key-per-grade behavior matters even with the original preserved:
+overwriting the same key for the graded copy would have the identical stale-
+cache problem this whole design avoids for the original — any client that
+already loaded that URL keeps serving its own cached bytes indefinitely.
+
+Local media/photo/ files get the same treatment (a derived path, original
+untouched) for consistency, even though a local dev path doesn't have the
+same caching exposure.
 
 Reuses ingest.py's R2 client and delete_fragment.py's fragment-lookup helpers,
 same pattern as the other one-off maintenance scripts in this directory.
@@ -33,6 +43,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import re
 import sys
 import time
 
@@ -116,6 +127,9 @@ PRESETS = {
     "sketch": _sketch,
 }
 
+# Not a real grade — see REVERT handling in apply_grade().
+REVERT = "original"
+
 
 def grade_bytes(data: bytes, preset: str) -> bytes:
     fn = PRESETS.get(preset)
@@ -130,34 +144,67 @@ def grade_bytes(data: bytes, preset: str) -> bytes:
         return buffer.getvalue()
 
 
-def versioned_key(key: str, preset: str) -> str:
-    """A new R2 key for the graded bytes — never the same key twice, so
-    nothing (browser cache, any CDN in front of R2) can serve stale bytes for
-    a URL that used to point at the un-graded photo. Overwriting the SAME key
-    looked like it worked (the object really is updated), but any client that
-    already had that exact URL cached — including a plain page reload, no
-    special action needed — kept showing the old image indefinitely, since
-    the URL itself never changed."""
-    dot = key.rfind(".")
-    stem, ext = (key[:dot], key[dot:]) if dot != -1 else (key, "")
+def graded_key_for(original_key: str, preset: str) -> str:
+    """A new key for a graded copy — never the same key twice (name + preset
+    + timestamp), so nothing (browser cache, any CDN) can serve stale bytes
+    for a URL that used to point at a different grade. Works for both an R2
+    key and a local media/photo/ path — it's a plain string transform,
+    doesn't care which."""
+    dot = original_key.rfind(".")
+    stem, ext = (original_key[:dot], original_key[dot:]) if dot != -1 else (original_key, "")
     return f"{stem}-{preset}-{int(time.time())}{ext}"
 
 
-def update_fragment_media_key(fragment_path, old_key: str, new_key: str) -> None:
-    """Point the fragment's media[] entry at the new key. A plain text
-    replace, not a YAML re-serialize — the media key is a unique URL-like
-    string, so an exact-match replace can't clobber anything else in the file
-    and leaves formatting/comments/everything else untouched."""
-    text = fragment_path.read_text(encoding="utf-8")
-    marker = f"- {old_key}"
-    replacement = f"- {new_key}"
-    if marker not in text:
-        raise IngestError(f"could not find media entry {old_key!r} in {fragment_path} to update")
-    fragment_path.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
+# --- the `graded:` frontmatter block: { media[] index (as a string) -> graded
+# key }. Parsed/written via targeted text surgery, not a full YAML
+# round-trip, so every OTHER field's exact formatting (captured_at's
+# timezone offset, unquoted nulls, etc. — see ingest.py's render_fragment)
+# is left completely untouched. ---
+GRADED_BLOCK_RE = re.compile(r'^graded:\n((?:  "\d+": .+\n)*)', re.M)
+MEDIA_BLOCK_RE = re.compile(r'^media:\n(?:  - .+\n)*', re.M)
 
 
-def commit_and_push_local(rel_path: str, fragment_id: str, preset: str, no_push: bool) -> bool:
-    run_git(["add", rel_path])
+def read_graded_map(text: str) -> dict[int, str]:
+    m = GRADED_BLOCK_RE.search(text)
+    if not m:
+        return {}
+    result: dict[int, str] = {}
+    for line in m.group(1).splitlines():
+        entry = re.match(r'^  "(\d+)": (.+)$', line)
+        if entry:
+            result[int(entry.group(1))] = entry.group(2)
+    return result
+
+
+def write_graded_entry(text: str, index: int, new_key: str | None) -> str:
+    """Set (new_key given) or clear (new_key=None, i.e. revert) the graded[]
+    entry for this media index. Inserts a graded: block right after media:
+    if none exists yet; removes the whole block if the last entry is cleared."""
+    current = read_graded_map(text)
+    if new_key is None:
+        current.pop(index, None)
+    else:
+        current[index] = new_key
+
+    new_body = "".join(f'  "{i}": {k}\n' for i, k in sorted(current.items()))
+    m = GRADED_BLOCK_RE.search(text)
+
+    if m:
+        if new_body:
+            return text[: m.start(1)] + new_body + text[m.end(1) :]
+        return text[: m.start()] + text[m.end() :]  # last entry cleared — drop the whole block
+
+    if not new_body:
+        return text  # nothing to add, nothing existed
+    mm = MEDIA_BLOCK_RE.search(text)
+    if not mm:
+        raise IngestError("fragment has no media: block to anchor a new graded: block after")
+    return text[: mm.end()] + "graded:\n" + new_body + text[mm.end() :]
+
+
+def commit_and_push(add_paths: list[str], fragment_id: str, preset: str, no_push: bool) -> bool:
+    if add_paths:
+        run_git(["add", *add_paths])
     run_git(["commit", "-m", f"grade: {preset} on {fragment_id}"])
     if no_push:
         return False
@@ -172,6 +219,24 @@ def commit_and_push_local(rel_path: str, fragment_id: str, preset: str, no_push:
     return True
 
 
+def delete_derived_copy(key: str) -> None:
+    """Best-effort cleanup of a graded copy that's about to be replaced or
+    removed — deliberately independent of git succeeding (pure storage
+    housekeeping) and non-fatal (delete failing just orphans some storage,
+    it was never the source of truth)."""
+    if key.startswith("media/"):
+        result = git(["rm", "-f", "--", key])
+        if result.returncode != 0:
+            log(f"could not remove old local graded file {key} (harmless): {result.stderr.strip()}")
+        return
+    config = r2_config_from_env()
+    client = ingest.r2_client(config)
+    try:
+        client.delete_object(Bucket=config.r2_bucket, Key=key)
+    except Exception as exc:  # noqa: BLE001
+        log(f"could not delete old R2 graded object {key} (harmless): {redact_secrets(str(exc))}")
+
+
 def apply_grade(fragment_id: str, media_index: int, preset: str, no_push: bool) -> dict:
     fragment_path = find_fragment_file(fragment_id)
     frontmatter = parse_frontmatter(fragment_path)
@@ -179,60 +244,83 @@ def apply_grade(fragment_id: str, media_index: int, preset: str, no_push: bool) 
     if not (0 <= media_index < len(media)):
         raise IngestError(f"fragment {fragment_id} has no media[{media_index}] (media has {len(media)} entries)")
 
-    key = str(media[media_index])
-    if not key.lower().endswith((".webp", ".jpg", ".jpeg", ".png")):
-        raise IngestError(f"media[{media_index}] ({key}) doesn't look like a photo")
+    original_key = str(media[media_index])
+    if not original_key.lower().endswith((".webp", ".jpg", ".jpeg", ".png")):
+        raise IngestError(f"media[{media_index}] ({original_key}) doesn't look like a photo")
 
-    is_local = key.startswith("media/")
+    is_local = original_key.startswith("media/")
+    text = fragment_path.read_text(encoding="utf-8")
+    current_graded = read_graded_map(text).get(media_index)
 
-    if is_local:
-        abs_path = REPO_ROOT / key
-        if not abs_path.exists():
-            raise IngestError(f"local media file missing: {key}")
-        original = abs_path.read_bytes()
-        graded = grade_bytes(original, preset)
-        abs_path.write_bytes(graded)
-        pushed = commit_and_push_local(key, fragment_id, preset, no_push)
+    if preset == REVERT:
+        if current_graded is None:
+            # Nothing to revert — already showing the original.
+            return {
+                "ok": True,
+                "id": fragment_id,
+                "media_index": media_index,
+                "preset": REVERT,
+                "key": original_key,
+                "location": "local" if is_local else "r2",
+                "committed": False,
+                "pushed": False,
+                "reverted": False,
+            }
+        delete_derived_copy(current_graded)
+        new_text = write_graded_entry(text, media_index, None)
+        fragment_path.write_text(new_text, encoding="utf-8")
+        fragment_rel = str(fragment_path.relative_to(REPO_ROOT)).replace("\\", "/")
+        pushed = commit_and_push([fragment_rel], fragment_id, "revert", no_push)
         return {
             "ok": True,
             "id": fragment_id,
             "media_index": media_index,
-            "preset": preset,
-            "key": key,
-            "location": "local",
+            "preset": REVERT,
+            "key": original_key,
+            "location": "local" if is_local else "r2",
             "committed": True,
             "pushed": pushed,
+            "reverted": True,
         }
 
-    config = r2_config_from_env()
-    client = ingest.r2_client(config)
-    try:
-        original = client.get_object(Bucket=config.r2_bucket, Key=key)["Body"].read()
-    except Exception as exc:  # noqa: BLE001
-        raise IngestError(f"failed to download {key} from R2: {redact_secrets(str(exc))}") from exc
+    # A real preset: always grade fresh FROM THE UNTOUCHED ORIGINAL (never
+    # from whatever copy happens to be currently graded) — so switching
+    # presets, or grading/reverting repeatedly, never compounds quality loss
+    # or drifts from what was actually captured.
+    if is_local:
+        abs_path = REPO_ROOT / original_key
+        if not abs_path.exists():
+            raise IngestError(f"local media file missing: {original_key}")
+        original_bytes = abs_path.read_bytes()
+    else:
+        config = r2_config_from_env()
+        client = ingest.r2_client(config)
+        try:
+            original_bytes = client.get_object(Bucket=config.r2_bucket, Key=original_key)["Body"].read()
+        except Exception as exc:  # noqa: BLE001
+            raise IngestError(f"failed to download {original_key} from R2: {redact_secrets(str(exc))}") from exc
 
-    graded = grade_bytes(original, preset)
-    new_key = versioned_key(key, preset)
-    ingest.upload_to_r2(client, config, new_key, graded)
+    graded_bytes = grade_bytes(original_bytes, preset)
+    new_key = graded_key_for(original_key, preset)
 
-    # Best-effort cleanup of the now-unreferenced old key. Deliberately BEFORE
-    # the git commit/push below and independent of whether that succeeds —
-    # this is pure R2 housekeeping, unrelated to git. A push can fail for
-    # reasons that have nothing to do with the grade itself (no upstream
-    # configured, a transient network blip); the old key would otherwise sit
-    # around orphaned until the maintainer noticed, for no good reason. Not
-    # fatal if the delete itself fails — delete_object is idempotent anyway.
-    try:
-        client.delete_object(Bucket=config.r2_bucket, Key=key)
-    except Exception as exc:  # noqa: BLE001
-        log(f"could not delete old R2 object {key} (harmless, just orphaned storage): {redact_secrets(str(exc))}")
+    if is_local:
+        new_path = REPO_ROOT / new_key
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_path.write_bytes(graded_bytes)
+    else:
+        config = r2_config_from_env()
+        client = ingest.r2_client(config)
+        ingest.upload_to_r2(client, config, new_key, graded_bytes)
 
-    # The fragment file must record the NEW key — everything that renders
-    # this photo (the inbox, a public-site rebuild, `mediaUrl()`) reads the
-    # key from here, not from R2 directly.
-    update_fragment_media_key(fragment_path, key, new_key)
+    if current_graded:
+        delete_derived_copy(current_graded)
+
+    new_text = write_graded_entry(text, media_index, new_key)
+    fragment_path.write_text(new_text, encoding="utf-8")
     fragment_rel = str(fragment_path.relative_to(REPO_ROOT)).replace("\\", "/")
-    pushed = commit_and_push_local(fragment_rel, fragment_id, preset, no_push)
+
+    add_paths = [fragment_rel] + ([new_key] if is_local else [])
+    pushed = commit_and_push(add_paths, fragment_id, preset, no_push)
 
     return {
         "ok": True,
@@ -240,19 +328,20 @@ def apply_grade(fragment_id: str, media_index: int, preset: str, no_push: bool) 
         "media_index": media_index,
         "preset": preset,
         "key": new_key,
-        "old_key": key,
-        "location": "r2",
+        "old_graded_key": current_graded,
+        "original_key": original_key,
+        "location": "local" if is_local else "r2",
         "committed": True,
         "pushed": pushed,
     }
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Bake a cinematic color grade into a fragment's photo, in place.")
+    parser = argparse.ArgumentParser(description="Bake a cinematic color grade into a fragment's photo, non-destructively.")
     parser.add_argument("fragment_id")
     parser.add_argument("media_index", type=int)
-    parser.add_argument("preset", choices=sorted(PRESETS))
-    parser.add_argument("--no-push", action="store_true", help="commit locally but do not push (local media only)")
+    parser.add_argument("preset", choices=sorted(PRESETS) + [REVERT])
+    parser.add_argument("--no-push", action="store_true", help="commit locally but do not push")
     parser.add_argument("--json", action="store_true", help="print the result as JSON on stdout")
     args = parser.parse_args()
 

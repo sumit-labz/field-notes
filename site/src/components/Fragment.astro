@@ -5,6 +5,7 @@ import { tiltForId } from '../lib/rotation';
 import { mediaUrl } from '../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../lib/local-media';
 import { getImageDimensions, getLocalImageDimensions } from '../lib/image-dimensions';
+import { gradedOrOriginal } from '../lib/content';
 
 interface Props {
   fragment: CollectionEntry<'fragments'>;
@@ -19,11 +20,16 @@ const caption = body?.trim() ?? '';
 // yet — only image keys are rendered here. An image key is EITHER an R2
 // object key (most photos) OR a repo-relative local path (photos captured via
 // the web inbox's record/upload/paste tool — see lib/local-media.ts).
-const imageKeys = (data.media ?? []).filter((key) => /\.(webp|jpe?g|png|gif|avif)$/i.test(key));
+const imageIndexes = (data.media ?? [])
+  .map((k, i) => (/\.(webp|jpe?g|png|gif|avif)$/i.test(k) ? i : -1))
+  .filter((i) => i !== -1);
 
 const photos = (
   await Promise.all(
-    imageKeys.map(async (key) => {
+    imageIndexes.map(async (index) => {
+      // A graded copy (if this photo has one) always wins over the
+      // original — see content/config.ts's `graded` field.
+      const key = gradedOrOriginal(fragment, index);
       try {
         if (isLocalMedia(key)) {
           const src = localMediaUrl(key);

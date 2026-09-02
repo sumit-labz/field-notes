@@ -20,6 +20,18 @@ const fragments = defineCollection({
     // apart by the "media/" prefix — see lib/local-media.ts. Video/audio are
     // committed to the repo, not uploaded to R2 (see scripts/ingest.py).
     media: z.array(z.string()).optional(),
+    // Cinematic color grading (the internal inbox's preset buttons) NEVER
+    // touches an entry in media[] above — that stays the original, forever.
+    // Grading instead maintains a separate derived copy per photo and keeps
+    // this map pointing at whichever one is current; a key here is the
+    // STRING index into media[] (YAML/JSON object keys are always strings)
+    // whose original that graded copy was made from. An index absent from
+    // this map means that photo has never been graded — render media[] as
+    // usual. "Revert to original" is simply removing that photo's entry
+    // here; the graded R2 copy itself gets a new key every time a preset is
+    // (re-)applied, specifically so old copies never linger at a URL a
+    // browser or CDN might have cached — see scripts/apply_cinematic_grade.py.
+    graded: z.record(z.string()).optional(),
     journey: z.string().nullable(),
     spark: z.boolean(),
     consumed_by: z.string().nullable(),
