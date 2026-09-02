@@ -831,6 +831,23 @@ export function openrouterDevPlugin() {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }
       });
+
+      // Auto-fetch once on `npm run dev` start: the same remote-dispatch +
+      // pull as the inbox's "pull latest" button, so anything captured since
+      // the last run (fragments, marginalia) is already local when the dev
+      // server comes up, without a manual click. Fire-and-forget — must
+      // never block or delay server start.
+      fetchFromTelegram()
+        .then((result) => {
+          if (result.ok) {
+            console.log('[telegram] auto-fetch on dev start: up to date');
+          } else {
+            console.warn(`[telegram] auto-fetch on dev start skipped: ${result.error}`);
+          }
+        })
+        .catch((err) => {
+          console.warn(`[telegram] auto-fetch on dev start failed: ${err?.message || err}`);
+        });
     },
   };
 }
