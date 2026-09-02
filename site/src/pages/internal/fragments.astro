@@ -259,6 +259,13 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         justify-content: center;
         padding: 24px;
       }
+      /* `display: flex` above has the same specificity as the browser's own
+         `[hidden] { display: none }` UA rule, and comes later in the
+         cascade — so it silently WON over `hidden`, leaving this overlay
+         visible (and blocking every click on the page) from first load,
+         never actually hidden. This re-asserts `hidden` at the same
+         specificity but later still, so it wins instead. */
+      .lightbox[hidden] { display: none; }
       .lightbox-img { max-width: 100%; max-height: 100%; display: block; }
       .lightbox-close {
         position: fixed;
