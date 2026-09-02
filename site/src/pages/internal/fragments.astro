@@ -31,24 +31,24 @@ const TYPE_ICON: Record<string, string> = {
 // fragment's `type` field — so a fragment that ended up with mixed media (e.g.
 // the bot grouping a photo with a voice note) still surfaces every item.
 type Preview =
-  | { kind: 'photo'; src: string; raw: string }
+  | { kind: 'photo'; src: string; raw: string; index: number }
   | { kind: 'video'; src: string }
   | { kind: 'audio'; src: string }
   | { kind: 'missing'; path: string };
 
 function mediaPreviews(media: string[] | undefined): Preview[] {
   if (!media) return [];
-  return media.map((key): Preview => {
+  return media.map((key, index): Preview => {
     if (isLocalMedia(key)) {
       const src = localMediaUrl(key);
       if (!src) return { kind: 'missing', path: key };
       if (key.startsWith('media/audio/')) return { kind: 'audio', src };
       if (key.startsWith('media/video/')) return { kind: 'video', src };
-      return { kind: 'photo', src, raw: src }; // media/photo/
+      return { kind: 'photo', src, raw: src, index }; // media/photo/
     }
     // R2 key → photo (bot uploads).
     const src = mediaUrl(key);
-    return { kind: 'photo', src, raw: src };
+    return { kind: 'photo', src, raw: src, index };
   });
 }
 
@@ -240,6 +240,24 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         border: 1px solid var(--border);
         display: block;
       }
+      .grade { display: flex; flex-direction: column; gap: 5px; }
+      .grade-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+      .grade-btn {
+        font: inherit;
+        font-size: 11px;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 3px 7px;
+      }
+      .grade-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+      .grade-btn:disabled { cursor: not-allowed; color: var(--stub-text); }
+      .grade-btn.subtle { color: var(--muted); }
+      .grade-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--muted); }
+      .grade-status { font-size: 11px; color: var(--muted); min-height: 14px; }
+      .grade-status.error { color: var(--danger); }
       .av { max-width: 100%; width: 100%; display: block; }
       audio.av { height: 36px; }
       /* Compact custom audio player (replaces the clunky native controls). */
@@ -600,9 +618,43 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                     {row.previews.map((preview) => (
                       <>
                         {preview.kind === 'photo' && (
-                          <a href={preview.raw} target="_blank" rel="noreferrer">
-                            <img class="thumb" src={preview.src} alt={row.id} loading="lazy" />
-                          </a>
+                          <div class="grade" data-grade data-grade-id={row.id} data-grade-index={preview.index}>
+                            <a href={preview.raw} target="_blank" rel="noreferrer">
+                              <img class="thumb" src={preview.src} alt={row.id} loading="lazy" data-grade-img />
+                            </a>
+                            <div class="grade-presets">
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="muted"
+                                data-grade-css="saturate(0.55) contrast(1.08) brightness(0.97)"
+                              >
+                                🎬 muted
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="teal_orange"
+                                data-grade-css="sepia(0.15) saturate(1.3) hue-rotate(-8deg) contrast(1.05)"
+                              >
+                                🎬 teal/orange
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="noir"
+                                data-grade-css="grayscale(0.85) contrast(1.25) brightness(0.92)"
+                              >
+                                🎬 noir
+                              </button>
+                            </div>
+                            <div class="grade-confirm" hidden>
+                              <span class="grade-confirm-label"></span>
+                              <button class="grade-btn grade-accept" type="button">accept — overwrite</button>
+                              <button class="grade-btn subtle grade-cancel" type="button">cancel</button>
+                            </div>
+                            <div class="grade-status" role="status"></div>
+                          </div>
                         )}
                         {preview.kind === 'video' && (
                           <video class="av" controls preload="metadata" src={preview.src} />
@@ -895,6 +947,78 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         if (!r.ok) throw new Error(data.error || `request failed (${r.status})`);
         return data;
       }
+
+      // Cinematic color grading: preset buttons apply a live CSS filter to the
+      // thumbnail as a preview only — nothing is written until "accept",
+      // which calls /api/apply-grade to actually bake the preset into the
+      // stored image (scripts/apply_cinematic_grade.py) and overwrites it in
+      // place (R2 object or local media/photo/ file). There's no undo once
+      // accepted; "cancel" just clears the CSS preview, no request made.
+      function initGrade(container: HTMLElement) {
+        const id = container.dataset.gradeId ?? '';
+        const mediaIndex = Number(container.dataset.gradeIndex ?? '-1');
+        const img = container.querySelector<HTMLImageElement>('[data-grade-img]')!;
+        const confirmBox = container.querySelector<HTMLElement>('.grade-confirm')!;
+        const confirmLabel = container.querySelector<HTMLElement>('.grade-confirm-label')!;
+        const status = container.querySelector<HTMLElement>('.grade-status')!;
+        const presetBtns = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-grade-preset]'));
+        const acceptBtn = container.querySelector<HTMLButtonElement>('.grade-accept')!;
+        const cancelBtn = container.querySelector<HTMLButtonElement>('.grade-cancel')!;
+        let selectedPreset = '';
+
+        function setStatus(msg: string, isError = false) {
+          status.textContent = msg;
+          status.classList.toggle('error', isError);
+        }
+
+        function reset() {
+          img.style.filter = '';
+          confirmBox.hidden = true;
+          selectedPreset = '';
+          presetBtns.forEach((b) => (b.disabled = false));
+          acceptBtn.disabled = false;
+          cancelBtn.disabled = false;
+        }
+
+        presetBtns.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            selectedPreset = btn.dataset.gradePreset ?? '';
+            img.style.filter = btn.dataset.gradeCss ?? '';
+            confirmLabel.textContent = `preview: ${btn.textContent?.trim()} — `;
+            confirmBox.hidden = false;
+            presetBtns.forEach((b) => (b.disabled = true));
+            setStatus('');
+          });
+        });
+
+        cancelBtn.addEventListener('click', () => {
+          reset();
+          setStatus('');
+        });
+
+        acceptBtn.addEventListener('click', async () => {
+          if (!selectedPreset || mediaIndex < 0) return;
+          acceptBtn.disabled = true;
+          cancelBtn.disabled = true;
+          setStatus('baking grade into the stored image…');
+          try {
+            const d = await postJson('/api/apply-grade', { id, mediaIndex, preset: selectedPreset });
+            // The file changed in place at the same URL — bust any cache.
+            const sep = img.src.includes('?') ? '&' : '?';
+            img.src = `${img.src}${sep}graded=${Date.now()}`;
+            reset();
+            setStatus(
+              `graded ✓ (${d.location}${d.pushed ? ', pushed' : d.committed ? ', committed' : ''})`
+            );
+          } catch (err) {
+            setStatus(String((err as Error).message || err), true);
+            acceptBtn.disabled = false;
+            cancelBtn.disabled = false;
+          }
+        });
+      }
+
+      document.querySelectorAll<HTMLElement>('[data-grade]').forEach(initGrade);
 
       function initTools(panel: HTMLElement) {
         const id = panel.dataset.toolsId ?? '';

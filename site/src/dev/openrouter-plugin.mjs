@@ -354,6 +354,52 @@ function runDeleteScript(id) {
   });
 }
 
+// Run scripts/apply_cinematic_grade.py <id> <mediaIndex> <preset> --json and
+// return its parsed JSON result. Bakes the grade into the actual stored image
+// (R2 object or local media/photo/ file) — see that script's docstring.
+function runGradeScript(id, mediaIndex, preset) {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const args = ['scripts/apply_cinematic_grade.py', id, String(mediaIndex), preset, '--json'];
+    let proc;
+    try {
+      proc = spawn(python, args, { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) => {
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      );
+    });
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(
+          new Error(
+            stderr.includes('ModuleNotFoundError')
+              ? `The Python at ${python} is missing the bot's dependencies. Install scripts/requirements.txt into it (or set INGEST_PYTHON).`
+              : `grade script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`
+          )
+        );
+      }
+    });
+  });
+}
+
 // Run scripts/create_fragment.py to turn a web-captured file into a fragment.
 function runCreateScript(type, filePath, ext, note, noPush) {
   return new Promise((resolve, reject) => {
@@ -737,6 +783,23 @@ export function openrouterDevPlugin() {
           }
           const result = await runDeleteScript(id);
           if (!result.ok) return sendJson(res, 502, { error: result.error || 'delete failed' });
+          return sendJson(res, 200, result);
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/apply-grade', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          const { id, mediaIndex, preset } = await readJsonBody(req);
+          if (!id) return sendJson(res, 400, { error: 'missing fragment id' });
+          if (!Number.isInteger(mediaIndex) || mediaIndex < 0) {
+            return sendJson(res, 400, { error: 'missing or bad mediaIndex' });
+          }
+          if (!preset) return sendJson(res, 400, { error: 'missing preset' });
+          const result = await runGradeScript(id, mediaIndex, preset);
+          if (!result.ok) return sendJson(res, 502, { error: result.error || 'grade failed' });
           return sendJson(res, 200, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
