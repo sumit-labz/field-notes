@@ -1,0 +1,70 @@
+---
+// /marginalia — photographed index-card-sized lines, posted straight from
+// Telegram (no curation step). Photo only, no OCR. Irregular grid, tilt
+// hashed from id like everything else — see lib/rotation.ts.
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { formatCapturedAt } from '../../lib/dates';
+import { tiltForId } from '../../lib/rotation';
+import { mediaUrl } from '../../lib/media-url';
+import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
+import { getImageDimensions, getLocalImageDimensions } from '../../lib/image-dimensions';
+
+const entries = (await getCollection('marginalia')).sort(
+  (a, b) => b.data.captured_at.valueOf() - a.data.captured_at.valueOf()
+);
+
+const cards = (
+  await Promise.all(
+    entries.map(async (entry) => {
+      const key = entry.data.media;
+      try {
+        if (isLocalMedia(key)) {
+          const src = localMediaUrl(key);
+          if (!src) return null;
+          return { entry, src, ...getLocalImageDimensions(key) };
+        }
+        const src = mediaUrl(key);
+        return { entry, src, ...(await getImageDimensions(src)) };
+      } catch {
+        // Missing/unreadable media shouldn't fail the whole build — skip it.
+        return null;
+      }
+    })
+  )
+).filter(
+  (c): c is { entry: (typeof entries)[number]; src: string; width: number; height: number } =>
+    c !== null
+);
+---
+
+<Base title="Marginalia">
+  <p class="label">marginalia</p>
+  <h1>Marginalia</h1>
+  <p class="meta">lines worth keeping — written or found, index-card size</p>
+
+  {
+    cards.length === 0 ? (
+      <div class="marginalia-empty">nothing here yet.</div>
+    ) : (
+      <div class="marginalia-grid">
+        {cards.map(({ entry, src, width, height }) => (
+          <figure class="marginalia-card">
+            <img
+              src={src}
+              width={width}
+              height={height}
+              loading="lazy"
+              alt={entry.data.source ?? 'marginalia note'}
+              style={`transform: rotate(${tiltForId(entry.data.id)}deg)`}
+            />
+            <figcaption class="meta">
+              {formatCapturedAt(entry.data.captured_at)}
+              {entry.data.source && <span> · {entry.data.source}</span>}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    )
+  }
+</Base>
