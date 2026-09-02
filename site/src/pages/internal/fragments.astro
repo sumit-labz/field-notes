@@ -14,10 +14,11 @@
 // fix/delete endpoints are dev-server middleware, absent from a static deploy.
 // It also carries a robots noindex and is unlinked from nav. (No sitemap.xml or
 // RSS feed exists; if either is added, exclude this route there too.)
-import { getCollection } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import { formatCapturedAt } from '../../lib/dates';
 import { mediaUrl } from '../../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
+import { gradedOrOriginal } from '../../lib/content';
 
 const TYPE_ICON: Record<string, string> = {
   photo: '🖼️',
@@ -30,13 +31,24 @@ const TYPE_ICON: Record<string, string> = {
 // media/{photo,audio,video}/ prefix, or an R2 key = photo), independent of the
 // fragment's `type` field — so a fragment that ended up with mixed media (e.g.
 // the bot grouping a photo with a voice note) still surfaces every item.
+//
+// A photo preview shows the CURRENT copy (graded if this photo has one, else
+// the original — see gradedOrOriginal), while `raw` always stays the true,
+// never-touched original from media[index]. That split is what "original ↗"
+// vs. the thumbnail itself relies on.
 type Preview =
-  | { kind: 'photo'; src: string; raw: string; index: number }
+  | { kind: 'photo'; src: string; raw: string; index: number; graded: boolean }
   | { kind: 'video'; src: string }
   | { kind: 'audio'; src: string }
   | { kind: 'missing'; path: string };
 
-function mediaPreviews(media: string[] | undefined): Preview[] {
+function resolveMediaSrc(key: string): string | null {
+  if (isLocalMedia(key)) return localMediaUrl(key);
+  return mediaUrl(key);
+}
+
+function mediaPreviews(fragment: CollectionEntry<'fragments'>): Preview[] {
+  const media = fragment.data.media;
   if (!media) return [];
   return media.map((key, index): Preview => {
     if (isLocalMedia(key)) {
@@ -44,11 +56,18 @@ function mediaPreviews(media: string[] | undefined): Preview[] {
       if (!src) return { kind: 'missing', path: key };
       if (key.startsWith('media/audio/')) return { kind: 'audio', src };
       if (key.startsWith('media/video/')) return { kind: 'video', src };
-      return { kind: 'photo', src, raw: src, index }; // media/photo/
+    } else if (!/\.(webp|jpe?g|png|gif|avif)$/i.test(key)) {
+      // Non-image R2 key: not a case that exists today (video/audio are
+      // always local — see VIDEO_RE in lib/content.ts) but fall through to
+      // "missing" rather than mis-labeling it a photo if it ever does.
+      return { kind: 'missing', path: key };
     }
-    // R2 key → photo (bot uploads).
-    const src = mediaUrl(key);
-    return { kind: 'photo', src, raw: src, index };
+    const isGraded = fragment.data.graded?.[String(index)] != null;
+    const displayKey = gradedOrOriginal(fragment, index);
+    const src = resolveMediaSrc(displayKey);
+    const raw = resolveMediaSrc(key); // the TRUE original, regardless of grading
+    if (!src || !raw) return { kind: 'missing', path: displayKey };
+    return { kind: 'photo', src, raw, index, graded: isGraded };
   });
 }
 
@@ -67,7 +86,7 @@ const rows = fragments
     // itself. Previously the preview clipped to 100 chars with no way to see
     // the rest; a Telegram text note could easily run past that.
     fullText: (f.body ?? '').trim(),
-    previews: mediaPreviews(f.data.media),
+    previews: mediaPreviews(f),
     excerpt: (f.body ?? '').trim(),
   }))
   .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
@@ -248,7 +267,9 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         background: none;
         cursor: zoom-in;
       }
+      .grade-links { display: flex; align-items: center; gap: 8px; }
       .grade-raw-link { font-size: 11px; color: var(--muted); }
+      .grade-links .grade-btn { font-size: 11px; padding: 2px 6px; border: none; background: none; text-decoration: underline; }
       .lightbox {
         position: fixed;
         inset: 0;
@@ -658,13 +679,26 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                     {row.previews.map((preview) => (
                       <>
                         {preview.kind === 'photo' && (
-                          <div class="grade" data-grade data-grade-id={row.id} data-grade-index={preview.index}>
+                          <div
+                            class="grade"
+                            data-grade
+                            data-grade-id={row.id}
+                            data-grade-index={preview.index}
+                            data-grade-raw={preview.raw}
+                          >
                             <button type="button" class="thumb-btn" data-grade-open aria-label="view larger, with the current preview applied">
                               <img class="thumb" src={preview.src} alt={row.id} loading="lazy" data-grade-img />
                             </button>
-                            <a class="grade-raw-link" href={preview.raw} target="_blank" rel="noreferrer">
-                              original ↗
-                            </a>
+                            <div class="grade-links">
+                              <a class="grade-raw-link" href={preview.raw} target="_blank" rel="noreferrer">
+                                original ↗
+                              </a>
+                              {preview.graded && (
+                                <button type="button" class="grade-btn subtle" data-grade-revert>
+                                  ↺ revert to original
+                                </button>
+                              )}
+                            </div>
                             <div class="grade-presets">
                               <button
                                 class="grade-btn"
@@ -1034,10 +1068,12 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       function initGrade(container: HTMLElement) {
         const id = container.dataset.gradeId ?? '';
         const mediaIndex = Number(container.dataset.gradeIndex ?? '-1');
+        const rawSrc = container.dataset.gradeRaw ?? '';
         const img = container.querySelector<HTMLImageElement>('[data-grade-img]')!;
         const confirmBox = container.querySelector<HTMLElement>('.grade-confirm')!;
         const confirmLabel = container.querySelector<HTMLElement>('.grade-confirm-label')!;
         const status = container.querySelector<HTMLElement>('.grade-status')!;
+        const linksRow = container.querySelector<HTMLElement>('.grade-links')!;
         const presetBtns = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-grade-preset]'));
         const acceptBtn = container.querySelector<HTMLButtonElement>('.grade-accept')!;
         const cancelBtn = container.querySelector<HTMLButtonElement>('.grade-cancel')!;
@@ -1046,6 +1082,40 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         function setStatus(msg: string, isError = false) {
           status.textContent = msg;
           status.classList.toggle('error', isError);
+        }
+
+        // "Revert to original" only exists once a photo has actually been
+        // graded. The server renders it when it already knows that; after a
+        // fresh accept in THIS session, wire one in on the fly so the option
+        // appears immediately, no reload needed.
+        function wireRevertButton(btn: HTMLButtonElement) {
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            setStatus('reverting to original…');
+            try {
+              await postJson('/api/apply-grade', { id, mediaIndex, preset: 'original' });
+              img.src = rawSrc;
+              img.style.filter = '';
+              btn.remove();
+              setStatus('reverted ✓');
+            } catch (err) {
+              setStatus(String((err as Error).message || err), true);
+              btn.disabled = false;
+            }
+          });
+        }
+        const existingRevertBtn = container.querySelector<HTMLButtonElement>('[data-grade-revert]');
+        if (existingRevertBtn) wireRevertButton(existingRevertBtn);
+
+        function showRevertButton() {
+          if (container.querySelector('[data-grade-revert]')) return; // already showing
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'grade-btn subtle';
+          btn.dataset.gradeRevert = '';
+          btn.textContent = '↺ revert to original';
+          linksRow.appendChild(btn);
+          wireRevertButton(btn);
         }
 
         function reset() {
@@ -1102,6 +1172,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
               img.src = `${img.src}${sep}graded=${Date.now()}`;
             }
             reset();
+            showRevertButton();
             setStatus(
               `graded ✓ (${d.location}${d.pushed ? ', pushed' : d.committed ? ', committed' : ''})`
             );
