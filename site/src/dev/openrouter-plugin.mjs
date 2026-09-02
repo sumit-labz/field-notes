@@ -661,6 +661,7 @@ export function openrouterDevPlugin() {
   let apiKey = '';
   let voiceRefAudio = '';
   let voiceRefText = '';
+  let r2PublicBase = '';
   return {
     name: 'field-notes:openrouter-dev',
     apply: 'serve', // dev only — never affects `astro build`
@@ -670,6 +671,10 @@ export function openrouterDevPlugin() {
       apiKey = env.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '';
       voiceRefAudio = env.VOICE_REF_AUDIO || process.env.VOICE_REF_AUDIO || '';
       voiceRefText = env.VOICE_REF_TEXT || process.env.VOICE_REF_TEXT || '';
+      // Same value the build uses (site/.env's R2_PUBLIC_BASE) — needed here
+      // so /api/apply-grade can hand back the graded photo's real URL (its
+      // key changes every grade now; see apply_cinematic_grade.py).
+      r2PublicBase = env.R2_PUBLIC_BASE || process.env.R2_PUBLIC_BASE || '';
     },
     configureServer(server) {
       // Always-fresh local media (audio/video) for the inbox — see local-media.ts.
@@ -800,6 +805,12 @@ export function openrouterDevPlugin() {
           if (!preset) return sendJson(res, 400, { error: 'missing preset' });
           const result = await runGradeScript(id, mediaIndex, preset);
           if (!result.ok) return sendJson(res, 502, { error: result.error || 'grade failed' });
+          // R2 photos land at a brand-new key every grade (see the script) —
+          // the browser has no way to build that URL itself, so resolve it
+          // here, server-side, the same way the site build does.
+          if (result.location === 'r2' && r2PublicBase) {
+            result.imageUrl = `${r2PublicBase.replace(/\/+$/, '')}/${result.key.replace(/^\/+/, '')}`;
+          }
           return sendJson(res, 200, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });

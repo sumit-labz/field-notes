@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Bake a cinematic color grade into a fragment's photo, in place — overwrites
-the R2 object (or the local media/photo/ file) with the graded version.
+"""Bake a cinematic color grade into a fragment's photo.
 
 Usage:
     python scripts/apply_cinematic_grade.py <fragment-id> <media-index> <preset> [--no-push] [--json]
@@ -11,10 +10,19 @@ PRESETS below).
 Invoked one-click from the internal fragment inbox (site/src/dev/
 openrouter-plugin.mjs -> POST /api/apply-grade), which shows a live CSS-filter
 preview first — this script is only run once the maintainer accepts a preset,
-and it is what actually changes the stored image. There is no undo: the
-original bytes are gone once this runs (R2 put_object overwrites the key; a
-local file is overwritten and the previous version only survives in git
-history, same as any other tracked-file edit).
+and it is what actually changes the stored image.
+
+R2 photos: uploaded under a NEW key (never the same one twice) and the
+fragment file's media[] entry is updated to point at it, then committed and
+pushed — overwriting the same key left old cached bytes visible at that URL
+indefinitely for anyone who'd already loaded it (browser cache, any CDN in
+front of R2), since a PUT to an existing key doesn't reliably invalidate
+those. The old object is deleted afterwards (best-effort cleanup).
+
+Local media/photo/ files: overwritten in place and committed — a local dev
+path doesn't have the same caching exposure. There is no undo either way: the
+original bytes are gone once this runs; only git history keeps the fragment
+file's own edit (the media path swap), not the image bytes themselves.
 
 Reuses ingest.py's R2 client and delete_fragment.py's fragment-lookup helpers,
 same pattern as the other one-off maintenance scripts in this directory.
@@ -26,6 +34,7 @@ import argparse
 import io
 import json
 import sys
+import time
 
 from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
@@ -121,6 +130,32 @@ def grade_bytes(data: bytes, preset: str) -> bytes:
         return buffer.getvalue()
 
 
+def versioned_key(key: str, preset: str) -> str:
+    """A new R2 key for the graded bytes — never the same key twice, so
+    nothing (browser cache, any CDN in front of R2) can serve stale bytes for
+    a URL that used to point at the un-graded photo. Overwriting the SAME key
+    looked like it worked (the object really is updated), but any client that
+    already had that exact URL cached — including a plain page reload, no
+    special action needed — kept showing the old image indefinitely, since
+    the URL itself never changed."""
+    dot = key.rfind(".")
+    stem, ext = (key[:dot], key[dot:]) if dot != -1 else (key, "")
+    return f"{stem}-{preset}-{int(time.time())}{ext}"
+
+
+def update_fragment_media_key(fragment_path, old_key: str, new_key: str) -> None:
+    """Point the fragment's media[] entry at the new key. A plain text
+    replace, not a YAML re-serialize — the media key is a unique URL-like
+    string, so an exact-match replace can't clobber anything else in the file
+    and leaves formatting/comments/everything else untouched."""
+    text = fragment_path.read_text(encoding="utf-8")
+    marker = f"- {old_key}"
+    replacement = f"- {new_key}"
+    if marker not in text:
+        raise IngestError(f"could not find media entry {old_key!r} in {fragment_path} to update")
+    fragment_path.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
+
+
 def commit_and_push_local(rel_path: str, fragment_id: str, preset: str, no_push: bool) -> bool:
     run_git(["add", rel_path])
     run_git(["commit", "-m", f"grade: {preset} on {fragment_id}"])
@@ -177,16 +212,38 @@ def apply_grade(fragment_id: str, media_index: int, preset: str, no_push: bool) 
         raise IngestError(f"failed to download {key} from R2: {redact_secrets(str(exc))}") from exc
 
     graded = grade_bytes(original, preset)
-    ingest.upload_to_r2(client, config, key, graded)
+    new_key = versioned_key(key, preset)
+    ingest.upload_to_r2(client, config, new_key, graded)
+
+    # Best-effort cleanup of the now-unreferenced old key. Deliberately BEFORE
+    # the git commit/push below and independent of whether that succeeds —
+    # this is pure R2 housekeeping, unrelated to git. A push can fail for
+    # reasons that have nothing to do with the grade itself (no upstream
+    # configured, a transient network blip); the old key would otherwise sit
+    # around orphaned until the maintainer noticed, for no good reason. Not
+    # fatal if the delete itself fails — delete_object is idempotent anyway.
+    try:
+        client.delete_object(Bucket=config.r2_bucket, Key=key)
+    except Exception as exc:  # noqa: BLE001
+        log(f"could not delete old R2 object {key} (harmless, just orphaned storage): {redact_secrets(str(exc))}")
+
+    # The fragment file must record the NEW key — everything that renders
+    # this photo (the inbox, a public-site rebuild, `mediaUrl()`) reads the
+    # key from here, not from R2 directly.
+    update_fragment_media_key(fragment_path, key, new_key)
+    fragment_rel = str(fragment_path.relative_to(REPO_ROOT)).replace("\\", "/")
+    pushed = commit_and_push_local(fragment_rel, fragment_id, preset, no_push)
+
     return {
         "ok": True,
         "id": fragment_id,
         "media_index": media_index,
         "preset": preset,
-        "key": key,
+        "key": new_key,
+        "old_key": key,
         "location": "r2",
-        "committed": False,
-        "pushed": False,
+        "committed": True,
+        "pushed": pushed,
     }
 
 
