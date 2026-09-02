@@ -5,7 +5,8 @@ the R2 object (or the local media/photo/ file) with the graded version.
 Usage:
     python scripts/apply_cinematic_grade.py <fragment-id> <media-index> <preset> [--no-push] [--json]
 
-preset is one of: muted, teal_orange, noir (see PRESETS below).
+preset is one of: muted, teal_orange, noir, grayscale, vivid, sketch (see
+PRESETS below).
 
 Invoked one-click from the internal fragment inbox (site/src/dev/
 openrouter-plugin.mjs -> POST /api/apply-grade), which shows a live CSS-filter
@@ -26,7 +27,7 @@ import io
 import json
 import sys
 
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 import ingest
 from ingest import IngestError, REPO_ROOT, WEBP_QUALITY, redact_secrets, git, run_git
@@ -67,7 +68,44 @@ def _teal_orange(img: Image.Image) -> Image.Image:
     return ImageEnhance.Contrast(graded).enhance(1.05)
 
 
-PRESETS = {"muted": _muted, "teal_orange": _teal_orange, "noir": _noir}
+def _grayscale(img: Image.Image) -> Image.Image:
+    # True black & white (not just heavily desaturated, like noir) — converted
+    # back to the original mode so saving stays consistent with every other
+    # preset here.
+    gray = ImageOps.grayscale(img).convert(img.mode)
+    return ImageEnhance.Contrast(gray).enhance(1.05)
+
+
+def _vivid(img: Image.Image) -> Image.Image:
+    # The opposite of muted: punchier color, not a cinematic look so much as
+    # a "make it pop" one.
+    img = ImageEnhance.Color(img).enhance(1.5)
+    img = ImageEnhance.Contrast(img).enhance(1.12)
+    img = ImageEnhance.Brightness(img).enhance(1.03)
+    return img
+
+
+def _sketch(img: Image.Image) -> Image.Image:
+    # For photographed pencil/ink sketches: autocontrast stretches the
+    # existing tonal range so faint graphite darkens and the paper actually
+    # whitens (a photo of a sketch is usually low-contrast to begin with —
+    # cheap unfiltered daylight, not a scanner), then unsharp-mask crisps up
+    # the linework itself. This is the one preset CSS categorically can't
+    # approximate (no filter does per-pixel local contrast/sharpening), so
+    # its CSS preview is the roughest match of the six.
+    img = ImageOps.autocontrast(img, cutoff=1)
+    img = ImageEnhance.Contrast(img).enhance(1.15)
+    return img.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
+
+
+PRESETS = {
+    "muted": _muted,
+    "teal_orange": _teal_orange,
+    "noir": _noir,
+    "grayscale": _grayscale,
+    "vivid": _vivid,
+    "sketch": _sketch,
+}
 
 
 def grade_bytes(data: bytes, preset: str) -> bytes:

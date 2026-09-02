@@ -241,6 +241,38 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         display: block;
       }
       .grade { display: flex; flex-direction: column; gap: 5px; }
+      .thumb-btn {
+        display: block;
+        padding: 0;
+        border: none;
+        background: none;
+        cursor: zoom-in;
+      }
+      .grade-raw-link { font-size: 11px; color: var(--muted); }
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .lightbox-img { max-width: 100%; max-height: 100%; display: block; }
+      .lightbox-close {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: var(--panel);
+        color: var(--text);
+        font-size: 16px;
+        cursor: pointer;
+      }
       .grade-presets { display: flex; flex-wrap: wrap; gap: 5px; }
       .grade-btn {
         font: inherit;
@@ -255,6 +287,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .grade-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
       .grade-btn:disabled { cursor: not-allowed; color: var(--stub-text); }
       .grade-btn.subtle { color: var(--muted); }
+      .grade-btn.selected { border-color: var(--accent); color: var(--accent); }
       .grade-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--muted); }
       .grade-status { font-size: 11px; color: var(--muted); min-height: 14px; }
       .grade-status.error { color: var(--danger); }
@@ -619,8 +652,11 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                       <>
                         {preview.kind === 'photo' && (
                           <div class="grade" data-grade data-grade-id={row.id} data-grade-index={preview.index}>
-                            <a href={preview.raw} target="_blank" rel="noreferrer">
+                            <button type="button" class="thumb-btn" data-grade-open aria-label="view larger, with the current preview applied">
                               <img class="thumb" src={preview.src} alt={row.id} loading="lazy" data-grade-img />
+                            </button>
+                            <a class="grade-raw-link" href={preview.raw} target="_blank" rel="noreferrer">
+                              original ↗
                             </a>
                             <div class="grade-presets">
                               <button
@@ -646,6 +682,30 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                                 data-grade-css="grayscale(0.85) contrast(1.25) brightness(0.92)"
                               >
                                 🎬 noir
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="grayscale"
+                                data-grade-css="grayscale(1) contrast(1.05)"
+                              >
+                                🎬 grayscale
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="vivid"
+                                data-grade-css="saturate(1.5) contrast(1.12) brightness(1.03)"
+                              >
+                                🎬 vivid
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="sketch"
+                                data-grade-css="contrast(1.35) brightness(0.95) saturate(1.05)"
+                              >
+                                🎬 sketch clarity
                               </button>
                             </div>
                             <div class="grade-confirm" hidden>
@@ -764,6 +824,16 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         )
       }
     </main>
+
+    <!-- Shared lightbox: one overlay reused for every photo. Opening it
+         copies the clicked thumbnail's CURRENT src + CSS filter (whatever
+         preview is live, or none) into this bigger image — the whole point
+         is to actually see a preset applied at a readable size, since "open
+         original" deliberately shows the un-graded file instead. -->
+    <div class="lightbox" data-lightbox hidden>
+      <button type="button" class="lightbox-close" data-lightbox-close aria-label="close">✕</button>
+      <img class="lightbox-img" data-lightbox-img alt="" />
+    </div>
 
     <script>
       // Clipboard + filtering for the internal inbox. Plain DOM, no framework —
@@ -975,18 +1045,26 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           img.style.filter = '';
           confirmBox.hidden = true;
           selectedPreset = '';
-          presetBtns.forEach((b) => (b.disabled = false));
+          presetBtns.forEach((b) => {
+            b.disabled = false;
+            b.classList.remove('selected');
+          });
           acceptBtn.disabled = false;
           cancelBtn.disabled = false;
         }
 
         presetBtns.forEach((btn) => {
           btn.addEventListener('click', () => {
+            // Switching directly between presets (without cancelling first)
+            // must work — this used to disable every preset button on
+            // selection, which silently no-opped a second preset click
+            // (a disabled button never fires) and left accept using the
+            // FIRST preset picked, not the one actually showing in preview.
             selectedPreset = btn.dataset.gradePreset ?? '';
             img.style.filter = btn.dataset.gradeCss ?? '';
             confirmLabel.textContent = `preview: ${btn.textContent?.trim()} — `;
             confirmBox.hidden = false;
-            presetBtns.forEach((b) => (b.disabled = true));
+            presetBtns.forEach((b) => b.classList.toggle('selected', b === btn));
             setStatus('');
           });
         });
@@ -1000,6 +1078,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           if (!selectedPreset || mediaIndex < 0) return;
           acceptBtn.disabled = true;
           cancelBtn.disabled = true;
+          presetBtns.forEach((b) => (b.disabled = true));
           setStatus('baking grade into the stored image…');
           try {
             const d = await postJson('/api/apply-grade', { id, mediaIndex, preset: selectedPreset });
@@ -1014,11 +1093,42 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             setStatus(String((err as Error).message || err), true);
             acceptBtn.disabled = false;
             cancelBtn.disabled = false;
+            presetBtns.forEach((b) => (b.disabled = false));
           }
         });
       }
 
       document.querySelectorAll<HTMLElement>('[data-grade]').forEach(initGrade);
+
+      // Shared lightbox: mirrors whatever the clicked thumbnail is showing
+      // right now (graded preview or plain) at a much larger size.
+      {
+        const lightbox = document.querySelector<HTMLElement>('[data-lightbox]')!;
+        const lightboxImg = lightbox.querySelector<HTMLImageElement>('[data-lightbox-img]')!;
+
+        function openLightbox(thumbImg: HTMLImageElement) {
+          lightboxImg.src = thumbImg.src;
+          lightboxImg.style.filter = thumbImg.style.filter;
+          lightboxImg.alt = thumbImg.alt;
+          lightbox.hidden = false;
+        }
+        function closeLightbox() {
+          lightbox.hidden = true;
+          lightboxImg.src = '';
+        }
+
+        document.querySelectorAll<HTMLButtonElement>('[data-grade-open]').forEach((btn) => {
+          const img = btn.querySelector<HTMLImageElement>('[data-grade-img]');
+          if (img) btn.addEventListener('click', () => openLightbox(img));
+        });
+        lightbox.addEventListener('click', (e) => {
+          if (e.target === lightbox) closeLightbox();
+        });
+        lightbox.querySelector('[data-lightbox-close]')!.addEventListener('click', closeLightbox);
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !lightbox.hidden) closeLightbox();
+        });
+      }
 
       function initTools(panel: HTMLElement) {
         const id = panel.dataset.toolsId ?? '';
