@@ -1089,9 +1089,18 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           setStatus('baking grade into the stored image…');
           try {
             const d = await postJson('/api/apply-grade', { id, mediaIndex, preset: selectedPreset });
-            // The file changed in place at the same URL — bust any cache.
-            const sep = img.src.includes('?') ? '&' : '?';
-            img.src = `${img.src}${sep}graded=${Date.now()}`;
+            if (d.imageUrl) {
+              // R2: the grade landed at a brand-new key/URL (see
+              // apply_cinematic_grade.py) — nothing to cache-bust, it was
+              // never cached anywhere.
+              img.src = d.imageUrl;
+            } else {
+              // Local media/photo/ file: same path, genuinely overwritten in
+              // place — still needs a cache-bust for THIS view, since the
+              // URL itself didn't change.
+              const sep = img.src.includes('?') ? '&' : '?';
+              img.src = `${img.src}${sep}graded=${Date.now()}`;
+            }
             reset();
             setStatus(
               `graded ✓ (${d.location}${d.pushed ? ', pushed' : d.committed ? ', committed' : ''})`
