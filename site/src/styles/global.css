@@ -43,6 +43,11 @@ body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
+  /* Safety net: nothing on this site is meant to scroll the page sideways —
+     any element that overflows (a nav that doesn't wrap, a stray fixed-width
+     image) should clip rather than widening the whole document and cropping
+     content off-screen. */
+  overflow-x: hidden;
   font-size: 1.125rem; /* 18px — comfortable long-form reading size */
   line-height: 1.65; /* body prose; headings stay 1.25 */
   -webkit-font-smoothing: antialiased;
@@ -102,6 +107,21 @@ nav a {
 nav a:hover { text-decoration: none; }
 nav a:not(:hover) { border-bottom: none; }
 nav .wordmark { font-family: var(--font-annotation); font-size: 1.5rem; letter-spacing: 0; text-transform: none; margin-right: auto; color: var(--ink); }
+/* Five links + the wordmark don't fit one row below ~480px without either
+   wrapping or overflowing — unwrapped flex items were forcing the whole page
+   wider than the viewport (nav itself never visibly "overflowed"; the effect
+   was the entire document scrolling sideways, cropping content off-screen).
+   Wrap, and let the wordmark claim its own first row so the links wrap as a
+   clean group below it rather than interleaving. */
+@media (max-width: 480px) {
+  nav {
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+    padding-bottom: 0.9rem;
+  }
+  nav .wordmark { flex: 1 0 100%; margin-right: 0; }
+  nav a { padding-bottom: 0; }
+}
 
 /* structural label — Archivo uppercase */
 .label {
