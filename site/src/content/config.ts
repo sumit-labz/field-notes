@@ -13,7 +13,12 @@ const fragments = defineCollection({
   schema: z.object({
     id: z.string(),
     captured_at: z.coerce.date(),
-    type: z.enum(['photo', 'text', 'video', 'audio']),
+    // markdown: a fragment whose body IS the content — a document worth
+    // dropping into a post as its own object (a process doc, a spec) rather
+    // than folded into the post's own prose. Rendered as real markdown
+    // (headings, lists, bold, code), collapsed behind a click — see
+    // components/Fragment.astro and lib/markdown.ts.
+    type: z.enum(['photo', 'text', 'video', 'audio', 'markdown']),
     // Omitted for text fragments. Each entry is EITHER an R2 object key (photos,
     // e.g. "f/2026-08-18/192314-1.webp") OR a repo-relative local path (video/
     // audio, e.g. "media/video/2026-08-28-192734.mp4"). The renderer tells them

@@ -6,6 +6,7 @@ import { mediaUrl } from '../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../lib/local-media';
 import { getImageDimensions, getLocalImageDimensions } from '../lib/image-dimensions';
 import { gradedOrOriginal } from '../lib/content';
+import { renderMarkdown } from '../lib/markdown';
 
 interface Props {
   fragment: CollectionEntry<'fragments'>;
@@ -15,6 +16,18 @@ const { fragment } = Astro.props;
 const { data, body } = fragment;
 const tilt = tiltForId(data.id);
 const caption = body?.trim() ?? '';
+
+// A markdown fragment's body IS the document — a process doc or spec worth
+// dropping into a post as its own object, not folded into the post's prose.
+// Rendered as real markdown (not the paragraph-splitter post bodies use),
+// collapsed behind a native <details> so it doesn't dominate the post; the
+// summary is the doc's own first heading, so it says what it is before
+// anyone opens it.
+const isMarkdown = data.type === 'markdown';
+const markdownHtml = isMarkdown ? renderMarkdown(body ?? '') : '';
+const markdownTitle = isMarkdown
+  ? ((body ?? '').match(/^#\s+(.+)$/m)?.[1]?.trim() ?? 'process document')
+  : '';
 
 // Audio/video media (SPEC.md §4) isn't served or playable on the static site
 // yet — only image keys are rendered here. An image key is EITHER an R2
@@ -53,21 +66,30 @@ const photos = (
     {data.spark && <span> · spark</span>}
   </figcaption>
   {
-    photos.length > 0 && (
-      <div class="fragment-photos">
-        {photos.map((photo) => (
-          <img
-            class="fragment-photo"
-            src={photo.src}
-            width={photo.width}
-            height={photo.height}
-            loading="lazy"
-            alt={caption}
-            style={`transform: rotate(${tilt}deg)`}
-          />
-        ))}
-      </div>
+    isMarkdown ? (
+      <details class="md-fragment">
+        <summary>{markdownTitle}</summary>
+        <div class="md-fragment-body" set:html={markdownHtml} />
+      </details>
+    ) : (
+      <Fragment>
+        {photos.length > 0 && (
+          <div class="fragment-photos">
+            {photos.map((photo) => (
+              <img
+                class="fragment-photo"
+                src={photo.src}
+                width={photo.width}
+                height={photo.height}
+                loading="lazy"
+                alt={caption}
+                style={`transform: rotate(${tilt}deg)`}
+              />
+            ))}
+          </div>
+        )}
+        {caption && <p>{caption}</p>}
+      </Fragment>
     )
   }
-  {caption && <p>{caption}</p>}
 </figure>

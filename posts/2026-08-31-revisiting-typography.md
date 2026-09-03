@@ -8,6 +8,7 @@ fragments:
   - 2026-08-31-111113
   - 2026-08-31-111052
   - 2026-08-31-111032
+  - 2026-09-03-151500
 status: published
 kind: post
 ---
@@ -23,3 +24,7 @@ My influences are definitely Paula Scher. She is the primary influence. I've see
 I decided to take this research and come up with a process driven by hand, with the input being a brief. Before wondering too much about what I should create, I figured out I'm already working on a product, Stencil & Frame MVP. Let's think of that and develop some posters for it. I think this is how I'll kick off my journey, and I'll share in the next milestone how the process is to approach typography.
 
 {{fragment:2026-08-31-111032}}
+
+The process document itself, as it stands right now — this is a living doc, so it'll change as the actual pieces get made:
+
+{{fragment:2026-09-03-151500}}

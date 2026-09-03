@@ -568,6 +568,85 @@ figure > p {
   white-space: pre-wrap;
 }
 
+/* Markdown fragment — a process doc or spec dropped into a post as its own
+   object (SPEC extension: fragment type "markdown"). One inserted surface,
+   same material as .ai-quote; collapsed behind native <details> so a long
+   document doesn't dominate the post. Real markdown styling inside — this is
+   the one place actual headings/lists/code render on the site, everywhere
+   else is plain prose. */
+.md-fragment {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  margin: 1.75rem 0;
+  padding: 0.9rem 1.25rem;
+}
+.md-fragment summary {
+  cursor: pointer;
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.15rem 0;
+}
+.md-fragment[open] summary {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.75rem;
+}
+.md-fragment-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.md-fragment-body h1,
+.md-fragment-body h2,
+.md-fragment-body h3 {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 1.4rem 0 0.5rem;
+}
+.md-fragment-body h1:first-child,
+.md-fragment-body h2:first-child,
+.md-fragment-body h3:first-child {
+  margin-top: 0;
+}
+.md-fragment-body h1 { font-size: 1.15rem; }
+.md-fragment-body h2 { font-size: 1.05rem; }
+.md-fragment-body h3 { font-size: 0.98rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--graphite); }
+.md-fragment-body p { margin: 0.75rem 0; }
+.md-fragment-body ul,
+.md-fragment-body ol {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.3rem;
+}
+.md-fragment-body li { margin: 0.3rem 0; }
+.md-fragment-body li > ul,
+.md-fragment-body li > ol { margin: 0.3rem 0; }
+.md-fragment-body strong { font-weight: 700; color: var(--ink); }
+.md-fragment-body em { font-style: italic; }
+.md-fragment-body code {
+  font-family: var(--font-meta);
+  font-size: 0.85em;
+  background: var(--ground);
+  padding: 0.1em 0.35em;
+}
+.md-fragment-body pre {
+  font-family: var(--font-meta);
+  font-size: 0.82rem;
+  background: var(--ground);
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+.md-fragment-body pre code { background: none; padding: 0; }
+.md-fragment-body blockquote {
+  border-left: 2px solid var(--line);
+  margin: 0.75rem 0;
+  padding-left: 1rem;
+  color: var(--graphite);
+}
+.md-fragment-body a { color: var(--ink); }
+.md-fragment-body hr { border: none; border-top: 1px solid var(--line); margin: 1.25rem 0; }
+
 /* footer stamp */
 .foot {
   margin-top: 3.5rem;
