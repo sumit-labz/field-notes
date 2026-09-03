@@ -4,7 +4,7 @@ import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
-import { dateLine } from '../../lib/content';
+import { dateLine, gradedOrOriginal } from '../../lib/content';
 import { mediaUrl } from '../../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
 import { getImageDimensions, getLocalImageDimensions } from '../../lib/image-dimensions';
@@ -57,6 +57,16 @@ function imageDimensionsFor(key: string, src: string): Promise<{ width: number; 
   if (isLocalMedia(key)) return Promise.resolve(getLocalImageDimensions(key));
   return getImageDimensions(src);
 }
+// The first image key a fragment has, resolved through gradedOrOriginal() —
+// a graded (e.g. grayscale) copy should win here exactly like it does in the
+// Fragment component itself, not silently fall back to the untouched photo.
+function firstImageKey(fragment: (typeof fragments)[number]): string | null {
+  const media = fragment.data.media;
+  if (!media) return null;
+  const index = media.findIndex((k) => IMAGE_RE.test(k));
+  if (index === -1) return null;
+  return gradedOrOriginal(fragment, index);
+}
 
 // Opener: the first image of the first fragment (in listed order) that has
 // one. That fragment is excluded from the sequence below so the image doesn't
@@ -71,7 +81,7 @@ let openerFragmentId: string | null = null;
 let openerPortrait = false;
 for (const id of post.data.fragments) {
   const f = fragmentsById.get(id);
-  const imgKey = f?.data.media?.find((k) => IMAGE_RE.test(k));
+  const imgKey = f ? firstImageKey(f) : null;
   if (imgKey) {
     openerSrc = imageSrcFor(imgKey);
     openerFragmentId = id;
@@ -140,7 +150,7 @@ for (const block of blocks) {
   // landscape checklist that got narrowed and right-aligned). Landscape
   // fragment photos render full width regardless of spark/stagger.
   let landscape = false;
-  const imgKey = fragment.data.media?.find((k) => IMAGE_RE.test(k));
+  const imgKey = firstImageKey(fragment);
   if (imgKey) {
     try {
       const dims = await imageDimensionsFor(imgKey, imageSrcFor(imgKey) ?? '');
