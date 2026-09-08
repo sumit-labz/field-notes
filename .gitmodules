@@ -1,0 +1,3 @@
+[submodule "notes-site"]
+	path = notes-site
+	url = https://github.com/sumit-labz/notes-site.git
