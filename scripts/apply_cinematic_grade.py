@@ -4,8 +4,9 @@
 Usage:
     python scripts/apply_cinematic_grade.py <fragment-id> <media-index> <preset> [--no-push] [--json]
 
-preset is one of: muted, teal_orange, noir, grayscale, vivid, sketch, or the
-special value "original" (see PRESETS and REVERT below).
+preset is one of: muted, teal_orange, noir, grayscale, vivid, sketch,
+rotate_cw, rotate_ccw, rotate_180, or the special value "original" (see
+PRESETS and REVERT below).
 
 Invoked one-click from the internal fragment inbox (site/src/dev/
 openrouter-plugin.mjs -> POST /api/apply-grade), which shows a live CSS-filter
@@ -105,6 +106,18 @@ def _vivid(img: Image.Image) -> Image.Image:
     return img
 
 
+def _rotate_cw(img: Image.Image) -> Image.Image:
+    return img.rotate(-90, expand=True)
+
+
+def _rotate_ccw(img: Image.Image) -> Image.Image:
+    return img.rotate(90, expand=True)
+
+
+def _rotate_180(img: Image.Image) -> Image.Image:
+    return img.rotate(180, expand=True)
+
+
 def _sketch(img: Image.Image) -> Image.Image:
     # For photographed pencil/ink sketches: autocontrast stretches the
     # existing tonal range so faint graphite darkens and the paper actually
@@ -125,6 +138,12 @@ PRESETS = {
     "grayscale": _grayscale,
     "vivid": _vivid,
     "sketch": _sketch,
+    # Orientation, not color — same "grade fresh from the original, new key
+    # every time" pipeline applies unchanged. expand=True so a 90/270 turn
+    # swaps the stored width/height instead of cropping to the old frame.
+    "rotate_cw": _rotate_cw,
+    "rotate_ccw": _rotate_ccw,
+    "rotate_180": _rotate_180,
 }
 
 # Not a real grade — see REVERT handling in apply_grade().

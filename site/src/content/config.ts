@@ -37,6 +37,12 @@ const fragments = defineCollection({
     // (re-)applied, specifically so old copies never linger at a URL a
     // browser or CDN might have cached — see scripts/apply_cinematic_grade.py.
     graded: z.record(z.string()).optional(),
+    // Manual fine-tilt override in degrees (positive = clockwise), set from
+    // the internal inbox's tilt slider. When present it replaces the
+    // deterministic hash-based tilt every photo gets by default (see
+    // lib/rotation.ts's tiltForId) — the whole fragment's photos still share
+    // one tilt, same as the hash default does. Absent means "use the hash".
+    tilt: z.number().optional(),
     journey: z.string().nullable(),
     spark: z.boolean(),
     consumed_by: z.string().nullable(),

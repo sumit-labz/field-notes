@@ -14,3 +14,10 @@ export function tiltForId(id: string): number {
   const sign = h & 1 ? 1 : -1;
   return Math.round(sign * (1 + strength) * 100) / 100; // ±1°..±2°
 }
+
+// The tilt actually rendered for a fragment: a manually-set value (the
+// internal inbox's tilt slider, stored as frontmatter `tilt`) wins when
+// present, else fall back to the deterministic hash tilt above.
+export function resolveTilt(id: string, manualTilt?: number): number {
+  return manualTilt ?? tiltForId(id);
+}

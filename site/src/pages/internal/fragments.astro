@@ -80,6 +80,7 @@ const rows = fragments
     capturedAt: f.data.captured_at,
     type: f.data.type,
     journey: f.data.journey,
+    tilt: f.data.tilt ?? null,
     spark: f.data.spark,
     consumedBy: f.data.consumed_by,
     // Full body — used both as the Fix-grammar source and as the preview
@@ -433,6 +434,21 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .journey-tag.unassigned { color: var(--muted); font-style: italic; }
       .spark-tag { color: var(--spark); font-weight: 600; }
       .consumed { color: var(--muted); font-size: 11px; }
+      .tilt-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+      .tilt-label { text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; }
+      .tilt-slider { width: 110px; accent-color: var(--accent); }
+      .tilt-value { min-width: 34px; color: var(--text); }
+      .tilt-reset {
+        padding: 1px 5px;
+        font-size: 11px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--muted);
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .tilt-reset:hover { border-color: var(--accent); color: var(--accent); }
+      .tilt-status.error { color: var(--danger); }
       .tools { margin-top: 4px; }
       .tool-buttons, .result-actions { display: flex; gap: 6px; flex-wrap: wrap; }
       .tool-btn {
@@ -703,6 +719,30 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                               <button
                                 class="grade-btn"
                                 type="button"
+                                data-grade-preset="rotate_ccw"
+                                data-grade-transform="rotate(-90deg)"
+                              >
+                                ↺ rotate left
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="rotate_cw"
+                                data-grade-transform="rotate(90deg)"
+                              >
+                                ↻ rotate right
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
+                                data-grade-preset="rotate_180"
+                                data-grade-transform="rotate(180deg)"
+                              >
+                                ⇅ rotate 180°
+                              </button>
+                              <button
+                                class="grade-btn"
+                                type="button"
                                 data-grade-preset="muted"
                                 data-grade-css="saturate(0.55) contrast(1.08) brightness(0.97)"
                               >
@@ -803,6 +843,23 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                     </div>
                     {row.consumedBy && (
                       <div class="consumed">consumed by: <code>{row.consumedBy}</code></div>
+                    )}
+                    {row.previews.some((p) => p.kind === 'photo') && (
+                      <div class="tilt-row" data-tilt-id={row.id} data-tilt-value={row.tilt ?? 0}>
+                        <label class="tilt-label" for={`tilt-${row.id}`}>tilt</label>
+                        <input
+                          id={`tilt-${row.id}`}
+                          class="tilt-slider"
+                          type="range"
+                          min="-15"
+                          max="15"
+                          step="0.5"
+                          value={row.tilt ?? 0}
+                        />
+                        <span class="tilt-value mono">{(row.tilt ?? 0).toFixed(1)}°</span>
+                        <button class="tilt-reset" type="button" title="clear manual tilt — falls back to the automatic tilt">↺</button>
+                        <span class="tilt-status" role="status"></span>
+                      </div>
                     )}
                     {(row.type === 'audio' || row.type === 'text') && (
                       <div class="tools" data-tools-id={row.id} data-tools-type={row.type}>
@@ -1120,6 +1177,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
 
         function reset() {
           img.style.filter = '';
+          img.style.transform = '';
           confirmBox.hidden = true;
           selectedPreset = '';
           presetBtns.forEach((b) => {
@@ -1139,6 +1197,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             // FIRST preset picked, not the one actually showing in preview.
             selectedPreset = btn.dataset.gradePreset ?? '';
             img.style.filter = btn.dataset.gradeCss ?? '';
+            img.style.transform = btn.dataset.gradeTransform ?? '';
             confirmLabel.textContent = `preview: ${btn.textContent?.trim()} — `;
             confirmBox.hidden = false;
             presetBtns.forEach((b) => b.classList.toggle('selected', b === btn));
@@ -1186,6 +1245,63 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
 
       document.querySelectorAll<HTMLElement>('[data-grade]').forEach(initGrade);
+
+      // Manual tilt: a debounced slider that PATCHes /api/set-tilt (pure
+      // frontmatter edit, see scripts/set_fragment_tilt.py) — no image bytes
+      // touched, unlike the rotate/grade presets above. Also live-previews
+      // the value on every visible thumbnail for this fragment so dragging
+      // the slider gives instant feedback before the save round-trip lands.
+      function initTilt(container: HTMLElement) {
+        const id = container.dataset.tiltId ?? '';
+        const slider = container.querySelector<HTMLInputElement>('.tilt-slider')!;
+        const valueLabel = container.querySelector<HTMLElement>('.tilt-value')!;
+        const resetBtn = container.querySelector<HTMLButtonElement>('.tilt-reset')!;
+        const status = container.querySelector<HTMLElement>('.tilt-status')!;
+        const row = container.closest<HTMLElement>('.row')!;
+
+        function previewTilt(deg: number) {
+          row.querySelectorAll<HTMLImageElement>('[data-grade-img]').forEach((img) => {
+            // Don't clobber an in-progress rotate/grade preset preview.
+            if (!img.closest('.grade')?.querySelector('.grade-confirm:not([hidden])')) {
+              img.style.rotate = `${deg}deg`;
+            }
+          });
+        }
+
+        function setStatus(msg: string, isError = false) {
+          status.textContent = msg;
+          status.classList.toggle('error', isError);
+        }
+
+        let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+        async function save(degrees: number | null) {
+          setStatus('saving…');
+          try {
+            await postJson('/api/set-tilt', { id, degrees });
+            setStatus('saved ✓');
+          } catch (err) {
+            setStatus(String((err as Error).message || err), true);
+          }
+        }
+
+        slider.addEventListener('input', () => {
+          const deg = Number(slider.value);
+          valueLabel.textContent = `${deg.toFixed(1)}°`;
+          previewTilt(deg);
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => save(deg), 500);
+        });
+
+        resetBtn.addEventListener('click', () => {
+          clearTimeout(debounceTimer);
+          slider.value = '0';
+          valueLabel.textContent = '0.0°';
+          previewTilt(0);
+          save(null);
+        });
+      }
+
+      document.querySelectorAll<HTMLElement>('[data-tilt-id]').forEach(initTilt);
 
       // Shared lightbox: mirrors whatever the clicked thumbnail is showing
       // right now (graded preview or plain) at a much larger size.

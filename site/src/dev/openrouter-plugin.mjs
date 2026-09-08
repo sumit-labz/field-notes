@@ -400,6 +400,51 @@ function runGradeScript(id, mediaIndex, preset) {
   });
 }
 
+// Run scripts/set_fragment_tilt.py <id> <degrees|clear> --json and return its
+// parsed JSON result. Pure frontmatter edit — never touches image bytes.
+function runTiltScript(id, degrees) {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const args = ['scripts/set_fragment_tilt.py', id, degrees === null ? 'clear' : String(degrees), '--json'];
+    let proc;
+    try {
+      proc = spawn(python, args, { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) => {
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      );
+    });
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(
+          new Error(
+            stderr.includes('ModuleNotFoundError')
+              ? `The Python at ${python} is missing the bot's dependencies. Install scripts/requirements.txt into it (or set INGEST_PYTHON).`
+              : `tilt script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`
+          )
+        );
+      }
+    });
+  });
+}
+
 // Run scripts/create_fragment.py to turn a web-captured file into a fragment.
 function runCreateScript(type, filePath, ext, note, noPush) {
   return new Promise((resolve, reject) => {
@@ -811,6 +856,22 @@ export function openrouterDevPlugin() {
           if (result.location === 'r2' && r2PublicBase) {
             result.imageUrl = `${r2PublicBase.replace(/\/+$/, '')}/${result.key.replace(/^\/+/, '')}`;
           }
+          return sendJson(res, 200, result);
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/set-tilt', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          const { id, degrees } = await readJsonBody(req);
+          if (!id) return sendJson(res, 400, { error: 'missing fragment id' });
+          if (degrees !== null && typeof degrees !== 'number') {
+            return sendJson(res, 400, { error: 'degrees must be a number or null' });
+          }
+          const result = await runTiltScript(id, degrees);
+          if (!result.ok) return sendJson(res, 502, { error: result.error || 'set-tilt failed' });
           return sendJson(res, 200, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });

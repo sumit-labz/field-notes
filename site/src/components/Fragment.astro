@@ -1,7 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import { formatCapturedAt } from '../lib/dates';
-import { tiltForId } from '../lib/rotation';
+import { resolveTilt } from '../lib/rotation';
 import { mediaUrl } from '../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../lib/local-media';
 import { getImageDimensions, getLocalImageDimensions } from '../lib/image-dimensions';
@@ -14,7 +14,7 @@ interface Props {
 
 const { fragment } = Astro.props;
 const { data, body } = fragment;
-const tilt = tiltForId(data.id);
+const tilt = resolveTilt(data.id, data.tilt);
 const caption = body?.trim() ?? '';
 
 // A markdown fragment's body IS the document — a process doc or spec worth

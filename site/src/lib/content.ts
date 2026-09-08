@@ -97,7 +97,13 @@ export function postExcerpt(post: Post): string {
       .split(/\n\s*\n/)
       .map((p) => p.trim())
       .find(Boolean) ?? '';
-  return firstBlock.replace(/[*_`]/g, '');
+  // Strip the lib/post-body.ts quote-block "> " prefix too, so a post that
+  // opens on a quote gets a readable card teaser instead of leaking markup.
+  const withoutQuoteMarkers = firstBlock
+    .split('\n')
+    .map((line) => line.replace(/^>\s?/, ''))
+    .join(' ');
+  return withoutQuoteMarkers.replace(/[*_`]/g, '');
 }
 
 // A short teaser (2-3 lines) from the post's excerpt, for the homepage grid —
