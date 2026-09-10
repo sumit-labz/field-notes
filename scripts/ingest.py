@@ -69,8 +69,8 @@ JOURNEYS_CONFIG_PATH = REPO_ROOT / "config" / "journeys.yml"
 
 TELEGRAM_API = "https://api.telegram.org"
 IST = timezone(timedelta(hours=5, minutes=30))
-MAX_LONG_EDGE = 1600
-WEBP_QUALITY = 80
+MAX_LONG_EDGE = 2400
+WEBP_QUALITY = 88
 TELEGRAM_MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # Bot API getFile hard limit
 EXIF_DATE_TIME_ORIGINAL = 36867
 SECRET_ENV_VARS = ("TELEGRAM_BOT_TOKEN", "R2_ACCESS_KEY", "R2_SECRET_KEY")
