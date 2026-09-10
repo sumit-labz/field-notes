@@ -35,12 +35,19 @@ const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 // Every journey gets ranked regardless of path — a daily practice journey no
 // longer dominates the page the way it would in a flat post-by-post feed; it
 // just occupies its one section and moves to the top when it's active.
+// gesture-drawing-dailies is a high-frequency daily practice journey that
+// would otherwise dominate the top of the page every time it's touched —
+// it's pinned to the bottom of the ranking instead of competing on recency.
+const PINNED_LAST = new Set(['gesture-drawing-dailies']);
+
 const ranked = journeys
   .slice()
-  .sort(
-    (a, b) =>
-      journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf()
-  )
+  .sort((a, b) => {
+    const aPinned = PINNED_LAST.has(a.data.slug);
+    const bPinned = PINNED_LAST.has(b.data.slug);
+    if (aPinned !== bPinned) return aPinned ? 1 : -1;
+    return journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf();
+  })
   .slice(0, MAX_JOURNEYS);
 
 const sections = await Promise.all(
