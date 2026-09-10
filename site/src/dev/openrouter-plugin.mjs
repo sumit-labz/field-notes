@@ -31,9 +31,42 @@ const TTS_MODEL = 'fish-audio/s2.1-pro'; // voice-cloning
 // gpt-4o-mini-transcribe is a transcription model — it uses the dedicated
 // OpenAI-compatible audio endpoint (multipart upload), NOT chat/completions.
 const TRANSCRIBE_URL = 'https://openrouter.ai/api/v1/audio/transcriptions';
-// Models chosen by the maintainer (see the fragment inbox spec):
+// Models chosen by the maintainer (see the fragment inbox spec). These are the
+// defaults; the settings panel lets a browser pick any of the curated options
+// below (or a custom OpenRouter model slug) and send it per-request.
 const STT_MODEL = 'openai/gpt-4o-mini-transcribe'; // GPT-4o Mini Transcribe
-const FIX_MODEL = 'deepseek/deepseek-chat'; // DeepSeek V3
+const FIX_MODEL = 'mistralai/mistral-nemo'; // cheapest paid grammar-fix model
+
+// Curated transcription models, cheapest-first-ish, shown in the settings panel.
+const TRANSCRIBE_MODEL_OPTIONS = [
+  { id: 'openai/whisper-1', label: 'Whisper v1', note: '~$0.006/min · fast, solid default' },
+  { id: 'openai/gpt-4o-transcribe', label: 'GPT-4o Transcribe', note: '~$0.0000025/min · higher accuracy' },
+  { id: 'openai/gpt-4o-mini-transcribe', label: 'GPT-4o Mini Transcribe', note: '~$0.00000125/min · cheapest' },
+  {
+    id: 'nvidia/nemotron-3.5-asr',
+    label: 'Nemotron 3.5 ASR',
+    note: '~$0.0000033/min · closest to free (no $0 STT exists on OpenRouter)',
+  },
+];
+
+// Curated grammar-fix (chat) models.
+const FIX_MODEL_OPTIONS = [
+  { id: 'google/gemini-flash-1.5', label: 'Gemini 1.5 Flash', note: '~$0.075/M in · $0.30/M out · fast & cheap' },
+  { id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet', note: '~$3/M in · $15/M out · strongest reasoning' },
+  { id: 'openai/gpt-4o-mini', label: 'GPT-4o Mini', note: '~$0.15/M in · $0.60/M out · balanced' },
+  { id: 'mistralai/mistral-nemo', label: 'Mistral Nemo', note: '~$0.019/M in · $0.03/M out · cheapest paid' },
+  { id: 'google/gemma-2-27b-it:free', label: 'Gemma 4 31B (free)', note: '$0 · good for local/dirty testing' },
+  { id: 'deepseek/deepseek-chat', label: 'DeepSeek V3', note: '~$0.27/M in · $1.10/M out' },
+];
+
+// A model id picked in the settings panel is trusted to belong to the caller's
+// own OpenRouter account/key — this is a local dev tool, not multi-tenant — but
+// it still gets a loose shape check so a stray value can't smuggle in anything
+// other than a "vendor/model[:variant]" slug.
+const MODEL_SLUG_RE = /^[a-z0-9]([a-z0-9._-]*[a-z0-9])?\/[a-z0-9]([a-z0-9._:-]*[a-z0-9])?$/i;
+function resolveModel(requested, fallback) {
+  return typeof requested === 'string' && MODEL_SLUG_RE.test(requested.trim()) ? requested.trim() : fallback;
+}
 // Approximate USD→INR for showing per-call cost in rupees. OpenRouter bills in
 // USD credits; this is a display convenience, not an exact conversion.
 const INR_PER_USD = 87.5;
@@ -573,9 +606,9 @@ function findAudioFile(id) {
 // endpoint (multipart upload). Accepts common containers directly (ogg/opus,
 // webm, m4a, mp3, wav…) so Telegram voice notes and web recordings need no
 // transcoding.
-async function transcribeAudio(apiKey, buffer, filename, mime) {
+async function transcribeAudio(apiKey, buffer, filename, mime, model) {
   const form = new FormData();
-  form.append('model', STT_MODEL);
+  form.append('model', model || STT_MODEL);
   form.append('response_format', 'json');
   form.append('file', new Blob([buffer], { type: mime || 'application/octet-stream' }), filename);
   const resp = await fetch(TRANSCRIBE_URL, {
@@ -733,8 +766,9 @@ export function openrouterDevPlugin() {
               error: 'OPENROUTER_API_KEY not set in site/.env — add it and restart `npm run dev`.',
             });
           }
-          const { id } = await readJsonBody(req);
+          const { id, model: requestedModel } = await readJsonBody(req);
           if (!id) return sendJson(res, 400, { error: 'missing fragment id' });
+          const model = resolveModel(requestedModel, STT_MODEL);
 
           const file = findAudioFile(id);
           if (!file) return sendJson(res, 404, { error: `no audio file found for ${id}` });
@@ -745,8 +779,8 @@ export function openrouterDevPlugin() {
           // widely recognised than ".ogg", so normalise it.
           const sendName = `${path.basename(file, path.extname(file))}.${ext === 'oga' ? 'ogg' : ext}`;
           const mime = MEDIA_CONTENT_TYPES[ext] || 'application/octet-stream';
-          const { text, costUsd } = await transcribeAudio(apiKey, audioBuffer, sendName, mime);
-          return sendJson(res, 200, { text, model: STT_MODEL, costInr: costInr(costUsd) });
+          const { text, costUsd } = await transcribeAudio(apiKey, audioBuffer, sendName, mime, model);
+          return sendJson(res, 200, { text, model, costInr: costInr(costUsd) });
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }
@@ -757,7 +791,9 @@ export function openrouterDevPlugin() {
         if (req.method !== 'GET') return next();
         return sendJson(res, 200, {
           transcribeModel: STT_MODEL,
+          transcribeModelOptions: TRANSCRIBE_MODEL_OPTIONS,
           fixModel: FIX_MODEL,
+          fixModelOptions: FIX_MODEL_OPTIONS,
           fixPrompt: FIX_SYSTEM_PROMPT,
           hasKey: !!apiKey,
         });
@@ -949,19 +985,20 @@ export function openrouterDevPlugin() {
               error: 'OPENROUTER_API_KEY not set in site/.env — add it and restart `npm run dev`.',
             });
           }
-          const { text, prompt } = await readJsonBody(req);
+          const { text, prompt, model: requestedModel } = await readJsonBody(req);
           if (!text || !text.trim()) return sendJson(res, 400, { error: 'missing text' });
+          const model = resolveModel(requestedModel, FIX_MODEL);
 
           // Use the caller's edited prompt if supplied, else the default.
           const systemPrompt = typeof prompt === 'string' && prompt.trim() ? prompt : FIX_SYSTEM_PROMPT;
           const { text: fixed, costUsd } = await callOpenRouter(apiKey, {
-            model: FIX_MODEL,
+            model,
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: text },
             ],
           });
-          return sendJson(res, 200, { text: fixed, model: FIX_MODEL, costInr: costInr(costUsd) });
+          return sendJson(res, 200, { text: fixed, model, costInr: costInr(costUsd) });
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });
         }

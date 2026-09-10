@@ -564,6 +564,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         gap: 8px;
       }
       .model-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .model-line[hidden] { display: none; }
       .model-label {
         display: inline-block;
         min-width: 84px;
@@ -647,12 +648,21 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         <div class="settings-body">
           <div class="model-line">
             <span class="model-label">transcribe</span>
-            <code id="transcribe-model">…</code>
-            <span class="model-note">(no prompt — audio in, text out)</span>
+            <select id="transcribe-model-select"><option value="">loading…</option></select>
+            <span class="model-note" id="transcribe-model-note">(no prompt — audio in, text out)</span>
+          </div>
+          <div class="model-line" id="transcribe-custom-row" hidden>
+            <span class="model-label"></span>
+            <input id="transcribe-model-custom" type="text" class="mono" placeholder="vendor/model-slug" />
           </div>
           <div class="model-line">
             <span class="model-label">fix grammar</span>
-            <code id="fix-model">…</code>
+            <select id="fix-model-select"><option value="">loading…</option></select>
+            <span class="model-note" id="fix-model-note"></span>
+          </div>
+          <div class="model-line" id="fix-custom-row" hidden>
+            <span class="model-label"></span>
+            <input id="fix-model-custom" type="text" class="mono" placeholder="vendor/model-slug" />
           </div>
           <div class="model-line engine-choice">
             <span class="model-label">engine</span>
@@ -1555,7 +1565,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           try {
             if (action === 'transcribe') {
               setStatus('transcribing audio…');
-              const d = await postJson('/api/transcribe', { id });
+              const d = await postJson('/api/transcribe', { id, model: getTranscribeModel() });
               showTranscript(d.text);
               setBoxCost(transcriptCost, costKeyT, d);
               addSessionCost(d.costInr);
@@ -1581,7 +1591,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                 setStatus(`cleaned up locally · ${modelId.split('/').pop()} — copy when ready.`);
               } else {
                 setStatus('fixing grammar…');
-                const d = await postJson('/api/fix-grammar', { text: source, prompt });
+                const d = await postJson('/api/fix-grammar', { text: source, prompt, model: getFixModel() });
                 showFixed(d.text);
                 setBoxCost(fixedCost, costKeyF, d);
                 addSessionCost(d.costInr);
@@ -1899,13 +1909,92 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         }
       }
 
+      // -- Transcribe / fix-grammar model pickers ------------------------------
+      const TRANSCRIBE_MODEL_KEY = 'fn-inbox:transcribeModel';
+      const TRANSCRIBE_MODEL_CUSTOM_KEY = 'fn-inbox:transcribeModelCustom';
+      const FIX_MODEL_KEY = 'fn-inbox:fixModel';
+      const FIX_MODEL_CUSTOM_KEY = 'fn-inbox:fixModelCustom';
+      const CUSTOM_OPTION_VALUE = '__custom__';
+
+      function wireModelSelect(opts: {
+        select: HTMLSelectElement | null;
+        customRow: HTMLElement | null;
+        customInput: HTMLInputElement | null;
+        note: HTMLElement | null;
+        options: Array<{ id: string; label: string; note: string }>;
+        defaultId: string;
+        storageKey: string;
+        customStorageKey: string;
+      }) {
+        const { select, customRow, customInput, note, options, defaultId, storageKey, customStorageKey } = opts;
+        if (!select) return () => defaultId;
+        const optionHtml = options
+          .map((m) => `<option value="${m.id}">${m.label} — ${m.note}</option>`)
+          .join('');
+        select.innerHTML = `${optionHtml}<option value="${CUSTOM_OPTION_VALUE}">Custom model slug…</option>`;
+
+        let saved = '';
+        let savedCustom = '';
+        try {
+          saved = localStorage.getItem(storageKey) || '';
+          savedCustom = localStorage.getItem(customStorageKey) || '';
+        } catch {}
+        const isKnown = options.some((m) => m.id === saved);
+        select.value = saved && (isKnown || saved === CUSTOM_OPTION_VALUE) ? saved : defaultId;
+        if (select.value === CUSTOM_OPTION_VALUE && customInput) customInput.value = savedCustom;
+
+        function syncCustomRow() {
+          const showCustom = select!.value === CUSTOM_OPTION_VALUE;
+          if (customRow) customRow.hidden = !showCustom;
+          if (note) note.hidden = showCustom;
+        }
+        syncCustomRow();
+
+        select.addEventListener('change', () => {
+          try {
+            localStorage.setItem(storageKey, select.value);
+          } catch {}
+          syncCustomRow();
+        });
+        customInput?.addEventListener('input', () => {
+          try {
+            localStorage.setItem(customStorageKey, customInput.value);
+          } catch {}
+        });
+
+        // Resolves the model id to actually send with a request.
+        return (): string => {
+          if (select.value === CUSTOM_OPTION_VALUE) return (customInput?.value || '').trim() || defaultId;
+          return select.value || defaultId;
+        };
+      }
+
+      let getTranscribeModel = () => 'openai/gpt-4o-mini-transcribe';
+      let getFixModel = () => 'mistralai/mistral-nemo';
+
       (async () => {
         try {
           const cfg = await (await fetch('/api/config')).json();
-          const tm = document.getElementById('transcribe-model');
-          if (tm) tm.textContent = cfg.transcribeModel;
-          const fm = document.getElementById('fix-model');
-          if (fm) fm.textContent = cfg.fixModel;
+          getTranscribeModel = wireModelSelect({
+            select: document.getElementById('transcribe-model-select') as HTMLSelectElement | null,
+            customRow: document.getElementById('transcribe-custom-row'),
+            customInput: document.getElementById('transcribe-model-custom') as HTMLInputElement | null,
+            note: document.getElementById('transcribe-model-note'),
+            options: cfg.transcribeModelOptions || [],
+            defaultId: cfg.transcribeModel,
+            storageKey: TRANSCRIBE_MODEL_KEY,
+            customStorageKey: TRANSCRIBE_MODEL_CUSTOM_KEY,
+          });
+          getFixModel = wireModelSelect({
+            select: document.getElementById('fix-model-select') as HTMLSelectElement | null,
+            customRow: document.getElementById('fix-custom-row'),
+            customInput: document.getElementById('fix-model-custom') as HTMLInputElement | null,
+            note: document.getElementById('fix-model-note'),
+            options: cfg.fixModelOptions || [],
+            defaultId: cfg.fixModel,
+            storageKey: FIX_MODEL_KEY,
+            customStorageKey: FIX_MODEL_CUSTOM_KEY,
+          });
           defaultFixPrompt = cfg.fixPrompt || '';
           if (fixPromptEl) {
             let saved = '';
