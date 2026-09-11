@@ -83,13 +83,17 @@ a:focus {
   text-underline-offset: 0.15em;
 }
 
-/* person links — connection significance, subtle highlight */
+/* person links — reveal on hover only, connection significance */
 a[href*="linkedin.com/in/"] {
-  position: relative;
+  color: inherit;
+  text-decoration: none;
 }
 a[href*="linkedin.com/in/"]:hover {
+  color: var(--ink);
   background: rgba(216, 174, 62, 0.1);
   padding: 0 0.15em;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 /* typography utilities */
