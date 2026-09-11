@@ -2,7 +2,7 @@
 slug: 2026-09-10-studio-zero-lingering-with-an-idea
 title: Studio Zero — Letting Myself Linger With This Idea
 published: 2026-09-10
-journey: inception
+journey: scaffolding
 obsession: self
 fragments:
   - 2026-09-10-175212

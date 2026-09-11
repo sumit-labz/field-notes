@@ -1,6 +1,6 @@
 ---
-slug: inception
-title: Inception
+slug: scaffolding
+title: Scaffolding
 identity: studio-zero
 path: create
 status: active
