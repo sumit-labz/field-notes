@@ -1,0 +1,117 @@
+---
+// /studio-zero — the practice's own page. It draws on every obsession, owns
+// its journeys (posts live under them, and can cross-tag an obsession to also
+// surface there), and collects its pages (works/experiments).
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import JourneyTitle from '../../components/JourneyTitle.astro';
+import PostThumb from '../../components/PostThumb.astro';
+import { withBase } from '../../lib/url';
+import { postsForJourney, postLeadMedia, postTeaser } from '../../lib/content';
+import { studioZero, studioZeroPages } from '../../lib/studio-zero';
+
+const POST_PREVIEW = 4;
+const STATUS_ORDER = ['active', 'paused', 'abandoned', 'completed'] as const;
+
+const identities = (await getCollection('identities')).sort((a, b) => a.data.order - b.data.order);
+const journeys = (await getCollection('journeys'))
+  .filter((j) => j.data.identity === 'studio-zero')
+  .sort(
+    (a, b) =>
+      STATUS_ORDER.indexOf(a.data.status) - STATUS_ORDER.indexOf(b.data.status) ||
+      a.data.title.localeCompare(b.data.title)
+  );
+
+const allPosts = await getCollection('posts');
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+
+const journeyBlocks = await Promise.all(
+  journeys.map(async (journey) => {
+    const total = postsForJourney(journey, allPosts).length;
+    const preview = postsForJourney(journey, allPosts, { limit: POST_PREVIEW });
+    const cards = await Promise.all(
+      preview.map(async (post) => ({
+        post,
+        media: await postLeadMedia(post, fragmentsById),
+        teaser: postTeaser(post),
+      }))
+    );
+    return { journey, cards, total, more: total - preview.length };
+  })
+);
+---
+
+<Base title={studioZero.title}>
+  <p class="label">practice</p>
+  <h1>{studioZero.title}</h1>
+  <p class="sz-desc">{studioZero.tagline}</p>
+
+  <p class="sz-draws">draws on every obsession</p>
+  <ul class="sz-inputs">
+    {
+      identities.map((identity) => (
+        <li>
+          <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
+        </li>
+      ))
+    }
+  </ul>
+
+  {
+    journeyBlocks.length > 0 && (
+      <div class="journeys">
+        {journeyBlocks.map(({ journey, cards, total, more }) => (
+          <section class="j">
+            <a class="j-link" href={withBase(`/journeys/${journey.data.slug}/`)}>
+              <JourneyTitle
+                title={journey.data.title}
+                status={journey.data.status}
+                seed={journey.data.slug}
+              />
+            </a>
+            <span class="st">
+              {journey.data.status}
+              {journey.data.status === 'active' &&
+                ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
+              {total > 0 && ` · ${total} ${total === 1 ? 'post' : 'posts'}`}
+            </span>
+            {cards.length > 0 && (
+              <div class="post-grid post-grid--sequential j-posts">
+                {cards.map(({ post, media, teaser }) => (
+                  <PostThumb
+                    slug={post.data.slug}
+                    title={post.data.title}
+                    teaser={teaser}
+                    media={media}
+                    inProgress={post.data.status === 'in_progress'}
+                  />
+                ))}
+              </div>
+            )}
+            {more > 0 && (
+              <a class="j-more" href={withBase(`/journeys/${journey.data.slug}/`)}>
+                see all {total} posts →
+              </a>
+            )}
+          </section>
+        ))}
+      </div>
+    )
+  }
+
+  <h2 class="sz-pages-head">Pages</h2>
+  <div class="sz-pages">
+    {
+      studioZeroPages.map((page) => (
+        <a class="sz-page" href={withBase(`/studio-zero/${page.slug}/`)}>
+          <span class="sz-page__title">
+            {page.title}
+            {page.inProgress && <span class="inprogress">in progress</span>}
+          </span>
+          <span class="sz-page__body">{page.body}</span>
+        </a>
+      ))
+    }
+  </div>
+</Base>

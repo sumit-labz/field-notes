@@ -53,6 +53,21 @@ const journeyBlocks = await Promise.all(
   })
 );
 
+// Cross-tagged posts: those that live in a journey elsewhere (e.g. a Studio
+// Zero journey) but carry `obsession: <this slug>`, so they surface here too.
+// Excludes anything already shown under this obsession's own journeys.
+const ownJourneySlugs = new Set(journeys.map((j) => j.data.slug));
+const taggedPosts = allPosts
+  .filter((p) => p.data.obsession === identity.data.slug && !ownJourneySlugs.has(p.data.journey ?? ''))
+  .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf());
+const taggedCards = await Promise.all(
+  taggedPosts.map(async (post) => ({
+    post,
+    media: await postLeadMedia(post, fragmentsById),
+    teaser: postTeaser(post),
+  }))
+);
+
 // "Self — Being Seen": the obsession, then the journey carrying it. Empty
 // territories (e.g. music) just show the obsession title.
 const heading =
@@ -114,4 +129,24 @@ const heading =
       )
     }
   </div>
+
+  {
+    taggedCards.length > 0 && (
+      <section class="tagged">
+        <h2 class="tagged-head">also tagged {identity.data.title.toLowerCase()}</h2>
+        <p class="meta">work from elsewhere that drew on this obsession</p>
+        <div class="post-grid post-grid--sequential">
+          {taggedCards.map(({ post, media, teaser }) => (
+            <PostThumb
+              slug={post.data.slug}
+              title={post.data.title}
+              teaser={teaser}
+              media={media}
+              inProgress={post.data.status === 'in_progress'}
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
 </Base>

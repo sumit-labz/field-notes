@@ -354,6 +354,7 @@ h2 { font-size: 1.05rem; }
   letter-spacing: -0.01em;
   margin: 0.3rem 0 0.6rem;
 }
+.studio-zero h2 a { color: var(--ink); }
 .studio-zero .sz-desc {
   font-family: var(--font-annotation);
   font-size: 1.5rem;
@@ -379,6 +380,75 @@ h2 { font-size: 1.05rem; }
   list-style: none;
   font-family: var(--font-structure);
   font-size: 0.95rem;
+}
+
+/* ---- STUDIO ZERO practice page ---- */
+.sz-desc {
+  font-family: var(--font-annotation);
+  font-size: 1.5rem;
+  color: var(--ink);
+  margin: 0.3rem 0 1.2rem;
+}
+.sz-draws {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem;
+}
+.sz-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  padding: 0;
+}
+.sz-inputs li {
+  list-style: none;
+  font-family: var(--font-structure);
+  font-size: 0.95rem;
+}
+.sz-pages-head {
+  margin-top: 2.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ink);
+}
+.sz-pages { margin-top: 0.4rem; }
+.sz-page {
+  display: block;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.sz-page__title {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: block;
+}
+.sz-page__body {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  display: block;
+  margin-top: 0.3rem;
+}
+.tagged { margin-top: 2.6rem; }
+.tagged-head {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ink);
+  margin-bottom: 0.3rem;
+}
+.era__link {
+  margin: 0.4rem 0 0;
+}
+.era__link a {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ---- MARGINALIA — irregular photo grid, raw/brutalist, no motion ---- */
@@ -466,14 +536,53 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
 }
 .inprogress::before { content: "· "; }
 
-/* ---- ABOUT stack: ink ages instead of fading ---- */
-.about-eras { margin-top: 1.5rem; }
+/* ---- ABOUT stack: layers down a timeline that fades into the past ---- */
+/* A vertical spine runs down the left, strong at NOW and fading as the years
+   recede; the older cards sit slightly askew until you open one to read. */
+.about-eras {
+  position: relative;
+  margin-top: 1.5rem;
+  padding-left: 1.6rem;
+}
+.about-eras::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0.5rem;
+  bottom: 2.4rem;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--ink) 0%, var(--line) 45%, transparent 100%);
+}
 .era {
+  position: relative;
   border: 1px solid var(--line);
+  background: var(--ground);
   margin-bottom: 0.9rem;
   padding: 1.1rem 1.3rem;
+  transform-origin: left center;
+}
+/* A node on the spine, level with each card's title. */
+.era::before {
+  content: '';
+  position: absolute;
+  left: -1.6rem;
+  top: 1.5rem;
+  width: 7px;
+  height: 7px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--ground);
+  border: 1.5px solid var(--line);
 }
 .era--current { border-color: var(--ink); }
+.era--current::before { border-color: var(--ink); background: var(--ink); }
+/* The past sits at a slight tilt while folded, and the line fades with age;
+   opening a card straightens it so the text reads flat. */
+.era--past { transform: rotate(-0.5deg); }
+.era--archive { border-style: dashed; }
+.about-eras .era:nth-last-child(2) { transform: rotate(0.6deg); }
+.about-eras .era:nth-last-child(1) { transform: rotate(-0.9deg); border-color: #D6D0C2; }
+.era[open] { transform: rotate(0deg); }
 /* The head is the always-visible layer: period, title, one-line hook. */
 .era__head {
   cursor: pointer;
@@ -490,6 +599,13 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
   letter-spacing: 0.06em;
   color: var(--graphite);
   grid-column: 1 / -1;
+}
+/* The "∞" carries the weight of "and still going" — let it read at scale. */
+.era__infinity {
+  font-size: 1.5rem;
+  line-height: 0;
+  vertical-align: -0.28em;
+  color: var(--ink);
 }
 .era__title {
   font-family: var(--font-structure);
