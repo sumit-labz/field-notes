@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
+import AuthorFooter from '../../components/AuthorFooter.astro';
+import { authorLineFor } from '../../lib/authorLines';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
 import { dateLine, gradedOrOriginal } from '../../lib/content';
@@ -18,6 +20,12 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
+
+// One of a small set of self-descriptions, picked deterministically by post
+// slug — see lib/authorLines.ts. Varies post to post instead of repeating a
+// single fixed tagline under every one.
+const authorLine = authorLineFor(post.data.slug);
+
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 const blocks = splitPostBody(post.body ?? '', post.data.fragments);
@@ -247,6 +255,8 @@ for (const block of blocks) {
       </details>
     )
   }
+
+  {authorLine && <AuthorFooter line={authorLine} />}
 
   <p class="post-return">
     <a href={withBase('/')}>← back to feed</a>

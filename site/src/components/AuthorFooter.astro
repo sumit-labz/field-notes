@@ -1,0 +1,61 @@
+---
+// Post-end byline — Medium's "written by" pattern, drawn in this site's own
+// hand: a line-art face (matches the wobble/strike-through aesthetic
+// elsewhere, no photo) + name + one punchy line pulled from the About stack's
+// current entry, so the footer stays truthful to whatever "now" says without
+// needing its own copy to maintain.
+interface Props {
+  line: string;
+}
+const { line } = Astro.props;
+---
+
+<div class="author-footer">
+  <svg class="author-footer__face" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <path d="M18 30 C17 15, 47 15, 46 30 C47 42, 40 50, 32 50 C24 50, 17 42, 18 30 Z" />
+    <path d="M23 28 C24 26, 27 26, 28 28" />
+    <path d="M36 28 C37 26, 40 26, 41 28" />
+    <path d="M28 37 C30 40, 34 40, 36 37" />
+    <path d="M31 31 C30 34, 29 36, 30 37" />
+  </svg>
+  <div class="author-footer__body">
+    <p class="author-footer__by">Written by Sumit</p>
+    <p class="author-footer__line">{line}</p>
+  </div>
+</div>
+
+<style>
+  .author-footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--ink);
+  }
+  .author-footer__face {
+    flex: none;
+    width: 48px;
+    height: 48px;
+  }
+  .author-footer__face path {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+  .author-footer__by {
+    font-family: var(--font-structure);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+    margin: 0 0 0.2rem;
+  }
+  .author-footer__line {
+    font-family: var(--font-annotation);
+    font-size: 1.2rem;
+    color: var(--graphite);
+    margin: 0;
+  }
+</style>
