@@ -11,8 +11,7 @@ const journeys = await getCollection('journeys');
 const journeysFor = (slug: string) =>
   journeys
     .filter((j) => j.data.identity === slug)
-    .map((j) => j.data.title)
-    .join(', ');
+    .map((j) => ({ slug: j.data.slug, title: j.data.title }));
 ---
 
 <Base title="Obsessions">
@@ -21,11 +20,21 @@ const journeysFor = (slug: string) =>
   <ul class="obsession-list">
     {
       identities.map((identity) => {
-        const journey = journeysFor(identity.data.slug);
+        const journeys = journeysFor(identity.data.slug);
         return (
           <li>
             <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
-            {journey && <span class="journey-of"> · {journey}</span>}
+            {journeys.length > 0 && (
+              <span class="journey-of">
+                {' · '}
+                {journeys.map((j, i) => (
+                  <>
+                    {i > 0 && ', '}
+                    <a href={withBase(`/journeys/${j.slug}/`)}>{j.title}</a>
+                  </>
+                ))}
+              </span>
+            )}
           </li>
         );
       })

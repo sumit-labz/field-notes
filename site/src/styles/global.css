@@ -305,16 +305,24 @@ h2 { font-size: 1.05rem; }
   border-top: 1px solid var(--ink);
 }
 .journeys .j {
-  font-size: 1.15rem;
-  padding: 1rem 0;
+  padding: 1.4rem 0 1.6rem;
   border-bottom: 1px solid var(--line);
 }
+.journeys .j-link { font-size: 1.15rem; }
 .journeys .j .st {
   font-family: var(--font-meta);
   font-size: 0.68rem;
   color: var(--graphite);
   display: block;
   margin-top: 0.3rem;
+}
+.journeys .j-posts { margin-top: 1.1rem; }
+.journeys .j-more {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
 }
 .journeys .empty {
   font-family: var(--font-annotation);
@@ -331,6 +339,7 @@ h2 { font-size: 1.05rem; }
   font-size: 0.74rem;
   color: var(--graphite);
 }
+.obsession-list .journey-of a { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
 .studio-zero {
   margin-top: 3rem;
   padding-top: 2rem;
@@ -373,35 +382,6 @@ h2 { font-size: 1.05rem; }
 }
 
 /* ---- MARGINALIA — irregular photo grid, raw/brutalist, no motion ---- */
-.marginalia-grid {
-  columns: 4 220px;
-  column-gap: 1.2rem;
-  margin-top: 1.4rem;
-}
-.marginalia-card {
-  display: inline-block;
-  width: 100%;
-  break-inside: avoid;
-  margin: 0 0 1.4rem;
-}
-.marginalia-card img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-}
-.marginalia-card figcaption {
-  margin-top: 0.4rem;
-}
-.marginalia-empty {
-  font-family: var(--font-annotation);
-  color: var(--graphite);
-  font-size: 1.3rem;
-  padding-top: 0.5rem;
-}
-@media (max-width: 720px) { .marginalia-grid { columns: 2 160px; } }
-
 /* ---- JOURNEY / POST rhythm ---- */
 .postrow {
   display: flex;
@@ -487,37 +467,73 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
 .inprogress::before { content: "· "; }
 
 /* ---- ABOUT stack: ink ages instead of fading ---- */
-.about-stack { margin-top: 1.5rem; }
-.about-entry { border: 1px solid var(--line); margin-bottom: 0.9rem; padding: 1.3rem 1.4rem; }
-.about-entry--current { border-color: var(--ink); }
-.about-entry .date {
-  font-family: var(--font-meta);
-  font-size: 0.72rem;
-  color: var(--graphite);
-  margin-bottom: 0.7rem;
+.about-eras { margin-top: 1.5rem; }
+.era {
+  border: 1px solid var(--line);
+  margin-bottom: 0.9rem;
+  padding: 1.1rem 1.3rem;
 }
-.about-entry .text {
-  font-size: 1.1rem;
-  line-height: 1.55;
-  max-width: 46ch;
+.era--current { border-color: var(--ink); }
+/* The head is the always-visible layer: period, title, one-line hook. */
+.era__head {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.15rem 0.9rem;
+}
+.era__head::-webkit-details-marker { display: none; }
+.era__period {
+  font-family: var(--font-meta);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--graphite);
+  grid-column: 1 / -1;
+}
+.era__title {
+  font-family: var(--font-structure);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 1.15rem;
   color: var(--ink);
 }
-.about-entry--past .date { color: var(--graphite); }
-.about-entry--past .text { color: var(--graphite); font-size: 1rem; }
-.about-entry--archive .date { color: var(--ghost); }
-.about-entry--archive .text { color: var(--ghost); font-size: 0.92rem; line-height: 1.5; }
-.about-mix {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem 1rem;
-  flex-wrap: wrap;
-  margin-top: 0.9rem;
+/* An unobtrusive open/close affordance on the title row. */
+.era__title::after {
+  content: '+';
+  font-weight: 400;
+  color: var(--ghost);
+  margin-left: 0.5rem;
+}
+.era[open] .era__title::after { content: '–'; }
+.era__hook {
+  font-family: var(--font-annotation);
+  font-size: 1.25rem;
+  color: var(--graphite);
+  align-self: center;
+}
+.era__body {
+  margin-top: 1rem;
+  max-width: 52ch;
+}
+.era__body p { margin: 0 0 0.85rem; line-height: 1.55; }
+.era__body p:last-child { margin-bottom: 0; }
+.era__tags {
   font-family: var(--font-structure);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
 }
-.about-mix span { line-height: 1; }
+.era__tags-sep { color: var(--ghost); }
+/* The past recedes — material, not opacity. */
+.era--past .era__title { color: var(--graphite); }
+.era--archive .era__period,
+.era--archive .era__title,
+.era--archive .era__hook { color: var(--ghost); }
+.era--archive .era__body p { color: var(--graphite); }
 .about-notebook {
   font-family: var(--font-annotation);
   font-size: 1.35rem;

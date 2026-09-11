@@ -1,13 +1,18 @@
 ---
 // /identities/[slug] — one obsession and the journey it's carried through.
 // The obsession is the territory; the journey is the practice inside it, so
-// the heading reads "Self — Being Seen" and the journey is surfaced directly
-// rather than sorted into Practice / Learn / Create streams.
+// the heading reads "Self — Being Seen". Under each journey we surface its
+// most recent posts (up to POST_PREVIEW); when there are more, a link leads
+// to the full arc on the journey page.
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
+import PostThumb from '../../components/PostThumb.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
+import { postsForJourney, postLeadMedia, postTeaser } from '../../lib/content';
+
+const POST_PREVIEW = 4;
 
 export async function getStaticPaths() {
   const identities = await getCollection('identities');
@@ -27,6 +32,27 @@ const journeys = (await getCollection('journeys'))
       a.data.title.localeCompare(b.data.title)
   );
 
+const allPosts = await getCollection('posts');
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+
+// For each journey: its newest posts (capped), a card per post, and whether
+// there are more than we're showing.
+const journeyBlocks = await Promise.all(
+  journeys.map(async (journey) => {
+    const total = postsForJourney(journey, allPosts).length;
+    const preview = postsForJourney(journey, allPosts, { limit: POST_PREVIEW });
+    const cards = await Promise.all(
+      preview.map(async (post) => ({
+        post,
+        media: await postLeadMedia(post, fragmentsById),
+        teaser: postTeaser(post),
+      }))
+    );
+    return { journey, cards, total, more: total - preview.length };
+  })
+);
+
 // "Self — Being Seen": the obsession, then the journey carrying it. Empty
 // territories (e.g. music) just show the obsession title.
 const heading =
@@ -42,12 +68,12 @@ const heading =
 
   <div class="journeys">
     {
-      journeys.length === 0 ? (
+      journeyBlocks.length === 0 ? (
         <p class="empty">no journey here yet.</p>
       ) : (
-        journeys.map((journey) => (
-          <div class="j">
-            <a href={withBase(`/journeys/${journey.data.slug}/`)}>
+        journeyBlocks.map(({ journey, cards, total, more }) => (
+          <section class="j">
+            <a class="j-link" href={withBase(`/journeys/${journey.data.slug}/`)}>
               <JourneyTitle
                 title={journey.data.title}
                 status={journey.data.status}
@@ -60,11 +86,30 @@ const heading =
               {journey.data.status === 'completed' && ' · done'}
               {journey.data.status === 'active' &&
                 ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
+              {total > 0 && ` · ${total} ${total === 1 ? 'post' : 'posts'}`}
             </span>
             {journey.data.status === 'abandoned' && journey.data.reason && (
               <p class="annotation annotation--ghost">{journey.data.reason}</p>
             )}
-          </div>
+            {cards.length > 0 && (
+              <div class="post-grid post-grid--sequential j-posts">
+                {cards.map(({ post, media, teaser }) => (
+                  <PostThumb
+                    slug={post.data.slug}
+                    title={post.data.title}
+                    teaser={teaser}
+                    media={media}
+                    inProgress={post.data.status === 'in_progress'}
+                  />
+                ))}
+              </div>
+            )}
+            {more > 0 && (
+              <a class="j-more" href={withBase(`/journeys/${journey.data.slug}/`)}>
+                see all {total} posts →
+              </a>
+            )}
+          </section>
         ))
       )
     }

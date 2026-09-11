@@ -1,56 +1,112 @@
 ---
-// /about — a dated, append-only stack. Newest full ink; the past recedes
-// through graphite then ghost (never opacity — material, not a fade). The
-// sized obsession mix per entry is the biography.
-import { getCollection } from 'astro:content';
+// /about — the biography as layers you peel open, newest first. Each era is a
+// collapsible card: period + title + a one-line hook always visible, the rest
+// behind a click. The newest layer opens by default; the past stays folded and
+// recedes ink → graphite → ghost. Keeps a long life short on the page while
+// letting you "watch a person change their mind."
 import Base from '../layouts/Base.astro';
 
-const entries = (await getCollection('about')).sort(
-  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
-);
-const identityEntries = await getCollection('identities');
-const identityTitle = new Map(
-  identityEntries.map((i) => [i.data.slug, i.data.title])
-);
-
-// Entry recede (newest = current, older fade to ghost) is genuinely by stack
-// position — that's the timeline. The obsession mix is NOT: each label's size
-// and colour comes from its own explicit weight, so four items resolve to four
-// distinct weights regardless of order or count.
-const layerClass = (index: number) =>
-  index === 0 ? 'about-entry--current' : index === 1 ? 'about-entry--past' : 'about-entry--archive';
-
-const MIX_WEIGHT: Record<'dominant' | 'present' | 'emerging' | 'quiet', { size: string; color: string }> = {
-  dominant: { size: '1.6rem', color: 'var(--ink)' },
-  present: { size: '1.25rem', color: 'var(--ink)' },
-  emerging: { size: '1rem', color: 'var(--graphite)' },
-  quiet: { size: '0.85rem', color: 'var(--ghost)' },
+type Era = {
+  period: string;
+  title: string;
+  hook: string;
+  body: string[];
+  // Studio Zero's ingredients, rendered as an emphasised inline list.
+  tags?: string[];
+  // A dry closing line in the margin voice.
+  aside?: string;
 };
+
+const eras: Era[] = [
+  {
+    period: '2026 · NOW',
+    title: 'Studio Zero',
+    hook: 'The maker is back.',
+    body: [
+      "After years of software, design, art, cinema, writing, music and various other rabbit holes, I'm trying to put the pieces in the same room.",
+      'Studio Zero is my attempt at a one-person creative studio. It started as an idea I had a long time ago, got quietly forgotten, and has now returned with considerably more baggage.',
+      "I'm bringing together the things that have kept pulling at me:",
+    ],
+    tags: ['Design', 'Art', 'Cinema', 'Music', 'Story', 'Software'],
+    aside: 'making is making a comeback.',
+  },
+  {
+    period: '2020s',
+    title: 'The AI Detour',
+    hook: "I still wanted to make software. Just not only software.",
+    body: [
+      "At some point I realised I didn't necessarily want to spend the rest of my life going deeper and deeper into software development.",
+      "Then AI became interesting. If I could direct the machine instead of doing every part myself, perhaps I could spend more time thinking about the things I actually wanted to explore.",
+      'So I started looking at AI as another kind of creative instrument. Naturally, this opened several more doors. I walked through most of them.',
+    ],
+  },
+  {
+    period: '2019 · ∞',
+    title: 'The Art Incident',
+    hook: "Art became the thing I thought I'd do for the rest of my life.",
+    body: [
+      'After leaving software, I started learning UX design. Then illustration caught my attention. Illustration led to art. So I kept going.',
+      'I studied painting, illustration and visual art. I followed artists. I made studies. I experimented.',
+      'I made things, but I never really built the body of work I imagined I would. There was always another thing to learn. Another technique. Another artist. Another rabbit hole.',
+    ],
+    aside: 'body of work: pending. apparently studying art is also a very effective way of avoiding making art.',
+  },
+  {
+    period: '2019',
+    title: 'The Design Phase',
+    hook: 'I left code for interfaces.',
+    body: [
+      'I left software development and went straight into UX. I studied Interaction Design and completed the course.',
+      'I was interested in how things work, but increasingly also in how they feel. Interfaces. Typography. Visual language. Systems. Making things understandable.',
+      'Then illustration appeared. Which, in retrospect, was not a minor development.',
+    ],
+  },
+  {
+    period: '2004 — 2019',
+    title: 'The Software Developer',
+    hook: 'For fifteen years, I made software.',
+    body: [
+      'Mostly Microsoft technologies. Cloud. Products. Systems. The usual machinery.',
+      'I was always interested in UX, though, and kept looking beyond the code toward the experience of the thing being built.',
+      'Software was my first serious way of making things. For a long time, I thought it might be the only one. It wasn’t.',
+    ],
+  },
+];
+
+const layerClass = (index: number) =>
+  index === 0 ? 'era--current' : index === 1 ? 'era--past' : 'era--archive';
 ---
 
 <Base title="About">
   <h1>About</h1>
   <p class="annotation">do I fit anywhere? no. that's the whole page.</p>
 
-  <div class="about-stack">
+  <div class="about-eras">
     {
-      entries.map((entry, i) => (
-        <div class={`about-entry ${layerClass(i)}`}>
-          <div class="date">{entry.data.season}</div>
-          <div class="text">{entry.body ?? ''}</div>
-          {entry.data.mix && entry.data.mix.length > 0 && (
-            <div class="about-mix">
-              {entry.data.mix.map((item) => (
-                <span
-                  style={`font-size:${MIX_WEIGHT[item.weight].size};color:${MIX_WEIGHT[item.weight].color}`}
-                >
-                  {identityTitle.get(item.slug) ?? item.slug}
-                </span>
-              ))}
-            </div>
-          )}
-          {entry.data.aside && <p class="about-notebook">{entry.data.aside}</p>}
-        </div>
+      eras.map((era, i) => (
+        <details class={`era ${layerClass(i)}`} open={i === 0}>
+          <summary class="era__head">
+            <span class="era__period">{era.period}</span>
+            <span class="era__title">{era.title}</span>
+            <span class="era__hook">{era.hook}</span>
+          </summary>
+          <div class="era__body">
+            {era.body.map((p) => (
+              <p>{p}</p>
+            ))}
+            {era.tags && (
+              <p class="era__tags">
+                {era.tags.map((t, j) => (
+                  <>
+                    {j > 0 && <span class="era__tags-sep"> · </span>}
+                    {t}
+                  </>
+                ))}
+              </p>
+            )}
+            {era.aside && <p class="about-notebook">{era.aside}</p>}
+          </div>
+        </details>
       ))
     }
   </div>
