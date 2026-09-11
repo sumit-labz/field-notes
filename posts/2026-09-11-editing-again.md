@@ -14,7 +14,7 @@ I'm returning to something I set down years ago: editing my own writing. My clos
 
 I did the usual thing: edited my own writing with the techniques it taught. The course is wonderful. It teaches simplicity, clarity, elegance, evocativeness — and how to balance all four into a style of your own. It moves in phases. As you do the exercises, you learn to catch your own fuzzy thoughts, overstretched sentences, long words, redundant words — and to fix them yourself.
 
-I did this editing before AI existed. Now AI can do it for you. So the question is: how do you write, and how much do you let AI in? Because once you let it in, you owe your readers transparency — not hiding it from them.
+I learnt editing in the pre-AI era, before ChatGPT changed everything. Now AI can do it for you. So the question is: how do you write, and how much do you let AI in? Because once you let it in, you owe your readers transparency — not hiding it from them.
 
 I put the question to the Opus model itself, and its answer was pretty sensible: if AI proposes a different way to write a sentence, then even when you choose to take it, it was still AI that proposed it. That's where the authorship I wrote about in my last post gets questioned. Authorship matters, and it matters more in the age of AI.
 
