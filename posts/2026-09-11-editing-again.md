@@ -10,7 +10,7 @@ status: published
 kind: post
 ---
 
-I'm returning to something I set down years ago: editing my own writing. My close friend Alok introduced me to it — he'd used Shani Raja's course to write a book on CRM. I trusted Alok, so I bought the course.
+I'm returning to something I set down years ago: editing my own writing. My close friend [Alok](https://www.linkedin.com/in/alokingh/) introduced me to it — he'd used Shani Raja's course to write a book on CRM. I trusted Alok, so I bought the course.
 
 I did the usual thing: edited my own writing with the techniques it taught. The course is wonderful. It teaches simplicity, clarity, elegance, evocativeness — and how to balance all four into a style of your own. It moves in phases. As you do the exercises, you learn to catch your own fuzzy thoughts, overstretched sentences, long words, redundant words — and to fix them yourself.
 

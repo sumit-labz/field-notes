@@ -83,6 +83,15 @@ a:focus {
   text-underline-offset: 0.15em;
 }
 
+/* person links — connection significance, subtle highlight */
+a[href*="linkedin.com/in/"] {
+  position: relative;
+}
+a[href*="linkedin.com/in/"]:hover {
+  background: rgba(216, 174, 62, 0.1);
+  padding: 0 0.15em;
+}
+
 /* typography utilities */
 .font-arch { font-family: var(--font-structure); }
 .font-mono { font-family: var(--font-meta); }
