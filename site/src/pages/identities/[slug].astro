@@ -1,11 +1,11 @@
 ---
-// /identities/[slug] — one obsession, split into Practice / Learn / Create
-// streams by Journey.path, status marks within each. The balance mirror:
-// three columns, one glance.
+// /identities/[slug] — one obsession and the journey it's carried through.
+// The obsession is the territory; the journey is the practice inside it, so
+// the heading reads "Self — Being Seen" and the journey is surfaced directly
+// rather than sorted into Practice / Learn / Create streams.
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
-import ModeGlyph from '../../components/ModeGlyph.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
 
@@ -18,67 +18,55 @@ export async function getStaticPaths() {
 }
 
 const { identity } = Astro.props;
-const journeys = (await getCollection('journeys')).filter(
-  (j) => j.data.identity === identity.data.slug
-);
-
 const STATUS_ORDER = ['active', 'paused', 'abandoned', 'completed'] as const;
-const streams = (['practice', 'learn', 'create'] as const).map((path) => ({
-  path,
-  journeys: journeys
-    .filter((j) => j.data.path === path)
-    .sort(
-      (a, b) =>
-        STATUS_ORDER.indexOf(a.data.status) - STATUS_ORDER.indexOf(b.data.status) ||
-        a.data.title.localeCompare(b.data.title)
-    ),
-}));
+const journeys = (await getCollection('journeys'))
+  .filter((j) => j.data.identity === identity.data.slug)
+  .sort(
+    (a, b) =>
+      STATUS_ORDER.indexOf(a.data.status) - STATUS_ORDER.indexOf(b.data.status) ||
+      a.data.title.localeCompare(b.data.title)
+  );
+
+// "Self — Being Seen": the obsession, then the journey carrying it. Empty
+// territories (e.g. music) just show the obsession title.
+const heading =
+  journeys.length > 0
+    ? `${identity.data.title} — ${journeys.map((j) => j.data.title).join(', ')}`
+    : identity.data.title;
 ---
 
-<Base title={identity.data.title}>
+<Base title={heading}>
   <p class="label">obsession</p>
-  <h1>{identity.data.title}</h1>
+  <h1>{heading}</h1>
   <Fragment set:html={paragraphs(identity.body ?? '')} />
 
-  <div class="streams">
+  <div class="journeys">
     {
-      streams.map((stream) => (
-        <section class="stream">
-          <h5>
-            <ModeGlyph path={stream.path} size={24} />
-            {stream.path}
-          </h5>
-          {
-            stream.journeys.length === 0 ? (
-              <div class="empty">nothing here yet.</div>
-            ) : (
-              stream.journeys.map((journey) => (
-                <div class="j">
-                  <a href={withBase(`/journeys/${journey.data.slug}/`)}>
-                    <JourneyTitle
-                      title={journey.data.title}
-                      status={journey.data.status}
-                      seed={journey.data.slug}
-                    />
-                  </a>
-                  <span class="st">
-                    {journey.data.status}
-                    {journey.data.status === 'paused' && ' · fell off'}
-                    {journey.data.status === 'completed' && ' · done'}
-                    {journey.data.status === 'active' &&
-                      ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
-                  </span>
-                  {journey.data.status === 'abandoned' && journey.data.reason && (
-                    <p class="annotation annotation--ghost">{journey.data.reason}</p>
-                  )}
-                </div>
-              ))
-            )
-          }
-        </section>
-      ))
+      journeys.length === 0 ? (
+        <p class="empty">no journey here yet.</p>
+      ) : (
+        journeys.map((journey) => (
+          <div class="j">
+            <a href={withBase(`/journeys/${journey.data.slug}/`)}>
+              <JourneyTitle
+                title={journey.data.title}
+                status={journey.data.status}
+                seed={journey.data.slug}
+              />
+            </a>
+            <span class="st">
+              {journey.data.status}
+              {journey.data.status === 'paused' && ' · fell off'}
+              {journey.data.status === 'completed' && ' · done'}
+              {journey.data.status === 'active' &&
+                ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
+            </span>
+            {journey.data.status === 'abandoned' && journey.data.reason && (
+              <p class="annotation annotation--ghost">{journey.data.reason}</p>
+            )}
+          </div>
+        ))
+      )
     }
   </div>
-
-  <p class="annotation">three columns, one glance: am I only practising and studying, or actually making?</p>
 </Base>

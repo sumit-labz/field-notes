@@ -299,43 +299,78 @@ h2 { font-size: 1.05rem; }
 }
 @media (max-width: 720px) { .post-grid { columns: 1 auto; } }
 
-/* ---- OBSESSION (identity) streams ---- */
-.streams {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.4rem;
+/* ---- OBSESSION (identity) — the journey, surfaced directly ---- */
+.journeys {
+  margin-top: 1.6rem;
+  border-top: 1px solid var(--ink);
 }
-.stream h5 {
-  font-family: var(--font-structure);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.7rem;
-  margin: 0 0 0.25rem;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.journeys .j {
+  font-size: 1.15rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
 }
-.stream .j {
-  font-size: 0.92rem;
-  padding: 0.55rem 0;
-}
-.stream .j .st {
+.journeys .j .st {
   font-family: var(--font-meta);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   color: var(--graphite);
   display: block;
-  margin-top: 0.15rem;
+  margin-top: 0.3rem;
 }
-.stream .empty {
+.journeys .empty {
   font-family: var(--font-annotation);
   color: var(--graphite);
   font-size: 1.3rem;
-  padding-top: 0.5rem;
+  padding-top: 0.9rem;
 }
-@media (max-width: 720px) { .streams { grid-template-columns: 1fr; } }
+
+/* ---- OBSESSIONS index: each obsession's journey, then Studio Zero ---- */
+.obsession-list { margin: 1.4rem 0 0; padding: 0; }
+.obsession-list li { list-style: none; margin: 0 0 1rem; }
+.obsession-list .journey-of {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+}
+.studio-zero {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--ink);
+}
+.studio-zero .label { color: var(--graphite); }
+.studio-zero h2 {
+  font-family: var(--font-structure);
+  font-weight: 700;
+  font-size: 2.6rem;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0.3rem 0 0.6rem;
+}
+.studio-zero .sz-desc {
+  font-family: var(--font-annotation);
+  font-size: 1.5rem;
+  color: var(--ink);
+  margin: 0 0 1.2rem;
+}
+.studio-zero .sz-draws {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem;
+}
+.studio-zero .sz-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  padding: 0;
+}
+.studio-zero .sz-inputs li {
+  list-style: none;
+  font-family: var(--font-structure);
+  font-size: 0.95rem;
+}
 
 /* ---- MARGINALIA — irregular photo grid, raw/brutalist, no motion ---- */
 .marginalia-grid {
