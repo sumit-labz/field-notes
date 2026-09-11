@@ -1,0 +1,26 @@
+---
+// /studio-zero/[slug] — one page (work/experiment) under the Studio Zero
+// practice.
+import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/url';
+import { studioZeroPages } from '../../lib/studio-zero';
+
+export function getStaticPaths() {
+  return studioZeroPages.map((page) => ({
+    params: { slug: page.slug },
+    props: { page },
+  }));
+}
+
+const { page } = Astro.props;
+---
+
+<Base title={page.title}>
+  <p><a href={withBase('/studio-zero/')}>← studio zero</a></p>
+  <p class="label">studio zero</p>
+  <h1>
+    {page.title}
+    {page.inProgress && <span class="inprogress">in progress</span>}
+  </h1>
+  <p>{page.body}</p>
+</Base>

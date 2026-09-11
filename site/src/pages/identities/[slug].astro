@@ -1,13 +1,18 @@
 ---
-// /identities/[slug] — one obsession, split into Practice / Learn / Create
-// streams by Journey.path, status marks within each. The balance mirror:
-// three columns, one glance.
+// /identities/[slug] — one obsession and the journey it's carried through.
+// The obsession is the territory; the journey is the practice inside it, so
+// the heading reads "Self — Being Seen". Under each journey we surface its
+// most recent posts (up to POST_PREVIEW); when there are more, a link leads
+// to the full arc on the journey page.
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import JourneyTitle from '../../components/JourneyTitle.astro';
-import ModeGlyph from '../../components/ModeGlyph.astro';
+import PostThumb from '../../components/PostThumb.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
+import { postsForJourney, postLeadMedia, postTeaser } from '../../lib/content';
+
+const POST_PREVIEW = 4;
 
 export async function getStaticPaths() {
   const identities = await getCollection('identities');
@@ -18,67 +23,130 @@ export async function getStaticPaths() {
 }
 
 const { identity } = Astro.props;
-const journeys = (await getCollection('journeys')).filter(
-  (j) => j.data.identity === identity.data.slug
+const STATUS_ORDER = ['active', 'paused', 'abandoned', 'completed'] as const;
+const journeys = (await getCollection('journeys'))
+  .filter((j) => j.data.identity === identity.data.slug)
+  .sort(
+    (a, b) =>
+      STATUS_ORDER.indexOf(a.data.status) - STATUS_ORDER.indexOf(b.data.status) ||
+      a.data.title.localeCompare(b.data.title)
+  );
+
+const allPosts = await getCollection('posts');
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+
+// For each journey: its newest posts (capped), a card per post, and whether
+// there are more than we're showing.
+const journeyBlocks = await Promise.all(
+  journeys.map(async (journey) => {
+    const total = postsForJourney(journey, allPosts).length;
+    const preview = postsForJourney(journey, allPosts, { limit: POST_PREVIEW });
+    const cards = await Promise.all(
+      preview.map(async (post) => ({
+        post,
+        media: await postLeadMedia(post, fragmentsById),
+        teaser: postTeaser(post),
+      }))
+    );
+    return { journey, cards, total, more: total - preview.length };
+  })
 );
 
-const STATUS_ORDER = ['active', 'paused', 'abandoned', 'completed'] as const;
-const streams = (['practice', 'learn', 'create'] as const).map((path) => ({
-  path,
-  journeys: journeys
-    .filter((j) => j.data.path === path)
-    .sort(
-      (a, b) =>
-        STATUS_ORDER.indexOf(a.data.status) - STATUS_ORDER.indexOf(b.data.status) ||
-        a.data.title.localeCompare(b.data.title)
-    ),
-}));
+// Cross-tagged posts: those that live in a journey elsewhere (e.g. a Studio
+// Zero journey) but carry `obsession: <this slug>`, so they surface here too.
+// Excludes anything already shown under this obsession's own journeys.
+const ownJourneySlugs = new Set(journeys.map((j) => j.data.slug));
+const taggedPosts = allPosts
+  .filter((p) => p.data.obsession === identity.data.slug && !ownJourneySlugs.has(p.data.journey ?? ''))
+  .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf());
+const taggedCards = await Promise.all(
+  taggedPosts.map(async (post) => ({
+    post,
+    media: await postLeadMedia(post, fragmentsById),
+    teaser: postTeaser(post),
+  }))
+);
+
+// "Self — Being Seen": the obsession, then the journey carrying it. Empty
+// territories (e.g. music) just show the obsession title.
+const heading =
+  journeys.length > 0
+    ? `${identity.data.title} — ${journeys.map((j) => j.data.title).join(', ')}`
+    : identity.data.title;
 ---
 
-<Base title={identity.data.title}>
+<Base title={heading}>
   <p class="label">obsession</p>
-  <h1>{identity.data.title}</h1>
+  <h1>{heading}</h1>
   <Fragment set:html={paragraphs(identity.body ?? '')} />
 
-  <div class="streams">
+  <div class="journeys">
     {
-      streams.map((stream) => (
-        <section class="stream">
-          <h5>
-            <ModeGlyph path={stream.path} size={24} />
-            {stream.path}
-          </h5>
-          {
-            stream.journeys.length === 0 ? (
-              <div class="empty">nothing here yet.</div>
-            ) : (
-              stream.journeys.map((journey) => (
-                <div class="j">
-                  <a href={withBase(`/journeys/${journey.data.slug}/`)}>
-                    <JourneyTitle
-                      title={journey.data.title}
-                      status={journey.data.status}
-                      seed={journey.data.slug}
-                    />
-                  </a>
-                  <span class="st">
-                    {journey.data.status}
-                    {journey.data.status === 'paused' && ' · fell off'}
-                    {journey.data.status === 'completed' && ' · done'}
-                    {journey.data.status === 'active' &&
-                      ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
-                  </span>
-                  {journey.data.status === 'abandoned' && journey.data.reason && (
-                    <p class="annotation annotation--ghost">{journey.data.reason}</p>
-                  )}
-                </div>
-              ))
-            )
-          }
-        </section>
-      ))
+      journeyBlocks.length === 0 ? (
+        <p class="empty">no journey here yet.</p>
+      ) : (
+        journeyBlocks.map(({ journey, cards, total, more }) => (
+          <section class="j">
+            <a class="j-link" href={withBase(`/journeys/${journey.data.slug}/`)}>
+              <JourneyTitle
+                title={journey.data.title}
+                status={journey.data.status}
+                seed={journey.data.slug}
+              />
+            </a>
+            <span class="st">
+              {journey.data.status}
+              {journey.data.status === 'paused' && ' · fell off'}
+              {journey.data.status === 'completed' && ' · done'}
+              {journey.data.status === 'active' &&
+                ` · started ${journey.data.started.toISOString().slice(0, 10)}`}
+              {total > 0 && ` · ${total} ${total === 1 ? 'post' : 'posts'}`}
+            </span>
+            {journey.data.status === 'abandoned' && journey.data.reason && (
+              <p class="annotation annotation--ghost">{journey.data.reason}</p>
+            )}
+            {cards.length > 0 && (
+              <div class="post-grid post-grid--sequential j-posts">
+                {cards.map(({ post, media, teaser }) => (
+                  <PostThumb
+                    slug={post.data.slug}
+                    title={post.data.title}
+                    teaser={teaser}
+                    media={media}
+                    inProgress={post.data.status === 'in_progress'}
+                  />
+                ))}
+              </div>
+            )}
+            {more > 0 && (
+              <a class="j-more" href={withBase(`/journeys/${journey.data.slug}/`)}>
+                see all {total} posts →
+              </a>
+            )}
+          </section>
+        ))
+      )
     }
   </div>
 
-  <p class="annotation">three columns, one glance: am I only practising and studying, or actually making?</p>
+  {
+    taggedCards.length > 0 && (
+      <section class="tagged">
+        <h2 class="tagged-head">also tagged {identity.data.title.toLowerCase()}</h2>
+        <p class="meta">work from elsewhere that drew on this obsession</p>
+        <div class="post-grid post-grid--sequential">
+          {taggedCards.map(({ post, media, teaser }) => (
+            <PostThumb
+              slug={post.data.slug}
+              title={post.data.title}
+              teaser={teaser}
+              media={media}
+              inProgress={post.data.status === 'in_progress'}
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
 </Base>

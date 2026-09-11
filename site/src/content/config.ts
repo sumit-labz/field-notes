@@ -57,6 +57,13 @@ const posts = defineCollection({
     title: z.string(),
     published: z.coerce.date(),
     journey: z.string().nullable(),
+    // Optional cross-tag: an identity (obsession) slug. A post's home is its
+    // journey; `obsession` additionally surfaces it on that obsession's page,
+    // so a Studio Zero post can appear both under its Studio Zero journey and
+    // under the obsession it drew on (e.g. a journey in `studio-zero` tagged
+    // `visual-art`). Absent for posts whose journey already lives inside the
+    // obsession they belong to.
+    obsession: z.string().nullable().optional(),
     // ordered; controls render order
     fragments: z.array(z.string()),
     // IMPLEMENTATION-SPEC.md stage 1: new optional fields, defaults only.
@@ -146,21 +153,4 @@ const about = defineCollection({
   }),
 });
 
-// Marginalia: photographed index-card-sized lines — original or collected,
-// self-authored or attributed. Posted directly from Telegram (caption tagged
-// `#marginalia`) straight to a live page, not curated through fragments/posts
-// like everything else. Photo only, no OCR — the card itself is the record.
-const marginalia = defineCollection({
-  loader: glob({ pattern: '*.md', base: `${repoRoot}marginalia` }),
-  schema: z.object({
-    id: z.string(),
-    captured_at: z.coerce.date(),
-    // R2 object key (e.g. "m/2026-09-01/143022.webp") or a repo-relative
-    // media/ path — same convention as fragment media, see lib/local-media.ts.
-    media: z.string(),
-    // Attribution when collected (author/book/film); absent when original.
-    source: z.string().nullable().optional(),
-  }),
-});
-
-export const collections = { fragments, posts, journeys, identities, about, marginalia };
+export const collections = { fragments, posts, journeys, identities, about };

@@ -15,12 +15,12 @@
 */
 
 :root {
-  --ground: #F4F0E6;
-  --paper: #FAF8F1;
+  --ground: #E4E8E9; /* pale slate — cool paper ground */
+  --paper: #F6F7F6;  /* inserted sheet: a cool near-white against the slate */
   --ink: #181714;
   --graphite: #4E4A42;
   --ghost: #898277;
-  --line: #C8C1B3;
+  --line: #C6C9CB;   /* cool hairline to match the slate ground */
   --highlight: #D8AE3E;
   --ink-2: var(--graphite); /* the light ink — subordinate text (captions) */
 
@@ -40,7 +40,16 @@ html {
 
 body {
   margin: 0;
-  background: var(--ground);
+  /* Pale-slate ground with a self-hosted SVG fractal-noise grain blended in
+     (multiply), so the tooth tints with the colour instead of greying it —
+     recipe: isotropic grain, amount 0.07, contrast 0.88, scale 0.85. Tiles at
+     240px; min-height fills short pages so the texture reaches every edge. */
+  background-color: var(--ground);
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNDAnIGhlaWdodD0nMjQwJz48ZmlsdGVyIGlkPSduJyB4PScwJyB5PScwJyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC44NScgbnVtT2N0YXZlcz0nMycgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjxmZUNvbG9yTWF0cml4IHR5cGU9J3NhdHVyYXRlJyB2YWx1ZXM9JzAnLz48ZmVDb21wb25lbnRUcmFuc2Zlcj48ZmVGdW5jUiB0eXBlPSdsaW5lYXInIHNsb3BlPSc4LjkyJyBpbnRlcmNlcHQ9Jy0zLjk2Jy8+PGZlRnVuY0cgdHlwZT0nbGluZWFyJyBzbG9wZT0nOC45MicgaW50ZXJjZXB0PSctMy45NicvPjxmZUZ1bmNCIHR5cGU9J2xpbmVhcicgc2xvcGU9JzguOTInIGludGVyY2VwdD0nLTMuOTYnLz48L2ZlQ29tcG9uZW50VHJhbnNmZXI+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsdGVyPSd1cmwoI24pJyBvcGFjaXR5PScwLjA3Jy8+PC9zdmc+");
+  background-repeat: repeat;
+  background-size: 240px 240px;
+  background-blend-mode: multiply;
+  min-height: 100dvh;
   color: var(--ink);
   font-family: var(--font-body);
   /* Safety net: nothing on this site is meant to scroll the page sideways —
@@ -299,74 +308,159 @@ h2 { font-size: 1.05rem; }
 }
 @media (max-width: 720px) { .post-grid { columns: 1 auto; } }
 
-/* ---- OBSESSION (identity) streams ---- */
-.streams {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.5rem;
-  margin-top: 1.4rem;
+/* ---- OBSESSION (identity) — the journey, surfaced directly ---- */
+.journeys {
+  margin-top: 1.6rem;
+  border-top: 1px solid var(--ink);
 }
-.stream h5 {
-  font-family: var(--font-structure);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.7rem;
-  margin: 0 0 0.25rem;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid var(--ink);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.journeys .j {
+  padding: 1.4rem 0 1.6rem;
+  border-bottom: 1px solid var(--line);
 }
-.stream .j {
-  font-size: 0.92rem;
-  padding: 0.55rem 0;
-}
-.stream .j .st {
+.journeys .j-link { font-size: 1.15rem; }
+.journeys .j .st {
   font-family: var(--font-meta);
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   color: var(--graphite);
   display: block;
-  margin-top: 0.15rem;
+  margin-top: 0.3rem;
 }
-.stream .empty {
+.journeys .j-posts { margin-top: 1.1rem; }
+.journeys .j-more {
+  display: inline-block;
+  margin-top: 1rem;
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+}
+.journeys .empty {
   font-family: var(--font-annotation);
   color: var(--graphite);
   font-size: 1.3rem;
-  padding-top: 0.5rem;
+  padding-top: 0.9rem;
 }
-@media (max-width: 720px) { .streams { grid-template-columns: 1fr; } }
+
+/* ---- OBSESSIONS index: each obsession's journey, then Studio Zero ---- */
+.obsession-list { margin: 1.4rem 0 0; padding: 0; }
+.obsession-list li { list-style: none; margin: 0 0 1rem; }
+.obsession-list .journey-of {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+}
+.obsession-list .journey-of a { color: var(--graphite); text-decoration: underline; text-underline-offset: 2px; }
+.studio-zero {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--ink);
+}
+.studio-zero .label { color: var(--graphite); }
+.studio-zero h2 {
+  font-family: var(--font-structure);
+  font-weight: 700;
+  font-size: 2.6rem;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0.3rem 0 0.6rem;
+}
+.studio-zero h2 a { color: var(--ink); }
+.studio-zero .sz-desc {
+  font-family: var(--font-annotation);
+  font-size: 1.5rem;
+  color: var(--ink);
+  margin: 0 0 1.2rem;
+}
+.studio-zero .sz-draws {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem;
+}
+.studio-zero .sz-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  padding: 0;
+}
+.studio-zero .sz-inputs li {
+  list-style: none;
+  font-family: var(--font-structure);
+  font-size: 0.95rem;
+}
+
+/* ---- STUDIO ZERO practice page ---- */
+.sz-desc {
+  font-family: var(--font-annotation);
+  font-size: 1.5rem;
+  color: var(--ink);
+  margin: 0.3rem 0 1.2rem;
+}
+.sz-draws {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem;
+}
+.sz-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  padding: 0;
+}
+.sz-inputs li {
+  list-style: none;
+  font-family: var(--font-structure);
+  font-size: 0.95rem;
+}
+.sz-pages-head {
+  margin-top: 2.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ink);
+}
+.sz-pages { margin-top: 0.4rem; }
+.sz-page {
+  display: block;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.sz-page__title {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 1.1rem;
+  display: block;
+}
+.sz-page__body {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  display: block;
+  margin-top: 0.3rem;
+}
+.tagged { margin-top: 2.6rem; }
+.tagged-head {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ink);
+  margin-bottom: 0.3rem;
+}
+.era__link {
+  margin: 0.4rem 0 0;
+}
+.era__link a {
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* ---- MARGINALIA — irregular photo grid, raw/brutalist, no motion ---- */
-.marginalia-grid {
-  columns: 4 220px;
-  column-gap: 1.2rem;
-  margin-top: 1.4rem;
-}
-.marginalia-card {
-  display: inline-block;
-  width: 100%;
-  break-inside: avoid;
-  margin: 0 0 1.4rem;
-}
-.marginalia-card img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 1px solid var(--ink);
-  background: var(--paper);
-}
-.marginalia-card figcaption {
-  margin-top: 0.4rem;
-}
-.marginalia-empty {
-  font-family: var(--font-annotation);
-  color: var(--graphite);
-  font-size: 1.3rem;
-  padding-top: 0.5rem;
-}
-@media (max-width: 720px) { .marginalia-grid { columns: 2 160px; } }
-
 /* ---- JOURNEY / POST rhythm ---- */
 .postrow {
   display: flex;
@@ -451,38 +545,122 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
 }
 .inprogress::before { content: "· "; }
 
-/* ---- ABOUT stack: ink ages instead of fading ---- */
-.about-stack { margin-top: 1.5rem; }
-.about-entry { border: 1px solid var(--line); margin-bottom: 0.9rem; padding: 1.3rem 1.4rem; }
-.about-entry--current { border-color: var(--ink); }
-.about-entry .date {
-  font-family: var(--font-meta);
-  font-size: 0.72rem;
-  color: var(--graphite);
-  margin-bottom: 0.7rem;
+/* ---- ABOUT stack: layers down a timeline that fades into the past ---- */
+/* A vertical spine runs down the left, strong at NOW and fading as the years
+   recede; the older cards sit slightly askew until you open one to read. */
+.about-eras {
+  position: relative;
+  margin-top: 1.5rem;
+  padding-left: 1.6rem;
 }
-.about-entry .text {
-  font-size: 1.1rem;
-  line-height: 1.55;
-  max-width: 46ch;
+.about-eras::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0.5rem;
+  bottom: 2.4rem;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--ink) 0%, var(--line) 45%, transparent 100%);
+}
+.era {
+  position: relative;
+  border: 1px solid var(--line);
+  /* Transparent so the body's paper grain shows through the card too, rather
+     than sitting as a smooth patch on a textured ground. */
+  background: transparent;
+  margin-bottom: 0.9rem;
+  padding: 1.1rem 1.3rem;
+  transform-origin: left center;
+}
+/* A node on the spine, level with each card's title. */
+.era::before {
+  content: '';
+  position: absolute;
+  left: -1.6rem;
+  top: 1.5rem;
+  width: 7px;
+  height: 7px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--ground);
+  border: 1.5px solid var(--line);
+}
+.era--current { border-color: var(--ink); }
+.era--current::before { border-color: var(--ink); background: var(--ink); }
+/* The past sits at a slight tilt while folded, and the line fades with age;
+   opening a card straightens it so the text reads flat. */
+.era--past { transform: rotate(-0.5deg); }
+.era--archive { border-style: dashed; }
+.about-eras .era:nth-last-child(2) { transform: rotate(0.6deg); }
+.about-eras .era:nth-last-child(1) { transform: rotate(-0.9deg); border-color: #D6D0C2; }
+.era[open] { transform: rotate(0deg); }
+/* The head is the always-visible layer: period, title, one-line hook. */
+.era__head {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.15rem 0.9rem;
+}
+.era__head::-webkit-details-marker { display: none; }
+.era__period {
+  font-family: var(--font-meta);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--graphite);
+  grid-column: 1 / -1;
+}
+/* The "∞" carries the weight of "and still going" — let it read at scale. */
+.era__infinity {
+  font-size: 1.5rem;
+  line-height: 0;
+  vertical-align: -0.28em;
   color: var(--ink);
 }
-.about-entry--past .date { color: var(--graphite); }
-.about-entry--past .text { color: var(--graphite); font-size: 1rem; }
-.about-entry--archive .date { color: var(--ghost); }
-.about-entry--archive .text { color: var(--ghost); font-size: 0.92rem; line-height: 1.5; }
-.about-mix {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem 1rem;
-  flex-wrap: wrap;
-  margin-top: 0.9rem;
+.era__title {
+  font-family: var(--font-structure);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+/* An unobtrusive open/close affordance on the title row. */
+.era__title::after {
+  content: '+';
+  font-weight: 400;
+  color: var(--ghost);
+  margin-left: 0.5rem;
+}
+.era[open] .era__title::after { content: '–'; }
+.era__hook {
+  font-family: var(--font-annotation);
+  font-size: 1.25rem;
+  color: var(--graphite);
+  align-self: center;
+}
+.era__body {
+  margin-top: 1rem;
+  max-width: 52ch;
+}
+.era__body p { margin: 0 0 0.85rem; line-height: 1.55; }
+.era__body p:last-child { margin-bottom: 0; }
+.era__tags {
   font-family: var(--font-structure);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
 }
-.about-mix span { line-height: 1; }
+.era__tags-sep { color: var(--ghost); }
+/* The past recedes — material, not opacity. */
+.era--past .era__title { color: var(--graphite); }
+.era--archive .era__period,
+.era--archive .era__title,
+.era--archive .era__hook { color: var(--ghost); }
+.era--archive .era__body p { color: var(--graphite); }
 .about-notebook {
   font-family: var(--font-annotation);
   font-size: 1.35rem;

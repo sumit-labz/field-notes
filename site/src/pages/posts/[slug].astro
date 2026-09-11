@@ -247,9 +247,28 @@ for (const block of blocks) {
       </details>
     )
   }
+
+  <p class="post-return">
+    <a href={withBase('/')}>← back to feed</a>
+  </p>
 </Base>
 
 <style>
+  /* A clear way back to the feed at the end of the read, mirroring the top
+     link (the wordmark is the only other route home now that nav has no feed
+     item). */
+  .post-return {
+    margin-top: 4rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+  }
+  .post-return a {
+    font-family: 'Archivo', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+  }
+
   .opener {
     display: block;
     margin-top: 1rem;

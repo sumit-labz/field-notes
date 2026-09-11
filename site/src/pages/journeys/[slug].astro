@@ -21,6 +21,14 @@ const { data } = journey;
 
 const identities = await getCollection('identities');
 const identity = identities.find((i) => i.data.slug === data.identity);
+// Studio Zero owns journeys too, but it lives at its own route rather than in
+// the identities collection — so link there when a journey belongs to it.
+const owner =
+  data.identity === 'studio-zero'
+    ? { href: '/studio-zero/', title: 'Studio Zero' }
+    : identity
+      ? { href: `/identities/${identity.data.slug}/`, title: identity.data.title }
+      : null;
 
 const allJourneys = await getCollection('journeys');
 // SPEC.md 3.3: emerged_from is the only relationship field; genealogy is derived
@@ -50,9 +58,9 @@ const postCards = await Promise.all(
 <Base title={data.title}>
   <p><a href={withBase('/')}>← feed</a></p>
   {
-    identity && (
+    owner && (
       <p class="journey-obsession">
-        <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
+        <a href={withBase(owner.href)}>{owner.title}</a>
       </p>
     )
   }
