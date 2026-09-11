@@ -39,14 +39,9 @@ const FIX_MODEL = 'mistralai/mistral-nemo'; // cheapest paid grammar-fix model
 
 // Curated transcription models, cheapest-first-ish, shown in the settings panel.
 const TRANSCRIBE_MODEL_OPTIONS = [
-  { id: 'openai/whisper-1', label: 'Whisper v1', note: '~$0.006/min · fast, solid default' },
-  { id: 'openai/gpt-4o-transcribe', label: 'GPT-4o Transcribe', note: '~$0.0000025/min · higher accuracy' },
   { id: 'openai/gpt-4o-mini-transcribe', label: 'GPT-4o Mini Transcribe', note: '~$0.00000125/min · cheapest' },
-  {
-    id: 'nvidia/nemotron-3.5-asr',
-    label: 'Nemotron 3.5 ASR',
-    note: '~$0.0000033/min · closest to free (no $0 STT exists on OpenRouter)',
-  },
+  { id: 'openai/gpt-4o-transcribe', label: 'GPT-4o Transcribe', note: '~$0.0000025/min · higher accuracy' },
+  { id: 'openai/whisper-1', label: 'Whisper v1', note: '~$0.006/min · fast, good fallback' },
 ];
 
 // Curated grammar-fix (chat) models.
