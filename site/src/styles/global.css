@@ -655,12 +655,18 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
   color: var(--ink);
 }
 .era__tags-sep { color: var(--ghost); }
-/* The past recedes — material, not opacity. */
-.era--past .era__title { color: var(--graphite); }
+/* The past recedes — material, not opacity. Tags fade alongside the title
+   here for the same reason the archive fix below fades them too: leaving a
+   structural label at full --ink while everything around it downgrades reads
+   as an oversight, not a deliberate accent. */
+.era--past .era__title,
+.era--past .era__tags { color: var(--graphite); }
 .era--archive .era__period,
 .era--archive .era__title,
 .era--archive .era__hook { color: var(--ghost); }
 .era--archive .era__body p { color: var(--graphite); }
+.era--archive .era__tags { color: var(--graphite); }
+.era--archive .era__tags-sep { color: var(--line); }
 .about-notebook {
   font-family: var(--font-annotation);
   font-size: 1.35rem;
