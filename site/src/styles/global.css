@@ -15,12 +15,12 @@
 */
 
 :root {
-  --ground: #F4F0E6;
-  --paper: #FAF8F1;
+  --ground: #E4E8E9; /* pale slate — cool paper ground */
+  --paper: #F6F7F6;  /* inserted sheet: a cool near-white against the slate */
   --ink: #181714;
   --graphite: #4E4A42;
   --ghost: #898277;
-  --line: #C8C1B3;
+  --line: #C6C9CB;   /* cool hairline to match the slate ground */
   --highlight: #D8AE3E;
   --ink-2: var(--graphite); /* the light ink — subordinate text (captions) */
 
@@ -40,7 +40,16 @@ html {
 
 body {
   margin: 0;
-  background: var(--ground);
+  /* Pale-slate ground with a self-hosted SVG fractal-noise grain blended in
+     (multiply), so the tooth tints with the colour instead of greying it —
+     recipe: isotropic grain, amount 0.07, contrast 0.88, scale 0.85. Tiles at
+     240px; min-height fills short pages so the texture reaches every edge. */
+  background-color: var(--ground);
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNDAnIGhlaWdodD0nMjQwJz48ZmlsdGVyIGlkPSduJyB4PScwJyB5PScwJyB3aWR0aD0nMTAwJScgaGVpZ2h0PScxMDAlJz48ZmVUdXJidWxlbmNlIHR5cGU9J2ZyYWN0YWxOb2lzZScgYmFzZUZyZXF1ZW5jeT0nMC44NScgbnVtT2N0YXZlcz0nMycgc3RpdGNoVGlsZXM9J3N0aXRjaCcvPjxmZUNvbG9yTWF0cml4IHR5cGU9J3NhdHVyYXRlJyB2YWx1ZXM9JzAnLz48ZmVDb21wb25lbnRUcmFuc2Zlcj48ZmVGdW5jUiB0eXBlPSdsaW5lYXInIHNsb3BlPSc4LjkyJyBpbnRlcmNlcHQ9Jy0zLjk2Jy8+PGZlRnVuY0cgdHlwZT0nbGluZWFyJyBzbG9wZT0nOC45MicgaW50ZXJjZXB0PSctMy45NicvPjxmZUZ1bmNCIHR5cGU9J2xpbmVhcicgc2xvcGU9JzguOTInIGludGVyY2VwdD0nLTMuOTYnLz48L2ZlQ29tcG9uZW50VHJhbnNmZXI+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9JzEwMCUnIGhlaWdodD0nMTAwJScgZmlsdGVyPSd1cmwoI24pJyBvcGFjaXR5PScwLjA3Jy8+PC9zdmc+");
+  background-repeat: repeat;
+  background-size: 240px 240px;
+  background-blend-mode: multiply;
+  min-height: 100dvh;
   color: var(--ink);
   font-family: var(--font-body);
   /* Safety net: nothing on this site is meant to scroll the page sideways —
@@ -556,7 +565,9 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
 .era {
   position: relative;
   border: 1px solid var(--line);
-  background: var(--ground);
+  /* Transparent so the body's paper grain shows through the card too, rather
+     than sitting as a smooth patch on a textured ground. */
+  background: transparent;
   margin-bottom: 0.9rem;
   padding: 1.1rem 1.3rem;
   transform-origin: left center;
