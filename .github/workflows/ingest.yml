@@ -32,6 +32,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r scripts/requirements.txt
 
+      - name: Cache Telegram offset
+        uses: actions/cache@v4
+        with:
+          path: ~/.field-notes/telegram-offset.json
+          key: telegram-offset
+          restore-keys: telegram-offset
+
       - name: Run ingest
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}

@@ -2,19 +2,18 @@
 """Pull new Telegram messages into fragments/, per SPEC.md §4.
 
 Run by .github/workflows/ingest.yml on a 15-minute cron and on
-workflow_dispatch. Not run directly against production secrets outside CI
-except for local testing with your own .env.
+workflow_dispatch. Can also be run locally on any branch.
 
 Safety invariants this script is built around:
 
-- The persisted offset in .state/telegram-offset.json is only written, and
-  only committed, after every fragment in this run's batch has had its media
+- The persisted offset in ~/.field-notes/telegram-offset.json is stored
+  locally (not in git) so it survives branch switches without conflicts. It
+  is only written after every fragment in this run's batch has had its media
   uploaded to R2 and its markdown file written. If anything fails partway,
-  nothing is committed and the offset file is untouched — the next run reads
-  the same old offset and asks Telegram for the same batch again. Telegram
-  only treats updates as delivered once a *later* offset is actually passed
-  to getUpdates, and we only ever pass the last-committed offset, so a crash
-  really does mean "try the same batch again," not "some messages vanish."
+  the offset file is untouched — the next run reads the same old offset and
+  asks Telegram for the same batch again. Telegram only treats updates as
+  delivered once a *later* offset is actually passed to getUpdates, so a
+  crash really does mean "try the same batch again," not "some messages vanish."
   R2 object keys are deterministic from the message timestamp, so a retried
   upload safely overwrites the same key rather than duplicating anything.
 
@@ -52,7 +51,9 @@ from PIL import Image, ImageOps
 load_dotenv()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-STATE_PATH = REPO_ROOT / ".state" / "telegram-offset.json"
+# Store offset in a local file outside git to avoid branch/sync issues.
+# This allows running ingest on any branch without offset conflicts.
+STATE_PATH = Path.home() / ".field-notes" / "telegram-offset.json"
 FRAGMENTS_DIR = REPO_ROOT / "fragments"
 # Marginalia (photographed index-card-sized lines) bypasses the fragments
 # review step entirely — a caption tagged #marginalia posts straight here.
@@ -622,28 +623,20 @@ def rebase_onto_remote(new_offset: int) -> None:
         return
 
     conflicts = unmerged_paths()
-    offset_rel = str(STATE_PATH.relative_to(REPO_ROOT)).replace("\\", "/")
-
-    if conflicts != {offset_rel}:
+    if conflicts:
         git(["rebase", "--abort"])  # best-effort cleanup; the real error is below
-        raise IngestError(f"git pull --rebase failed: {pull.stderr.strip()}")
+        raise IngestError(f"git pull --rebase failed with conflicts: {conflicts}")
 
-    # The offset file is the one place a rebase can conflict — e.g. a
-    # concurrent run already advanced past a different batch. Don't let git
-    # text-merge the two JSON values: our in-memory new_offset, computed
-    # from this run's own getUpdates call, is the only value that's
-    # actually correct for the batch this run processed. Re-write it
-    # directly and continue the rebase rather than trusting the merge.
-    write_offset(new_offset)
-    run_git(["add", offset_rel])
-    run_git(["rebase", "--continue"])
+    # Rebase succeeded but with auto-stash applied; no action needed.
+    return
 
 
 def commit_and_push(fragment_count: int, marginalia_count: int, new_offset: int) -> None:
     # "media/" holds locally-saved video/audio. Only stage it when it exists —
     # a photos/text-only batch never creates it, and `git add` of a missing
     # pathspec would fail the run. Same for marginalia/ on a batch with none.
-    add_paths = ["fragments", str(STATE_PATH.relative_to(REPO_ROOT))]
+    # Offset is stored locally outside git, so no need to stage it.
+    add_paths = ["fragments"]
     if MEDIA_DIR.exists():
         add_paths.append("media")
     if MARGINALIA_DIR.exists():
@@ -725,8 +718,18 @@ def main() -> None:
 
     updates = fetch_updates(config, offset)
     if not updates:
-        print("[ingest] no new messages")
-        return  # SPEC.md §4 step 11: exit without committing
+        # If we have an offset set but get no updates, the offset might be
+        # beyond Telegram's 24-hour retention window or in an invalid state.
+        # Try fetching without an offset to see if messages are available.
+        if offset is not None:
+            print(f"[ingest] no updates with offset {offset}; retrying without offset")
+            updates = fetch_updates(config, None)
+            if updates:
+                print(f"[ingest] found {len(updates)} updates without offset; offset was stale")
+
+        if not updates:
+            print("[ingest] no new messages")
+            return  # SPEC.md §4 step 11: exit without committing
 
     accepted, _rejected = split_by_sender(updates, config.allowed_user_id)
     groups = group_messages(accepted)
