@@ -1,6 +1,6 @@
 ---
 slug: 2026-09-11-when-your-adhd-brain-finally-wakes-up
-title: When Your ADHD Brain Finally Wakes Up (Spoiler: It's Loud)
+title: "When Your ADHD Brain Finally Wakes Up (Spoiler: It's Loud)"
 published: 2026-09-11
 journey: scaffolding
 obsession: self
