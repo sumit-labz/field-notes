@@ -1,122 +1,200 @@
 ---
-// The "made with" colophon — a visible mark at the foot of every post stating
-// how much AI touched it, from Sumit's self-editing-pass practice. Always shown
-// (not hidden behind a click): the stage, an honest one-liner, and the four-rung
-// scale with the current rung lit. Native to Field Notes — its own tokens and
-// fonts, a hairline rule to set it apart as a footer block.
-//
-// Ladder, least- to most-AI-in-the-wording:
-//   ◉ raw · ● self-edited · ◐ feedback · ○ unaided
+// The "made with" badge — a click-to-expand mark at the foot of every post,
+// naming how much AI touched it on Sumit's self-editing-pass ladder. Collapsed
+// it's a small pill ("Raw voice, <stage>"); expanded it opens a panel with an
+// honest statement, the four-rung ladder (current lit), and a note on the
+// practice. Native to Field Notes: its own tokens (--accent/--panel/--line) and
+// fonts, so it sits in light or dark without restyling.
 interface Props {
   stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
 }
 const { stage } = Astro.props;
 
-const LADDER = [
-  { key: 'raw', glyph: '◉', label: 'raw' },
-  { key: 'self-edited', glyph: '●', label: 'self-edited' },
-  { key: 'feedback', glyph: '◐', label: 'feedback' },
-  { key: 'unaided', glyph: '○', label: 'unaided' },
-] as const;
-
-const STATEMENTS: Record<Props['stage'], string> = {
-  raw: 'Recorded voice, transcribed. Only mechanical mistakes — typos, obvious slips, paragraph breaks — were fixed. No craft edit, no rewording, none of the AI’s words entered the text.',
-  'self-edited': 'Recorded voice, hand-edited by me for craft using an AI diagnostic tool as a crutch. I took only its eye: every word here is mine; where it pointed, I did the fixing.',
-  feedback: 'Recorded voice, hand-edited by me for craft using an AI diagnostic tool as a crutch. Where I took a phrasing it offered, the AI touched the words. The diagnosis was the tool’s; the choices were mine. I’m learning to need it less.',
-  unaided: 'Written and edited entirely by me. No AI in the loop.',
+// Per-stage pill label + the honest statement, split so the accent phrase can
+// carry the --accent colour (the "mirror, not a ghostwriter" beat).
+const STAGES: Record<Props['stage'], { pill: string; glyph: string; before: string; accent: string; after: string }> = {
+  raw: {
+    pill: 'raw',
+    glyph: '◉',
+    before: 'This began as raw recorded voice — spoken from the unconscious, feeling intact. Only mechanical mistakes were fixed. AI was a ',
+    accent: 'transcriber, not an editor',
+    after: ': none of its wording is in these words.',
+  },
+  'self-edited': {
+    pill: 'self-edited',
+    glyph: '●',
+    before: 'This began as raw recorded voice — spoken from the unconscious, feeling intact — and I hand-edited it. AI was a ',
+    accent: 'mirror, not a ghostwriter',
+    after: ': it pointed, I decided. None of its wording is in these words.',
+  },
+  feedback: {
+    pill: 'with AI feedback',
+    glyph: '◐',
+    before: 'This began as raw recorded voice — spoken from the unconscious, feeling intact — and I hand-edited it with AI as a crutch. Where I took a phrasing it offered, ',
+    accent: 'its words touched mine',
+    after: '. The diagnosis was the tool’s; the choices were mine.',
+  },
+  unaided: {
+    pill: 'unaided',
+    glyph: '○',
+    before: 'This began as raw recorded voice — spoken from the unconscious, feeling intact — and I edited it by my own eye alone. ',
+    accent: 'No AI was in the loop',
+    after: '. Where the practice is headed.',
+  },
 };
 
-const current = LADDER.find((r) => r.key === stage)!;
+const SCALE = [
+  { key: 'raw', glyph: '◉', label: 'Raw', sub: 'Recorded voice, transcribed. Only mechanical fixes.' },
+  { key: 'self-edited', glyph: '●', label: 'Self-edited', sub: 'AI as a mirror. Its eye, my words.' },
+  { key: 'feedback', glyph: '◐', label: 'With AI feedback', sub: 'The crutch. A few phrasings adopted.' },
+  { key: 'unaided', glyph: '○', label: 'Unaided', sub: 'No AI. Where the practice matures to.' },
+] as const;
+
+const NOTE = 'The badge names where a piece sits on the ladder I’m climbing — from leaning on the tool toward needing none of it.';
+const s = STAGES[stage];
 ---
 
-<section class="madewith" data-stage={stage} aria-label="How much AI touched this piece">
-  <div class="madewith__head">
-    <span class="madewith__glyph" aria-hidden="true">{current.glyph}</span>
-    <span class="madewith__label">made with</span>
-    <span class="madewith__stage">{current.label}</span>
+<details class="mw" data-stage={stage}>
+  <summary class="mw__pill">
+    <span class="mw__dot" aria-hidden="true">{s.glyph}</span>
+    <span class="mw__pilltext">Raw voice, <b>{s.pill}</b></span>
+    <span class="mw__chev" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="mw__panel">
+    <p class="mw__statement">{s.before}<em class="mw__accent">{s.accent}</em>{s.after}</p>
+    <hr class="mw__rule" />
+    <ol class="mw__scale">
+      {
+        SCALE.map((rung) => (
+          <li class:list={['mw__rung', { 'is-current': rung.key === stage }]}>
+            <span class="mw__rung-dot" aria-hidden="true">{rung.glyph}</span>
+            <span class="mw__rung-text">
+              <b class="mw__rung-label">{rung.label}</b>
+              <span class="mw__rung-sub">{rung.sub}</span>
+            </span>
+          </li>
+        ))
+      }
+    </ol>
+    <hr class="mw__rule" />
+    <p class="mw__note">{NOTE}</p>
   </div>
-  <p class="madewith__statement">{STATEMENTS[stage]}</p>
-  <ol class="madewith__scale" aria-label="AI-usage scale, least to most AI in the wording">
-    {
-      LADDER.map((rung) => (
-        <li class:list={['madewith__rung', { 'is-current': rung.key === stage }]}>
-          <span class="madewith__rung-glyph" aria-hidden="true">{rung.glyph}</span>
-          <span>{rung.label}</span>
-        </li>
-      ))
-    }
-  </ol>
-</section>
+</details>
 
 <style>
-  /* A distinct footer block, set off by a hairline rule. Visible by design —
-     this is the honesty mark; a reader should be able to see it without hunting.
-     Quiet in tone, but legible, never invisible. */
-  .madewith {
+  .mw {
     margin-top: 3rem;
-    padding-top: 1.4rem;
-    border-top: 1px solid var(--line);
   }
-  .madewith__head {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
+
+  /* Collapsed: a small pill you can see and click. */
+  .mw__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--graphite);
+    background: transparent;
   }
-  .madewith__glyph {
-    color: var(--ink);
-    font-size: 1.05rem;
+  .mw__pill::-webkit-details-marker { display: none; }
+  .mw__dot {
+    color: var(--accent);
+    font-size: 0.7rem;
     line-height: 1;
-    transform: translateY(0.06em);
   }
-  .madewith__label {
-    font-family: var(--font-structure, 'Archivo', sans-serif);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 0.72rem;
-    color: var(--graphite);
+  .mw__pilltext {
+    font-family: var(--font-body, sans-serif);
+    font-size: 0.9rem;
   }
-  .madewith__stage {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.95rem;
+  .mw__pilltext b {
+    font-family: var(--font-meta, 'Space Mono', monospace);
+    font-weight: 700;
     color: var(--ink);
   }
-  .madewith__statement {
-    margin: 0.8rem 0 0;
-    max-width: 52ch;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.82rem;
-    line-height: 1.6;
-    color: var(--graphite);
+  .mw__chev {
+    margin-left: 0.15rem;
+    font-size: 0.9rem;
+    color: var(--ghost);
+    /* instant flip, no decorative motion */
   }
-  /* The scale: current rung lit, the others faint but still readable. */
-  .madewith__scale {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem 1.3rem;
-    margin: 1rem 0 0;
+  .mw[open] .mw__chev { transform: rotate(180deg); }
+
+  /* Expanded: the panel. */
+  .mw__panel {
+    margin-top: 0.7rem;
+    max-width: 42rem;
+    padding: 1.5rem 1.6rem;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .mw__statement {
+    margin: 0;
+    font-family: var(--font-body, sans-serif);
+    font-size: 1.14rem;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .mw__accent {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .mw__rule {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 1.25rem 0;
+  }
+
+  .mw__scale {
+    margin: 0;
     padding: 0;
     list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
   }
-  .madewith__rung {
-    display: inline-flex;
+  .mw__rung {
+    display: flex;
     align-items: baseline;
-    gap: 0.35rem;
-    font-family: var(--font-structure, 'Archivo', sans-serif);
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    font-size: 0.62rem;
+    gap: 0.7rem;
+  }
+  .mw__rung-dot {
+    flex: none;
+    width: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.2;
     color: var(--ghost);
   }
-  .madewith__rung-glyph {
+  .mw__rung-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .mw__rung-label {
+    font-family: var(--font-meta, 'Space Mono', monospace);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--graphite);
+  }
+  .mw__rung-sub {
+    font-family: var(--font-meta, 'Space Mono', monospace);
     font-size: 0.78rem;
-    line-height: 1;
-    transform: translateY(0.05em);
     color: var(--ghost);
   }
-  .madewith__rung.is-current {
-    color: var(--ink);
+  /* the current rung lights up in the accent colour */
+  .mw__rung.is-current .mw__rung-dot,
+  .mw__rung.is-current .mw__rung-label {
+    color: var(--accent);
   }
-  .madewith__rung.is-current .madewith__rung-glyph {
-    color: var(--ink);
+
+  .mw__note {
+    margin: 0;
+    font-family: var(--font-meta, 'Space Mono', monospace);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--ghost);
   }
 </style>
