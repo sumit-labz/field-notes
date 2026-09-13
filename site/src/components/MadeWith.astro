@@ -1,0 +1,92 @@
+---
+// The "made with" badge — the honest rung of Sumit's self-editing-pass practice
+// this post reached. A quiet footnote, not a trophy: a small glyph + label that
+// opens on click to state plainly how much AI was in the loop. Native <details>,
+// no motion, inherits the site's own tokens (--ink/--graphite/--line/fonts) —
+// mirrors the "before cleanup" transcript disclosure elsewhere on the page.
+//
+// Four stages, from least AI to most human-only credit claimed:
+//   raw (◉)         — Cleanup mode only: mechanical fixes, no craft edit, no AI wording.
+//   self-edited (●) — Learning mode (or Feedback taking none of its phrasings): its eye, my words.
+//   feedback (◐)    — Feedback mode where some offered phrasings were taken: AI touched some words.
+//   unaided (○)     — no AI in the loop.
+interface Props {
+  stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
+}
+const { stage } = Astro.props;
+
+const STAGES = {
+  raw: {
+    glyph: '◉',
+    label: 'raw',
+    statement:
+      'This began as raw recorded voice. Only mechanical mistakes — typos, obvious slips, paragraph breaks — were fixed. No craft edit, no rewording, none of the AI’s words entered the text.',
+  },
+  'self-edited': {
+    glyph: '●',
+    label: 'self-edited',
+    statement:
+      'This began as raw recorded voice and was hand-edited by me for craft, using an AI diagnostic tool as a crutch. I took only its eye: every word here is mine; where it pointed, I did the fixing.',
+  },
+  feedback: {
+    glyph: '◐',
+    label: 'feedback',
+    statement:
+      'This began as raw recorded voice and was hand-edited by me for craft, using an AI diagnostic tool as a crutch. Where I took a phrasing it offered, the AI touched the words. The diagnosis was the tool’s; the choices were mine. I’m learning to need it less.',
+  },
+  unaided: {
+    glyph: '○',
+    label: 'unaided',
+    statement: 'Written and edited entirely by me. No AI in the loop.',
+  },
+} as const;
+
+const s = STAGES[stage];
+---
+
+<details class="madewith" data-stage={stage}>
+  <summary>
+    <span class="madewith__glyph" aria-hidden="true">{s.glyph}</span>
+    <span class="madewith__label">made with · {s.label}</span>
+  </summary>
+  <p class="madewith__statement">{s.statement}</p>
+</details>
+
+<style>
+  /* Quiet by design — a footnote, small, opening on click. No palette of its
+     own; it reads the site's tokens. If this ever starts reading as a "look how
+     little AI I use" flex, make it smaller, not bigger. */
+  .madewith {
+    margin-top: 2rem;
+  }
+  .madewith summary {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--graphite);
+    list-style: none;
+  }
+  .madewith summary::-webkit-details-marker {
+    display: none;
+  }
+  .madewith__glyph {
+    color: var(--ink);
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+  .madewith__label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .madewith__statement {
+    margin: 0.7rem 0 0;
+    max-width: 42ch;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--ghost);
+  }
+</style>

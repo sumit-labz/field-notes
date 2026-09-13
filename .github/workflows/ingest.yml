@@ -1,8 +1,14 @@
 name: ingest
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"
+  # The 15-minute cron is disabled: the always-on local machine is now the sole
+  # Telegram consumer, via scripts/publish_watcher.py (which runs ingest itself).
+  # Two consumers of one bot's getUpdates would ack each other's messages and
+  # lose captures — see scripts/ingest.py's offset docstring. workflow_dispatch
+  # stays as a manual fallback for when the local machine is down; only ever run
+  # it while the watcher is stopped.
+  # schedule:
+  #   - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 permissions:

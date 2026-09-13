@@ -48,9 +48,13 @@ import yaml
 from dotenv import load_dotenv
 from PIL import Image, ImageOps
 
-load_dotenv()
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
+# Load the repo-root .env explicitly rather than CWD-relative, so ingest (and
+# everything that imports it) works no matter what directory it is launched
+# from — the scheduled task, publish_watcher, or a shell sitting in scripts/.
+# A plain load_dotenv() searches from CWD and silently finds nothing when run
+# from elsewhere, which manifests as "missing TELEGRAM_BOT_TOKEN".
+load_dotenv(REPO_ROOT / ".env")
 # Store offset in a local file outside git to avoid branch/sync issues.
 # This allows running ingest on any branch without offset conflicts.
 STATE_PATH = Path.home() / ".field-notes" / "telegram-offset.json"
@@ -67,6 +71,11 @@ MEDIA_DIR = REPO_ROOT / "media"
 VIDEO_DIR = MEDIA_DIR / "video"
 AUDIO_DIR = MEDIA_DIR / "audio"
 JOURNEYS_CONFIG_PATH = REPO_ROOT / "config" / "journeys.yml"
+# A `/publish` command from the allowed sender is NOT archived as a fragment —
+# it queues a publish action here for the local watcher (scripts/publish_watcher.py)
+# to pick up and run through Claude. Lives outside git alongside the offset.
+PUBLISH_QUEUE_DIR = Path.home() / ".field-notes" / "publish-queue"
+DEFAULT_COVER_ID = "2026-09-13-103613"
 
 TELEGRAM_API = "https://api.telegram.org"
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -240,6 +249,78 @@ def split_by_sender(updates: list[dict], allowed_user_id: int) -> tuple[list[dic
             continue
         accepted.append(update)
     return accepted, rejected
+
+
+# ---------------------------------------------------------------------------
+# publish command (see PUBLISH_QUEUE_DIR)
+
+FRAGMENT_ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}$")
+PUBLISH_RE = re.compile(r"^/publish\b(.*)$", re.S | re.I)
+
+
+def parse_publish_command(text: str | None) -> dict | None:
+    """A plain text message `/publish [photo-id] [| Title]` from the allowed
+    sender. Returns {cover_id, title} or None if it isn't a publish command.
+    cover_id defaults to DEFAULT_COVER_ID when no valid id is supplied."""
+    if not text:
+        return None
+    match = PUBLISH_RE.match(text.strip())
+    if not match:
+        return None
+    rest = match.group(1).strip()
+    title: str | None = None
+    if "|" in rest:
+        left, right = rest.split("|", 1)
+        rest = left.strip()
+        title = right.strip() or None
+    cover_id = rest if FRAGMENT_ID_RE.match(rest) else DEFAULT_COVER_ID
+    return {"cover_id": cover_id, "title": title}
+
+
+def audio_id_from_reply(message: dict) -> str | None:
+    """When `/publish` is sent as a reply to a voice note, the voice message's
+    own `date` yields the exact audio fragment id ingest will assign it (same
+    IST formula, no EXIF for audio) — so this resolves the target even in the
+    same batch, before the fragment file exists. Not a reply → None, and the
+    watcher falls back to the newest unconsumed audio fragment."""
+    reply = message.get("reply_to_message")
+    if not reply:
+        return None
+    date = reply.get("date")
+    if not isinstance(date, int):
+        return None
+    captured_at = datetime.fromtimestamp(date, tz=timezone.utc).astimezone(IST)
+    return fragment_id_and_path(captured_at)[0]
+
+
+def split_publish_commands(updates: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Partition accepted updates into (publish-command updates, content updates).
+    A command message is never archived as a fragment."""
+    commands, content = [], []
+    for update in updates:
+        message = update["message"]
+        if parse_publish_command(message.get("text")) is not None:
+            commands.append(update)
+        else:
+            content.append(update)
+    return commands, content
+
+
+def write_publish_queue(update: dict) -> None:
+    message = update["message"]
+    command = parse_publish_command(message.get("text")) or {}
+    entry = {
+        "audio_id": audio_id_from_reply(message),
+        "cover_id": command.get("cover_id"),
+        "title": command.get("title"),
+        "command_message_id": message.get("message_id"),
+        "queued_at": datetime.now(tz=IST).strftime("%Y-%m-%dT%H:%M:%S%z"),
+    }
+    PUBLISH_QUEUE_DIR.mkdir(parents=True, exist_ok=True)
+    name = f"{message.get('message_id') or int(time.time())}.json"
+    (PUBLISH_QUEUE_DIR / name).write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8")
+    print(f"[ingest] queued publish command -> {PUBLISH_QUEUE_DIR / name} "
+          f"(audio={entry['audio_id'] or 'latest'}, cover={entry['cover_id']})")
 
 
 def group_messages(updates: list[dict]) -> list[list[dict]]:
@@ -732,7 +813,10 @@ def main() -> None:
             return  # SPEC.md §4 step 11: exit without committing
 
     accepted, _rejected = split_by_sender(updates, config.allowed_user_id)
-    groups = group_messages(accepted)
+    # A `/publish` command is pulled out before grouping — it queues an action
+    # for the watcher instead of being archived as a text fragment.
+    commands, content = split_publish_commands(accepted)
+    groups = group_messages(content)
     journey_map = load_journey_map()
     client = r2_client(config)
 
@@ -755,13 +839,28 @@ def main() -> None:
     for entry in marginalia_entries:
         write_marginalia_file(entry)
 
+    # Queue files are written before the offset advances, same invariant as
+    # fragments: a crash mid-run leaves the offset untouched so the command is
+    # re-fetched. (Re-queuing by message_id filename is idempotent.)
+    for command in commands:
+        write_publish_queue(command)
+
     new_offset = max(u["update_id"] for u in updates) + 1
     write_offset(new_offset)
-    commit_and_push(len(fragments), len(marginalia_entries), new_offset)
-    print(
-        f"[ingest] committed {len(fragments)} fragments, {len(marginalia_entries)} marginalia, "
-        f"offset now {new_offset}"
-    )
+    # Only commit when there's actually something staged — a batch of only
+    # `/publish` commands (or only rejected senders) writes no repo files, and
+    # `git commit` with nothing staged would fail the run.
+    if fragments or marginalia_entries:
+        commit_and_push(len(fragments), len(marginalia_entries), new_offset)
+        print(
+            f"[ingest] committed {len(fragments)} fragments, {len(marginalia_entries)} marginalia, "
+            f"{len(commands)} publish command(s), offset now {new_offset}"
+        )
+    else:
+        print(
+            f"[ingest] no fragments to commit; {len(commands)} publish command(s) queued, "
+            f"offset now {new_offset}"
+        )
 
 
 if __name__ == "__main__":

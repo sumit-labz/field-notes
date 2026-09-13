@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import AuthorFooter from '../../components/AuthorFooter.astro';
+import MadeWith from '../../components/MadeWith.astro';
 import { authorLineFor } from '../../lib/authorLines';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
@@ -84,10 +85,16 @@ function firstImageKey(fragment: (typeof fragments)[number]): string | null {
 // (see the field-notes typography post: a portrait ink photo lost everything
 // but a thin cross-section). Portrait openers instead render at their own
 // aspect ratio, capped in height, so the whole photo stays visible.
+// An explicit `cover` fragment (see the posts schema) wins the opener slot;
+// otherwise the first listed fragment that has an image does. Either way the
+// chosen fragment is excluded from the sequence below so it isn't shown twice.
 let openerSrc: string | null = null;
 let openerFragmentId: string | null = null;
 let openerPortrait = false;
-for (const id of post.data.fragments) {
+const openerOrder = post.data.cover
+  ? [post.data.cover, ...post.data.fragments.filter((id) => id !== post.data.cover)]
+  : post.data.fragments;
+for (const id of openerOrder) {
   const f = fragmentsById.get(id);
   const imgKey = f ? firstImageKey(f) : null;
   if (imgKey) {
@@ -168,7 +175,8 @@ for (const block of blocks) {
     }
   }
 
-  const widthClass = spark || landscape ? 'w-full' : 'w-narrow';
+  const isMarkdownDoc = fragment.data.type === 'markdown';
+  const widthClass = spark || landscape || isMarkdownDoc ? 'w-full' : 'w-narrow';
   let breakClass = '';
   if (widthClass === 'w-narrow') {
     nonSparkIdx += 1;
@@ -255,6 +263,8 @@ for (const block of blocks) {
       </details>
     )
   }
+
+  {post.data.made_with && <MadeWith stage={post.data.made_with} />}
 
   {authorLine && <AuthorFooter line={authorLine} />}
 
