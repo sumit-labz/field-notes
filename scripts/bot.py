@@ -50,7 +50,7 @@ from ingest import (
     commit_and_push, read_offset, write_offset, fragment_id_and_path,
     parse_publish_command, MEDIA_DIR, MARGINALIA_DIR,
 )
-from delete_fragment import parse_frontmatter
+from delete_fragment import parse_frontmatter, find_fragment_file
 
 JOURNEYS_DIR = REPO_ROOT / "journeys"
 IDENTITIES_DIR = REPO_ROOT / "identities"
@@ -309,7 +309,7 @@ def handle_title_text(chat_id: int, text: str) -> None:
 
 def do_publish(chat_id: int, st: dict) -> None:
     msg_id = st["msg_id"]
-    edit_message(chat_id, msg_id, "⏳ Publishing… (transcribe → raw cleanup → grade → post)")
+    edit_message(chat_id, msg_id, "⏳ Publishing…")
     try:
         slug = _run_publish(st)
     except Exception as exc:  # noqa: BLE001
@@ -325,26 +325,72 @@ def _run_publish(st: dict) -> str:
     return _publish_direct(st)
 
 
+def _run_json(cmd: list[str], timeout: int) -> dict:
+    """Run a scripts/*.py --json helper and parse its final stdout line."""
+    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=timeout)
+    lines = [ln for ln in (result.stdout or "").splitlines() if ln.strip()]
+    if not lines:
+        raise RuntimeError((result.stderr or "no output").strip()[-400:])
+    try:
+        data = json.loads(lines[-1])
+    except Exception:
+        raise RuntimeError((result.stderr or result.stdout).strip()[-400:])
+    if not data.get("ok"):
+        raise RuntimeError(str(data.get("error", "failed"))[-400:])
+    return data
+
+
+def _ensure_cover_graded(cover_id: str) -> None:
+    """Grade the cover teal_orange unless it already carries a grade for index 0.
+    Best-effort: a failure just means the post renders the original photo."""
+    try:
+        fm = parse_frontmatter(find_fragment_file(cover_id))
+    except Exception as exc:  # noqa: BLE001
+        log(f"cover {cover_id} lookup failed, skipping grade: {exc}")
+        return
+    graded = fm.get("graded") or {}
+    if "0" in graded or 0 in graded:
+        return
+    try:
+        _run_json([PY, str(REPO_ROOT / "scripts" / "apply_cinematic_grade.py"),
+                   cover_id, "0", "teal_orange", "--json"], timeout=300)
+    except Exception as exc:  # noqa: BLE001
+        log(f"grade of {cover_id} failed (continuing): {redact_secrets(str(exc))}")
+
+
 def _publish_audio(st: dict) -> str:
-    parts = ["/publish-last-audio", f"--audio {st['content_id']}"]
-    if st.get("cover_id"):
-        parts.append(f"--cover {st['cover_id']}")
-    if st.get("journey"):
-        parts.append(f"--journey {st['journey']}")
-    if st.get("cross_obsession"):
-        parts.append(f"--obsession {st['cross_obsession']}")
-    if st.get("title"):
-        parts.append(f'--title "{st["title"]}"')
-    prompt = " ".join(parts)
-    cmd = [CLAUDE_BIN, *CLAUDE_ARGS.split(), "-p", prompt]
-    log(f"claude publish: {prompt}")
-    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=1800)
-    out = (result.stdout or "") + "\n" + (result.stderr or "")
-    m = PUBLISHED_RE.search(out)
-    if result.returncode == 0 and m:
-        return m.group(1)
-    tail = "\n".join(out.strip().splitlines()[-6:])
-    raise RuntimeError(f"claude exit {result.returncode}: {tail[-400:]}")
+    """Deterministic raw publish — no model in the loop. Transcribe the voice,
+    use the transcript verbatim as the body (that IS the raw stage), grade the
+    cover, publish. No `claude -p` that could hesitate or refuse."""
+    audio = st["content_id"]
+    data = _run_json([PY, str(REPO_ROOT / "scripts" / "transcribe.py"),
+                      "--id", audio, "--json"], timeout=600)
+    text = (data.get("text") or "").strip()
+    if not text:
+        raise RuntimeError("transcript was empty")
+    cover = st.get("cover_id")
+    if cover:
+        _ensure_cover_graded(cover)
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
+        fh.write(text)
+        body_file = fh.name
+    try:
+        cmd = [PY, str(REPO_ROOT / "scripts" / "publish_post.py"),
+               "--audio-id", audio, "--body-file", body_file, "--stage", "raw", "--json"]
+        if cover:
+            cmd += ["--cover-id", cover]
+        if st.get("journey"):
+            cmd += ["--journey", st["journey"]]
+        if st.get("cross_obsession"):
+            cmd += ["--obsession", st["cross_obsession"]]
+        if st.get("title"):
+            cmd += ["--title", st["title"]]
+        return _run_json(cmd, timeout=600)["slug"]
+    finally:
+        try:
+            os.unlink(body_file)
+        except OSError:
+            pass
 
 
 def _publish_direct(st: dict) -> str:
@@ -359,6 +405,8 @@ def _publish_direct(st: dict) -> str:
                "--body-file", body_file, "--stage", "raw", "--json"]
         cover = st["content_id"] if st["kind"] == "photo" else st.get("cover_id")
         if cover:
+            if st["kind"] == "photo":
+                _ensure_cover_graded(cover)
             cmd += ["--cover-id", cover]
         if st.get("journey"):
             cmd += ["--journey", st["journey"]]
@@ -366,15 +414,7 @@ def _publish_direct(st: dict) -> str:
             cmd += ["--obsession", st["cross_obsession"]]
         if st.get("title"):
             cmd += ["--title", st["title"]]
-        result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=600)
-        line = (result.stdout or "").strip().splitlines()[-1] if result.stdout.strip() else ""
-        try:
-            data = json.loads(line)
-        except Exception:
-            raise RuntimeError((result.stderr or result.stdout or "publish_post failed").strip()[-400:])
-        if not data.get("ok"):
-            raise RuntimeError(data.get("error", "publish_post failed"))
-        return data["slug"]
+        return _run_json(cmd, timeout=600)["slug"]
     finally:
         try:
             os.unlink(body_file)
