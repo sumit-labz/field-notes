@@ -264,9 +264,9 @@ for (const block of blocks) {
     )
   }
 
-  {post.data.made_with && <MadeWith stage={post.data.made_with} />}
-
   {authorLine && <AuthorFooter line={authorLine} />}
+
+  {post.data.made_with && <MadeWith stage={post.data.made_with} />}
 
   <p class="post-return">
     <a href={withBase('/')}>← back to feed</a>

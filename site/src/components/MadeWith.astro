@@ -1,16 +1,12 @@
 ---
-// The "made with" mark — a quiet colophon stating how much AI touched a piece,
-// from Sumit's self-editing-pass practice. A footnote, not a trophy: a small
-// stamp that opens on click to a plain honest line, plus the four-rung scale so
-// the indicator reads as an indicator. Native to Field Notes — structure font
-// for the label (like the other uppercase marks), Space Mono for the machine-
-// honest confession, a hairline aside for the statement, all from site tokens.
+// The "made with" colophon — a visible mark at the foot of every post stating
+// how much AI touched it, from Sumit's self-editing-pass practice. Always shown
+// (not hidden behind a click): the stage, an honest one-liner, and the four-rung
+// scale with the current rung lit. Native to Field Notes — its own tokens and
+// fonts, a hairline rule to set it apart as a footer block.
 //
-// The ladder, least- to most-AI-in-the-wording:
-//   ◉ raw         — recorded voice, only mechanical fixes; no AI wording.
-//   ● self-edited — hand-edited for craft; AI's eye only, the words are mine.
-//   ◐ feedback    — hand-edited with AI as a crutch; some of its phrasings taken.
-//   ○ unaided     — no AI in the loop.
+// Ladder, least- to most-AI-in-the-wording:
+//   ◉ raw · ● self-edited · ◐ feedback · ○ unaided
 interface Props {
   stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
 }
@@ -33,85 +29,71 @@ const STATEMENTS: Record<Props['stage'], string> = {
 const current = LADDER.find((r) => r.key === stage)!;
 ---
 
-<details class="madewith" data-stage={stage}>
-  <summary>
+<section class="madewith" data-stage={stage} aria-label="How much AI touched this piece">
+  <div class="madewith__head">
     <span class="madewith__glyph" aria-hidden="true">{current.glyph}</span>
     <span class="madewith__label">made with</span>
     <span class="madewith__stage">{current.label}</span>
-  </summary>
-  <div class="madewith__panel">
-    <p class="madewith__statement">{STATEMENTS[stage]}</p>
-    <ol class="madewith__scale" aria-label="AI-usage scale">
-      {
-        LADDER.map((rung) => (
-          <li class:list={['madewith__rung', { 'is-current': rung.key === stage }]}>
-            <span class="madewith__rung-glyph" aria-hidden="true">{rung.glyph}</span>
-            <span>{rung.label}</span>
-          </li>
-        ))
-      }
-    </ol>
   </div>
-</details>
+  <p class="madewith__statement">{STATEMENTS[stage]}</p>
+  <ol class="madewith__scale" aria-label="AI-usage scale, least to most AI in the wording">
+    {
+      LADDER.map((rung) => (
+        <li class:list={['madewith__rung', { 'is-current': rung.key === stage }]}>
+          <span class="madewith__rung-glyph" aria-hidden="true">{rung.glyph}</span>
+          <span>{rung.label}</span>
+        </li>
+      ))
+    }
+  </ol>
+</section>
 
 <style>
-  /* Sits just above the author byline as a small mark — deliberately quiet, no
-     heavy rule of its own (the byline below carries the rule). If it ever reads
-     as a flex about how little AI is used, make it smaller, not bigger. */
+  /* A distinct footer block, set off by a hairline rule. Visible by design —
+     this is the honesty mark; a reader should be able to see it without hunting.
+     Quiet in tone, but legible, never invisible. */
   .madewith {
-    margin-top: 2.6rem;
+    margin-top: 3rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
   }
-  .madewith summary {
-    display: inline-flex;
+  .madewith__head {
+    display: flex;
     align-items: baseline;
     gap: 0.5rem;
-    cursor: pointer;
-    list-style: none;
-    color: var(--graphite);
   }
-  .madewith summary::-webkit-details-marker { display: none; }
   .madewith__glyph {
     color: var(--ink);
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     line-height: 1;
     transform: translateY(0.06em);
   }
-  /* "made with" — the site's small-uppercase structure-label voice. */
   .madewith__label {
     font-family: var(--font-structure, 'Archivo', sans-serif);
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: 0.66rem;
-    color: var(--ghost);
+    font-size: 0.72rem;
+    color: var(--graphite);
   }
-  /* the stage name — the one word that carries the claim. */
   .madewith__stage {
     font-family: 'Space Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--graphite);
-    border-bottom: 1px dotted var(--line);
-  }
-
-  /* Opened: the honest line as a hairline-ruled aside (echoing the site's
-     asides), then the four-rung scale so the mark reads as an indicator. */
-  .madewith__panel {
-    margin-top: 0.9rem;
-    padding-left: 0.9rem;
-    border-left: 2px solid var(--line);
-    max-width: 46ch;
+    font-size: 0.95rem;
+    color: var(--ink);
   }
   .madewith__statement {
-    margin: 0;
+    margin: 0.8rem 0 0;
+    max-width: 52ch;
     font-family: 'Space Mono', monospace;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     line-height: 1.6;
-    color: var(--ghost);
+    color: var(--graphite);
   }
+  /* The scale: current rung lit, the others faint but still readable. */
   .madewith__scale {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.3rem 1.1rem;
-    margin: 0.9rem 0 0;
+    gap: 0.4rem 1.3rem;
+    margin: 1rem 0 0;
     padding: 0;
     list-style: none;
   }
@@ -122,17 +104,17 @@ const current = LADDER.find((r) => r.key === stage)!;
     font-family: var(--font-structure, 'Archivo', sans-serif);
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    font-size: 0.6rem;
-    /* faint by default; the current rung lights up */
-    color: var(--line);
+    font-size: 0.62rem;
+    color: var(--ghost);
   }
   .madewith__rung-glyph {
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     line-height: 1;
     transform: translateY(0.05em);
+    color: var(--ghost);
   }
   .madewith__rung.is-current {
-    color: var(--graphite);
+    color: var(--ink);
   }
   .madewith__rung.is-current .madewith__rung-glyph {
     color: var(--ink);
