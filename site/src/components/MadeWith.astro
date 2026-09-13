@@ -1,92 +1,140 @@
 ---
-// The "made with" badge — the honest rung of Sumit's self-editing-pass practice
-// this post reached. A quiet footnote, not a trophy: a small glyph + label that
-// opens on click to state plainly how much AI was in the loop. Native <details>,
-// no motion, inherits the site's own tokens (--ink/--graphite/--line/fonts) —
-// mirrors the "before cleanup" transcript disclosure elsewhere on the page.
+// The "made with" mark — a quiet colophon stating how much AI touched a piece,
+// from Sumit's self-editing-pass practice. A footnote, not a trophy: a small
+// stamp that opens on click to a plain honest line, plus the four-rung scale so
+// the indicator reads as an indicator. Native to Field Notes — structure font
+// for the label (like the other uppercase marks), Space Mono for the machine-
+// honest confession, a hairline aside for the statement, all from site tokens.
 //
-// Four stages, from least AI to most human-only credit claimed:
-//   raw (◉)         — Cleanup mode only: mechanical fixes, no craft edit, no AI wording.
-//   self-edited (●) — Learning mode (or Feedback taking none of its phrasings): its eye, my words.
-//   feedback (◐)    — Feedback mode where some offered phrasings were taken: AI touched some words.
-//   unaided (○)     — no AI in the loop.
+// The ladder, least- to most-AI-in-the-wording:
+//   ◉ raw         — recorded voice, only mechanical fixes; no AI wording.
+//   ● self-edited — hand-edited for craft; AI's eye only, the words are mine.
+//   ◐ feedback    — hand-edited with AI as a crutch; some of its phrasings taken.
+//   ○ unaided     — no AI in the loop.
 interface Props {
   stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
 }
 const { stage } = Astro.props;
 
-const STAGES = {
-  raw: {
-    glyph: '◉',
-    label: 'raw',
-    statement:
-      'This began as raw recorded voice. Only mechanical mistakes — typos, obvious slips, paragraph breaks — were fixed. No craft edit, no rewording, none of the AI’s words entered the text.',
-  },
-  'self-edited': {
-    glyph: '●',
-    label: 'self-edited',
-    statement:
-      'This began as raw recorded voice and was hand-edited by me for craft, using an AI diagnostic tool as a crutch. I took only its eye: every word here is mine; where it pointed, I did the fixing.',
-  },
-  feedback: {
-    glyph: '◐',
-    label: 'feedback',
-    statement:
-      'This began as raw recorded voice and was hand-edited by me for craft, using an AI diagnostic tool as a crutch. Where I took a phrasing it offered, the AI touched the words. The diagnosis was the tool’s; the choices were mine. I’m learning to need it less.',
-  },
-  unaided: {
-    glyph: '○',
-    label: 'unaided',
-    statement: 'Written and edited entirely by me. No AI in the loop.',
-  },
-} as const;
+const LADDER = [
+  { key: 'raw', glyph: '◉', label: 'raw' },
+  { key: 'self-edited', glyph: '●', label: 'self-edited' },
+  { key: 'feedback', glyph: '◐', label: 'feedback' },
+  { key: 'unaided', glyph: '○', label: 'unaided' },
+] as const;
 
-const s = STAGES[stage];
+const STATEMENTS: Record<Props['stage'], string> = {
+  raw: 'Recorded voice, transcribed. Only mechanical mistakes — typos, obvious slips, paragraph breaks — were fixed. No craft edit, no rewording, none of the AI’s words entered the text.',
+  'self-edited': 'Recorded voice, hand-edited by me for craft using an AI diagnostic tool as a crutch. I took only its eye: every word here is mine; where it pointed, I did the fixing.',
+  feedback: 'Recorded voice, hand-edited by me for craft using an AI diagnostic tool as a crutch. Where I took a phrasing it offered, the AI touched the words. The diagnosis was the tool’s; the choices were mine. I’m learning to need it less.',
+  unaided: 'Written and edited entirely by me. No AI in the loop.',
+};
+
+const current = LADDER.find((r) => r.key === stage)!;
 ---
 
 <details class="madewith" data-stage={stage}>
   <summary>
-    <span class="madewith__glyph" aria-hidden="true">{s.glyph}</span>
-    <span class="madewith__label">made with · {s.label}</span>
+    <span class="madewith__glyph" aria-hidden="true">{current.glyph}</span>
+    <span class="madewith__label">made with</span>
+    <span class="madewith__stage">{current.label}</span>
   </summary>
-  <p class="madewith__statement">{s.statement}</p>
+  <div class="madewith__panel">
+    <p class="madewith__statement">{STATEMENTS[stage]}</p>
+    <ol class="madewith__scale" aria-label="AI-usage scale">
+      {
+        LADDER.map((rung) => (
+          <li class:list={['madewith__rung', { 'is-current': rung.key === stage }]}>
+            <span class="madewith__rung-glyph" aria-hidden="true">{rung.glyph}</span>
+            <span>{rung.label}</span>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
 </details>
 
 <style>
-  /* Quiet by design — a footnote, small, opening on click. No palette of its
-     own; it reads the site's tokens. If this ever starts reading as a "look how
-     little AI I use" flex, make it smaller, not bigger. */
+  /* Sits just above the author byline as a small mark — deliberately quiet, no
+     heavy rule of its own (the byline below carries the rule). If it ever reads
+     as a flex about how little AI is used, make it smaller, not bigger. */
   .madewith {
-    margin-top: 2rem;
+    margin-top: 2.6rem;
   }
   .madewith summary {
     display: inline-flex;
     align-items: baseline;
-    gap: 0.45rem;
+    gap: 0.5rem;
     cursor: pointer;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.78rem;
-    color: var(--graphite);
     list-style: none;
+    color: var(--graphite);
   }
-  .madewith summary::-webkit-details-marker {
-    display: none;
-  }
+  .madewith summary::-webkit-details-marker { display: none; }
   .madewith__glyph {
     color: var(--ink);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     line-height: 1;
+    transform: translateY(0.06em);
   }
+  /* "made with" — the site's small-uppercase structure-label voice. */
   .madewith__label {
+    font-family: var(--font-structure, 'Archivo', sans-serif);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
+    font-size: 0.66rem;
+    color: var(--ghost);
   }
-  .madewith__statement {
-    margin: 0.7rem 0 0;
-    max-width: 42ch;
+  /* the stage name — the one word that carries the claim. */
+  .madewith__stage {
     font-family: 'Space Mono', monospace;
     font-size: 0.8rem;
-    line-height: 1.55;
+    color: var(--graphite);
+    border-bottom: 1px dotted var(--line);
+  }
+
+  /* Opened: the honest line as a hairline-ruled aside (echoing the site's
+     asides), then the four-rung scale so the mark reads as an indicator. */
+  .madewith__panel {
+    margin-top: 0.9rem;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--line);
+    max-width: 46ch;
+  }
+  .madewith__statement {
+    margin: 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
     color: var(--ghost);
+  }
+  .madewith__scale {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 1.1rem;
+    margin: 0.9rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .madewith__rung {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    font-family: var(--font-structure, 'Archivo', sans-serif);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.6rem;
+    /* faint by default; the current rung lights up */
+    color: var(--line);
+  }
+  .madewith__rung-glyph {
+    font-size: 0.72rem;
+    line-height: 1;
+    transform: translateY(0.05em);
+  }
+  .madewith__rung.is-current {
+    color: var(--graphite);
+  }
+  .madewith__rung.is-current .madewith__rung-glyph {
+    color: var(--ink);
   }
 </style>

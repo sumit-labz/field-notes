@@ -21,6 +21,7 @@ fragments:
   - 2026-09-08-075622
 status: published
 kind: post
+made_with: raw
 ---
 
 This is my first attempt at a typographic poster. The idea: why not design one for my own MVP, Stencil and Frame? I started with a piece of text I wanted to see as a poster, wrote it down, and did some research into why people lean on choosing colors first without giving real thought to the brand itself.

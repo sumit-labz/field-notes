@@ -8,6 +8,7 @@ fragments:
   - 2026-09-10-175212
 status: published
 kind: post
+made_with: raw
 ---
 
 {{fragment:2026-09-10-175212}}

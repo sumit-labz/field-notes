@@ -10,6 +10,7 @@ fragments:
 transcript: 2026-08-30-satire-monologues.txt
 status: in_progress
 kind: post
+made_with: raw
 ---
 
 Okay, this is a pretty insane idea that has driven my life and I'm not able to throw it out anymore. One of the ideas came when I watched *The Killer* at my friend's house—I didn't watch it fully, but it's a David Fincher movie, the guy who directed *Fight Club*. The dialogues were so amazing, and the guy sounds so true despite being a killer. He knows the rules of the system, and you're intrigued by why he's chosen this path.

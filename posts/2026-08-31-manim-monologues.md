@@ -7,6 +7,7 @@ fragments:
   - 2026-08-31-193317
 status: published
 kind: post
+made_with: raw
 ---
 
 This is one of the ideas I want to play with for monologues: simple animations and monologue. The problem with coming up with videos for monologue is it's too complex to define a visual style. Why not start with a simple animation from a Python library like Manim? It will be conceptual but can give a minimal start. At least I will give a life to my idea. Probably I can have my voice over an animation.
