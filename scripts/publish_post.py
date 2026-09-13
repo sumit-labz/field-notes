@@ -156,7 +156,9 @@ def commit_and_push(slug: str, rel_paths: list[str], no_push: bool) -> bool:
 
 
 def publish(args: argparse.Namespace) -> dict:
-    if not ID_RE.match(args.audio_id):
+    # audio-id is optional: audio posts carry one (transcript + consumed stamp);
+    # text/photo posts have none and take their body straight from --body-file.
+    if args.audio_id and not ID_RE.match(args.audio_id):
         raise IngestError(f"not a valid audio fragment id: {args.audio_id!r}")
     if args.cover_id and not ID_RE.match(args.cover_id):
         raise IngestError(f"not a valid cover fragment id: {args.cover_id!r}")
@@ -178,8 +180,9 @@ def publish(args: argparse.Namespace) -> dict:
     rel_paths: list[str] = []
 
     # Raw transcript -> transcripts/<audio-id>.txt, referenced by `transcript:`.
+    # Only audio posts carry a transcript (named by the audio fragment id).
     transcript_name: str | None = None
-    if args.transcript_file:
+    if args.transcript_file and args.audio_id:
         raw = Path(args.transcript_file).read_text(encoding="utf-8").rstrip() + "\n"
         TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
         transcript_name = f"{args.audio_id}.txt"
@@ -206,7 +209,7 @@ def publish(args: argparse.Namespace) -> dict:
     rel_paths.append(f"posts/{slug}.md")
     log(f"wrote posts/{slug}.md ({len(body)} chars, cover={args.cover_id or 'none'})")
 
-    consumed_rel = stamp_consumed_by(args.audio_id, slug)
+    consumed_rel = stamp_consumed_by(args.audio_id, slug) if args.audio_id else None
     if consumed_rel:
         rel_paths.append(consumed_rel)
 
@@ -229,7 +232,7 @@ def publish(args: argparse.Namespace) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Publish an edited voice note as a blog post.")
-    parser.add_argument("--audio-id", required=True)
+    parser.add_argument("--audio-id")  # optional: audio posts only
     parser.add_argument("--body-file", required=True)
     parser.add_argument("--transcript-file")
     parser.add_argument("--cover-id")

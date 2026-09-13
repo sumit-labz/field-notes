@@ -1,6 +1,6 @@
 ---
 description: Transcribe the latest voice note, run the self-editing-pass raw cleanup, grade the cover photo, and publish it as a blog post.
-argument-hint: [--audio <id>] [--cover <id>] [--title "My Title"]
+argument-hint: [--audio <id>] [--cover <id>] [--journey <slug>] [--obsession <slug>] [--title "My Title"]
 allowed-tools: Bash, Read, Write, Skill
 ---
 
@@ -13,6 +13,10 @@ mode. Arguments (all optional): `$ARGUMENTS`
   fragment with `type: audio` whose `consumed_by` is `null`.
 - `--cover <id>` — a photo fragment to use as the hero/opener. If omitted,
   default to `2026-09-13-103613`.
+- `--journey <slug>` — the journey to file the post under (e.g. `publish`,
+  `monologue`). Pass straight through to publish_post's `--journey`.
+- `--obsession <slug>` — an optional cross-tag identity (e.g. `writing`,
+  `cinema`). Pass straight through to publish_post's `--obsession`.
 - `--title "..."` — the post title. If omitted, generate a short, honest title
   from the transcript (the publish script will fall back to the first sentence
   if you pass none).
@@ -60,6 +64,7 @@ Work from a scratch dir; do not leave temp files in the repo.
      --transcript-file raw.txt \
      --cover-id <COVER_ID> \
      --stage raw \
+     [--journey <JOURNEY>] [--obsession <OBSESSION>] \
      [--title "<TITLE if provided or generated>"] \
      --json
    ```
