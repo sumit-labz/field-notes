@@ -385,23 +385,44 @@ def _publish_direct(st: dict) -> str:
 # ---------------------------------------------------------------------------
 # content resolution + ingest
 
+def newest_unconsumed_audio() -> str | None:
+    """The most recent voice-note fragment not yet turned into a post — the
+    target for a bare `/publish` with no reply (the common voice→post case).
+    Audio only, so a bare /publish can never accidentally pick up a cover photo."""
+    if not FRAGMENTS_DIR.exists():
+        return None
+    best = None
+    for path in FRAGMENTS_DIR.glob("*/*.md"):
+        try:
+            fm = parse_frontmatter(path)
+        except Exception:
+            continue
+        if fm.get("type") == "audio" and not fm.get("consumed_by") and fm.get("id"):
+            fid = str(fm["id"])
+            if best is None or fid > best:
+                best = fid
+    return best
+
+
 def resolve_content(message: dict) -> dict | None:
-    """From a `/publish` reply, describe the item to publish. Returns None with a
-    reason handled by the caller when there's nothing to act on."""
+    """Describe the item a `/publish` should act on. A reply names it explicitly
+    (voice/text/photo); a bare `/publish` falls back to the newest unpublished
+    voice note. Returns None when there's nothing to act on."""
     reply = message.get("reply_to_message")
-    if not reply:
+    if reply and isinstance(reply.get("date"), int):
+        captured = datetime.fromtimestamp(reply["date"], tz=timezone.utc).astimezone(IST)
+        fid = fragment_id_and_path(captured)[0]
+        if reply.get("voice") or reply.get("audio"):
+            return {"kind": "audio", "id": fid, "body": ""}
+        if reply.get("photo"):
+            return {"kind": "photo", "id": fid, "body": reply.get("caption") or ""}
+        if reply.get("text"):
+            return {"kind": "text", "id": fid, "body": reply["text"]}
         return None
-    date = reply.get("date")
-    if not isinstance(date, int):
-        return None
-    captured = datetime.fromtimestamp(date, tz=timezone.utc).astimezone(IST)
-    fid = fragment_id_and_path(captured)[0]
-    if reply.get("voice") or reply.get("audio"):
+    # No reply → publish the latest voice note.
+    fid = newest_unconsumed_audio()
+    if fid:
         return {"kind": "audio", "id": fid, "body": ""}
-    if reply.get("photo"):
-        return {"kind": "photo", "id": fid, "body": reply.get("caption") or ""}
-    if reply.get("text"):
-        return {"kind": "text", "id": fid, "body": reply["text"]}
     return None
 
 
@@ -466,7 +487,8 @@ def process_updates(updates: list[dict], config, journey_map) -> None:
         chat_id = (m.get("chat") or {}).get("id")
         content = resolve_content(m)
         if content is None:
-            send_message(chat_id, "Reply /publish to a voice note, text, or photo you want to publish.",
+            send_message(chat_id, "No unpublished voice note found. Send a voice note first, "
+                         "or reply /publish to a specific voice note, text, or photo.",
                          reply_to=m.get("message_id"))
             continue
         start_wizard(chat_id, content, m.get("message_id"))
