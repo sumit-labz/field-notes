@@ -198,7 +198,7 @@ def render_cover(chat_id: int, st: dict) -> None:
         rows.append([(f"latest photo ({newest})", f"cov:{newest}")])
     rows.append([("no cover", "cov:none")])
     rows.append([("‹ back", "nav:jou")])
-    _render_step(chat_id, st, "③ Cover photo?", rows)
+    _render_step(chat_id, st, "③ Cover photo? Tap one, or just send a photo now.", rows)
 
 
 def render_title(chat_id: int, st: dict) -> None:
@@ -293,6 +293,28 @@ def handle_callback(cb: dict) -> None:
             threading.Thread(target=do_publish, args=(chat_id, dict(st)), daemon=True).start()
             STATE.pop(chat_id, None)  # wizard done; thread owns the message now
             return
+
+
+def handle_cover_photo(chat_id: int, message: dict, config, journey_map) -> None:
+    """A photo sent while the wizard is waiting at the cover step becomes the
+    cover directly — ingested as a fresh fragment, same as any other capture,
+    so it's just as reusable/gradeable afterward as a photo sent ahead of time."""
+    st = STATE.get(chat_id)
+    if not st or st.get("step") != "cov":
+        return
+    try:
+        client = r2_client(config)
+        fragment = build_fragment(client, config, [message], journey_map)
+        write_fragment_file(fragment)
+        commit_and_push(1, 0, 0)
+    except Exception as exc:  # noqa: BLE001
+        log(f"cover photo ingest failed: {redact_secrets(str(exc))}")
+        send_message(chat_id, f"⚠️ Couldn't attach that photo as cover: {redact_secrets(str(exc))[:200]}",
+                     reply_to=message.get("message_id"))
+        return
+    st["cover_id"] = fragment.id
+    st["step"] = "ttl"
+    render_title(chat_id, st)
 
 
 def handle_title_text(chat_id: int, text: str) -> None:
@@ -405,8 +427,7 @@ def _publish_direct(st: dict) -> str:
                "--body-file", body_file, "--stage", "raw", "--json"]
         cover = st["content_id"] if st["kind"] == "photo" else st.get("cover_id")
         if cover:
-            if st["kind"] == "photo":
-                _ensure_cover_graded(cover)
+            _ensure_cover_graded(cover)
             cmd += ["--cover-id", cover]
         if st.get("journey"):
             cmd += ["--journey", st["journey"]]
@@ -500,6 +521,7 @@ def process_updates(updates: list[dict], config, journey_map) -> None:
     commands: list[dict] = []
     callbacks: list[dict] = []
     title_inputs: list[tuple[int, str]] = []
+    cover_photos: list[tuple[int, dict]] = []
 
     for u in updates:
         if "callback_query" in u:
@@ -516,12 +538,17 @@ def process_updates(updates: list[dict], config, journey_map) -> None:
             commands.append(m)
         elif chat_id in STATE and STATE[chat_id].get("awaiting_title") and text:
             title_inputs.append((chat_id, text))
+        elif chat_id in STATE and STATE[chat_id].get("step") == "cov" and m.get("photo"):
+            cover_photos.append((chat_id, m))
         else:
             content_msgs.append(m)
 
     # Order: ingest content first (so a /publish reply's fragment exists), then
-    # commands, then title inputs, then button taps.
+    # cover-photo attachments, then commands, then title inputs, then button taps.
     ingest_content_messages(content_msgs, config, journey_map)
+
+    for chat_id, m in cover_photos:
+        handle_cover_photo(chat_id, m, config, journey_map)
 
     for m in commands:
         chat_id = (m.get("chat") or {}).get("id")
