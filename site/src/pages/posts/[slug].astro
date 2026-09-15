@@ -203,7 +203,7 @@ for (const block of blocks) {
   </h1>
   <p class="meta">
     {dateLine(post.data.published)}
-    {' · '}{post.data.fragments.length} fragments
+    {' · '}{post.data.fragments.length} fragment{post.data.fragments.length === 1 ? '' : 's'}
     {post.data.kind === 'insight' && <> · note to self</>}
     {post.data.journey && (
       <>
