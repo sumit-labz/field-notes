@@ -30,6 +30,10 @@ COMMANDS = [
         "command": "publish",
         "description": "Reply to a voice note to publish it. Optional: /publish <photo-id> | Title",
     },
+    {
+        "command": "command1",
+        "description": "Paste a raw instruction — Claude executes it against the repo, no confirmation.",
+    },
 ]
 
 

@@ -59,9 +59,29 @@ CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 CLAUDE_ARGS = os.environ.get("CLAUDE_PUBLISH_ARGS", "--dangerously-skip-permissions")
 PY = sys.executable
 PUBLISHED_RE = re.compile(r"PUBLISHED:\s*(\S+)")
+COMMAND1_RE = re.compile(r"^/command1\b(.*)$", re.S | re.I)
+DONE_RE = re.compile(r"DONE:\s*(.+)")
+COMMAND1_TIMEOUT = 900  # seconds — arbitrary edits can take longer than a publish
 
 # In-memory wizard state, keyed by chat_id.
 STATE: dict[int, dict] = {}
+# Serializes anything that touches the repo/git (a /publish thread, a
+# /command1 thread) so two background jobs never race on the same working
+# tree or push at the same time.
+REPO_LOCK = threading.Lock()
+
+
+def parse_command1(text: str | None) -> str | None:
+    """A plain text message `/command1 <free instruction>`. Returns the
+    instruction text, or None if it isn't a command1 invocation or carries no
+    instruction."""
+    if not text:
+        return None
+    match = COMMAND1_RE.match(text.strip())
+    if not match:
+        return None
+    instruction = match.group(1).strip()
+    return instruction or None
 
 
 def log(msg: str) -> None:
@@ -333,7 +353,8 @@ def do_publish(chat_id: int, st: dict) -> None:
     msg_id = st["msg_id"]
     edit_message(chat_id, msg_id, "⏳ Publishing…")
     try:
-        slug = _run_publish(st)
+        with REPO_LOCK:
+            slug = _run_publish(st)
     except Exception as exc:  # noqa: BLE001
         log(f"publish failed: {redact_secrets(str(exc))}")
         edit_message(chat_id, msg_id, f"❌ Publish failed:\n{redact_secrets(str(exc))[:500]}")
@@ -444,6 +465,45 @@ def _publish_direct(st: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# command1 (threaded, mirrors do_publish)
+
+def do_command1(chat_id: int, instruction: str, trigger_msg_id: int) -> None:
+    """Hand a raw free-text instruction to a headless Claude run scoped by
+    .claude/commands/command1.md. Unlike audio publish (kept deterministic on
+    purpose — see _publish_audio), an arbitrary instruction genuinely needs a
+    model in the loop, so this reintroduces the `claude -p` risk that was
+    deliberately dropped elsewhere; the safety net is REPO_LOCK (no two
+    repo-touching jobs run at once) plus command1.md's own guardrails and the
+    mandatory commit trail, not a live confirmation step."""
+    msg_id = send_message(chat_id, "⏳ Working on it…", reply_to=trigger_msg_id)
+    prompt = f"/command1 {instruction}"
+    try:
+        with REPO_LOCK:
+            result = subprocess.run(
+                [CLAUDE_BIN, *CLAUDE_ARGS.split(), "-p", prompt],
+                cwd=REPO_ROOT, capture_output=True, text=True, timeout=COMMAND1_TIMEOUT,
+            )
+    except subprocess.TimeoutExpired:
+        edit_message(chat_id, msg_id, f"❌ command1 timed out after {COMMAND1_TIMEOUT}s.")
+        return
+    except Exception as exc:  # noqa: BLE001
+        log(f"command1 failed to run: {redact_secrets(str(exc))}")
+        edit_message(chat_id, msg_id, f"❌ Couldn't run command1: {redact_secrets(str(exc))[:400]}")
+        return
+
+    output = (result.stdout or "").strip()
+    done = DONE_RE.search(output)
+    if result.returncode != 0 and not done:
+        err = redact_secrets((result.stderr or output or "no output").strip())[-600:]
+        log(f"command1 exit {result.returncode}: {err}")
+        edit_message(chat_id, msg_id, f"❌ command1 failed:\n{err}")
+        return
+
+    summary = done.group(1).strip() if done else (output[-800:] or "(no output)")
+    edit_message(chat_id, msg_id, f"✅ {summary}")
+
+
+# ---------------------------------------------------------------------------
 # content resolution + ingest
 
 def newest_unconsumed_audio() -> str | None:
@@ -503,6 +563,11 @@ def ingest_content_messages(messages: list[dict], config, journey_map) -> None:
                 fragments.append(build_fragment(client, config, [m], journey_map))
         except Exception as exc:  # noqa: BLE001 — never let one bad message kill the loop
             log(f"ingest of message {m.get('message_id')} failed: {redact_secrets(str(exc))}")
+    # Not gated on REPO_LOCK: this runs inline in the main poll loop, and a
+    # long /command1 run must never stall live capture of new voice notes and
+    # photos. do_publish/do_command1 (background threads) take the lock
+    # against each other; a plain ingest racing one of them is the same small,
+    # pre-existing risk this bot always had.
     for f in fragments:
         write_fragment_file(f)
     for e in marginalia:
@@ -522,6 +587,7 @@ def process_updates(updates: list[dict], config, journey_map) -> None:
     callbacks: list[dict] = []
     title_inputs: list[tuple[int, str]] = []
     cover_photos: list[tuple[int, dict]] = []
+    command1_msgs: list[dict] = []
 
     for u in updates:
         if "callback_query" in u:
@@ -534,8 +600,11 @@ def process_updates(updates: list[dict], config, journey_map) -> None:
             continue
         chat_id = (m.get("chat") or {}).get("id")
         text = m.get("text")
+        instruction = parse_command1(text)
         if parse_publish_command(text) is not None:
             commands.append(m)
+        elif instruction is not None:
+            command1_msgs.append(m)
         elif chat_id in STATE and STATE[chat_id].get("awaiting_title") and text:
             title_inputs.append((chat_id, text))
         elif chat_id in STATE and STATE[chat_id].get("step") == "cov" and m.get("photo"):
@@ -543,12 +612,18 @@ def process_updates(updates: list[dict], config, journey_map) -> None:
         else:
             content_msgs.append(m)
 
-    # Order: ingest content first (so a /publish reply's fragment exists), then
-    # cover-photo attachments, then commands, then title inputs, then button taps.
+    # Order: ingest content first (so a /publish or /command1 reply's fragment
+    # exists), then cover-photo attachments, then commands, then command1,
+    # then title inputs, then button taps.
     ingest_content_messages(content_msgs, config, journey_map)
 
     for chat_id, m in cover_photos:
         handle_cover_photo(chat_id, m, config, journey_map)
+
+    for m in command1_msgs:
+        chat_id = (m.get("chat") or {}).get("id")
+        instruction = parse_command1(m.get("text"))
+        threading.Thread(target=do_command1, args=(chat_id, instruction, m.get("message_id")), daemon=True).start()
 
     for m in commands:
         chat_id = (m.get("chat") or {}).get("id")
