@@ -80,11 +80,14 @@ function firstImageKey(fragment: (typeof fragments)[number]): string | null {
 // Opener: the first image of the first fragment (in listed order) that has
 // one. That fragment is excluded from the sequence below so the image doesn't
 // appear twice. No images → no opener.
-// Full-bleed 70vh cover only suits landscape/square photos — cropping a tall
-// portrait shot down to a short wide banner throws away most of the frame
-// (see the field-notes typography post: a portrait ink photo lost everything
-// but a thin cross-section). Portrait openers instead render at their own
-// aspect ratio, capped in height, so the whole photo stays visible.
+// Full-bleed 70vh cover only suits properly landscape photos — cropping a
+// tall portrait shot, or a square one, down to a short wide banner throws
+// away most of the frame (see the field-notes typography post: a portrait
+// ink photo lost everything but a thin cross-section; the StoryDojo
+// notebook-photo cover had the same problem despite being square, not tall —
+// a 1:1 frame squeezed into 70vh still loses its top and bottom). Portrait
+// and square openers instead render at their own aspect ratio, capped in
+// height, so the whole photo stays visible.
 // An explicit `cover` fragment (see the posts schema) wins the opener slot;
 // otherwise the first listed fragment that has an image does. Either way the
 // chosen fragment is excluded from the sequence below so it isn't shown twice.
@@ -103,7 +106,7 @@ for (const id of openerOrder) {
     if (openerSrc) {
       try {
         const dims = await imageDimensionsFor(imgKey, openerSrc);
-        openerPortrait = dims.height > dims.width;
+        openerPortrait = dims.height >= dims.width;
       } catch {
         /* dimensions unavailable — fall back to the landscape treatment */
       }
@@ -294,9 +297,9 @@ for (const block of blocks) {
     margin-top: 1rem;
     margin-bottom: 2rem;
   }
-  /* Landscape/square openers: full-bleed banner, breaking out of the text
-     column to full viewport width. Cropping a wide photo to a shorter wide
-     shape keeps the composition intact. */
+  /* Landscape openers: full-bleed banner, breaking out of the text column to
+     full viewport width. Cropping a wide photo to a shorter wide shape keeps
+     the composition intact. */
   .opener--landscape {
     width: 100vw;
     max-width: 100vw;
@@ -304,10 +307,10 @@ for (const block of blocks) {
     height: 70vh;
     object-fit: cover;
   }
-  /* Portrait openers: cropping a tall photo down to a short wide banner
-     throws away most of the frame, so this stays inset in the text column,
-     at its own aspect ratio, capped in height — the whole photo stays
-     visible instead of a cropped sliver of it. */
+  /* Portrait and square openers: cropping a tall or 1:1 photo down to a
+     short wide banner throws away most of the frame, so this stays inset in
+     the text column, at its own aspect ratio, capped in height — the whole
+     photo stays visible instead of a cropped sliver of it. */
   .opener--portrait {
     max-width: min(560px, 100%);
     max-height: 80vh;

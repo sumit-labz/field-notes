@@ -1,6 +1,6 @@
 ---
 slug: 2026-09-15-so-it-all-started-with-the-obsession-of
-title: "The Obsession With Monologue That Led to StoryDojo, and Now a Visual World"
+title: "Exploring a Visual World"
 published: 2026-09-15
 journey: scaffolding
 fragments:
