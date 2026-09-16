@@ -2,7 +2,7 @@
 slug: 2026-09-16-dopamine-is-not-a-strategy
 title: "Dopamine Is Not a Strategy"
 published: 2026-09-16
-journey: scaffolding
+journey: being-seen
 obsession: self
 fragments:
   - 2026-09-13-103613
