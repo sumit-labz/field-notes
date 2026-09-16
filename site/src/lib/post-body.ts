@@ -21,14 +21,32 @@ function autolink(html: string): string {
 // A quoted aside (e.g. an AI reply worth keeping verbatim) — every line of the
 // block prefixed with "> ", markdown-blockquote style. Blank lines *inside*
 // the quote still need a lone "> " so the block-splitter above (which splits
-// on blank lines) doesn't cut it into several pieces.
+// on blank lines) doesn't cut it into several pieces. ">>" is reserved for
+// the pull-quote below, so this must not also match those lines.
 function isQuoteBlock(block: string): boolean {
-  return block.split('\n').every((line) => line.trim() === '' || line.trimStart().startsWith('>'));
+  return block
+    .split('\n')
+    .every((line) => line.trim() === '' || (line.trimStart().startsWith('>') && !line.trimStart().startsWith('>>')));
 }
 function stripQuoteMarkers(block: string): string {
   return block
     .split('\n')
     .map((line) => line.trimStart().replace(/^>\s?/, ''))
+    .join('\n')
+    .trim();
+}
+
+// A pull-quote — a line worth lifting out of the author's own prose (an
+// insight, a realization), set apart typographically rather than by an
+// inserted surface. Prefixed ">> " (a doubled quote-marker) so it can't
+// collide with the single "> " ai-quote above.
+function isPullQuoteBlock(block: string): boolean {
+  return block.split('\n').every((line) => line.trim() === '' || line.trimStart().startsWith('>>'));
+}
+function stripPullQuoteMarkers(block: string): string {
+  return block
+    .split('\n')
+    .map((line) => line.trimStart().replace(/^>>\s?/, ''))
     .join('\n')
     .trim();
 }
@@ -39,9 +57,11 @@ export function paragraphs(text: string): string {
     .map((p) => p.trim())
     .filter(Boolean)
     .map((block) =>
-      isQuoteBlock(block)
-        ? `<blockquote class="ai-quote">${autolink(escapeHtml(stripQuoteMarkers(block)))}</blockquote>`
-        : `<p>${autolink(escapeHtml(block))}</p>`
+      isPullQuoteBlock(block)
+        ? `<blockquote class="pull-quote">${autolink(escapeHtml(stripPullQuoteMarkers(block)))}</blockquote>`
+        : isQuoteBlock(block)
+          ? `<blockquote class="ai-quote">${autolink(escapeHtml(stripQuoteMarkers(block)))}</blockquote>`
+          : `<p>${autolink(escapeHtml(block))}</p>`
     )
     .join('\n');
 }

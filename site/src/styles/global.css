@@ -765,6 +765,24 @@ figure > p {
   white-space: pre-wrap;
 }
 
+/* Pull-quote — an insight lifted out of the author's own prose. No inserted
+   surface (that's .ai-quote's signal for "not written by me") — this IS the
+   author, just raised in register. Set in the annotation hand, large and
+   centered, quote marks doing the framing instead of a border. */
+.pull-quote {
+  font-family: var(--font-annotation);
+  font-size: 1.7rem;
+  line-height: 1.35;
+  color: var(--ink);
+  text-align: center;
+  margin: 2.25rem auto;
+  padding: 0 1rem;
+  max-width: 30rem;
+  white-space: pre-wrap;
+}
+.pull-quote::before { content: '\201C'; }
+.pull-quote::after { content: '\201D'; }
+
 /* Markdown fragment — a process doc or spec dropped into a post as its own
    object (SPEC extension: fragment type "markdown"). One inserted surface,
    same material as .ai-quote; collapsed behind native <details> so a long
