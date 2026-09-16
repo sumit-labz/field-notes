@@ -1,0 +1,20 @@
+---
+slug: 2026-09-16-dopamine-is-not-a-strategy
+title: "Dopamine Is Not a Strategy"
+published: 2026-09-16
+journey: scaffolding
+obsession: self
+fragments:
+  - 2026-09-13-103613
+status: published
+kind: post
+transcript: 2026-09-16-090554.txt
+cover: 2026-09-13-103613
+made_with: raw
+---
+
+Taking a note of an observation that I recently made about — so I was working on two ideas, one is the brand positioning software and the Story Dojo, which is currently the main focus right now. And the reasons I gave to switch to Story Dojo from the brand positioning software were many. I think the first one was the brand positioning software is going to be a real money earner because it has such a terrific value for people all around the world, although I haven't even proven it yet. But on the other hand, the second reason I gave is that distribution for the branding software could be a challenge. You need to try it on another idea, and the Story Dojo — you know, you can build the video distribution, you can fail on that because I'm not very confident to speak on the video itself. So somehow I started wondering that, you know, while I give myself reasons to not pursue the first idea, I started thinking that I'll be at a loss if I don't pursue it. I know that right now I'm hyper fixated with the Story Dojo idea because stories are so personal to me. It is giving so much of high adrenaline — oh sorry, I should say dopamine. I'm dopamine high with that idea that, you know, I can go out, kind of becoming a star on the internet, talking about movies, their breakdown, and that has a more dopamine effect on me than the branding software. But this is not the first time in my life I've done that. I have done it multiple times. So somehow internally I feel that I need some therapy for this, because if I keep doing it, then something else will come up. Story Dojo will result in another idea. Then where will it lead to? Or maybe the path is that I could not discover more dopamine in the first idea, then it kind of evaporated — the dopamine evaporated. I made it so hard. Maybe there were some stuck sessions where I made it more and more difficult instead of yielding dopamine in it, and it got shelved. So as per the DBT technique, it says that even if you feel stuck on something, give it 10 minutes and see where you can take it. So I think that's one of the pieces of advice I have, but I still feel like consulting or looking at ADHD research if this behavior can be corrected — that kind of creates some shame inside me, you know. But at the same time my brain is also giving me reasons: no, you have not shelved it, you will get back to it. Anyway, I think I need to think about it for a few minutes and then decide, you know, where it is going.
+
+Okay, I think I found out the fundamental problem why the positioning software is not able to kick off. The reason is building something useful for people requires sequential steps. For example, if I have to test the idea of the brand positioning software, it would require building a landing page, talking with people, then building it, refining the software. But the brain which needs dopamine doesn't want to go through those logical steps. It doesn't like that approach, and this is the fundamental conflict I am running into. Until I solve this, I will not be able to get into it, because for a long time I was trying to build the landing page but I wasn't able to — although it led me to different directions, like typography, etc., but I could not pursue that direction either. So this is the fundamental problem.
+
+Which means for an ADHD brain, a normal way of developing software will not work, and I have to come up with my own methodology, isn't it?
