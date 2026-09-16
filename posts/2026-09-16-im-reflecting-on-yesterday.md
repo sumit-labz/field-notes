@@ -4,10 +4,10 @@ title: "Cognitive Surrender"
 published: 2026-09-16
 journey: being-seen
 fragments:
-  - 2026-09-15-075039
+  - 2026-09-16-073359
 status: published
 kind: post
-cover: 2026-09-15-075039
+cover: 2026-09-16-073359
 made_with: raw
 ---
 
