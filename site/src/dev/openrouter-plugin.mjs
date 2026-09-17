@@ -382,6 +382,88 @@ function runDeleteScript(id) {
   });
 }
 
+// Run scripts/storage_stats.py --json and return its parsed JSON result.
+function runStorageStatsScript() {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const script = path.join('scripts', 'storage_stats.py');
+    let proc;
+    try {
+      proc = spawn(python, [script, '--json'], { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) => {
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      );
+    });
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(new Error(`storage-stats script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`));
+      }
+    });
+  });
+}
+
+// Run scripts/delete_audio.py <id> --json and return its parsed JSON result.
+function runDeleteAudioScript(id) {
+  return new Promise((resolve, reject) => {
+    const python = resolvePython();
+    const script = path.join('scripts', 'delete_audio.py');
+    let proc;
+    try {
+      proc = spawn(python, [script, id, '--json'], { cwd: repoRoot });
+    } catch (err) {
+      reject(new Error(`could not start Python (${python}): ${err.message}`));
+      return;
+    }
+    const out = [];
+    const errOut = [];
+    proc.on('error', (err) => {
+      reject(
+        new Error(
+          err.code === 'ENOENT'
+            ? `Python not found (${python}). Set INGEST_PYTHON in site/.env, or create scripts/.venv and install scripts/requirements.txt.`
+            : `failed to start Python: ${err.message}`
+        )
+      );
+    });
+    proc.stdout.on('data', (c) => out.push(c));
+    proc.stderr.on('data', (c) => errOut.push(c));
+    proc.on('close', () => {
+      const stdout = Buffer.concat(out).toString().trim();
+      const stderr = Buffer.concat(errOut).toString().trim();
+      const lastLine = stdout.split('\n').filter(Boolean).pop() || '';
+      try {
+        resolve(JSON.parse(lastLine));
+      } catch {
+        reject(
+          new Error(
+            stderr.includes('ModuleNotFoundError')
+              ? `The Python at ${python} is missing the bot's dependencies. Install scripts/requirements.txt into it (or set INGEST_PYTHON).`
+              : `delete-audio script gave no JSON result. stderr: ${stderr.slice(-400) || '(none)'}`
+          )
+        );
+      }
+    });
+  });
+}
+
 // Run scripts/apply_cinematic_grade.py <id> <mediaIndex> <preset> --json and
 // return its parsed JSON result. Bakes the grade into the actual stored image
 // (R2 object or local media/photo/ file) — see that script's docstring.
@@ -730,6 +812,12 @@ async function fetchGenerationCostInr(apiKey, genId) {
   return null;
 }
 
+// storage_stats.py lists every R2 object, which is fast but still a network
+// round-trip — cache the result for a few minutes so reloading the inbox
+// doesn't re-fetch it every time.
+const STORAGE_STATS_TTL_MS = 5 * 60 * 1000;
+let storageStatsCache = null; // { data, fetchedAt }
+
 export function openrouterDevPlugin() {
   let apiKey = '';
   let voiceRefAudio = '';
@@ -864,6 +952,39 @@ export function openrouterDevPlugin() {
           }
           const result = await runDeleteScript(id);
           if (!result.ok) return sendJson(res, 502, { error: result.error || 'delete failed' });
+          return sendJson(res, 200, result);
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/storage-stats', async (req, res, next) => {
+        if (req.method !== 'GET') return next();
+        try {
+          const url = new URL(req.url, 'http://localhost');
+          const force = url.searchParams.get('force') === '1';
+          const fresh = storageStatsCache && Date.now() - storageStatsCache.fetchedAt < STORAGE_STATS_TTL_MS;
+          if (!force && fresh) {
+            return sendJson(res, 200, { ...storageStatsCache.data, cached: true });
+          }
+          const result = await runStorageStatsScript();
+          if (result.ok) storageStatsCache = { data: result, fetchedAt: Date.now() };
+          return sendJson(res, result.ok ? 200 : 502, result);
+        } catch (err) {
+          return sendJson(res, 502, { error: String(err?.message || err) });
+        }
+      });
+
+      server.middlewares.use('/api/delete-audio', async (req, res, next) => {
+        if (req.method !== 'POST') return next();
+        try {
+          const { id, confirm } = await readJsonBody(req);
+          if (!id) return sendJson(res, 400, { error: 'missing fragment id' });
+          if (confirm !== id) {
+            return sendJson(res, 400, { error: 'confirmation did not match the fragment id' });
+          }
+          const result = await runDeleteAudioScript(id);
+          if (!result.ok) return sendJson(res, 502, { error: result.error || 'delete-audio failed' });
           return sendJson(res, 200, result);
         } catch (err) {
           return sendJson(res, 502, { error: String(err?.message || err) });

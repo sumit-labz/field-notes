@@ -15,10 +15,28 @@
 // It also carries a robots noindex and is unlinked from nav. (No sitemap.xml or
 // RSS feed exists; if either is added, exclude this route there too.)
 import { getCollection, type CollectionEntry } from 'astro:content';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { formatCapturedAt } from '../../lib/dates';
 import { mediaUrl } from '../../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
 import { gradedOrOriginal } from '../../lib/content';
+
+// pages/internal/ -> repo root is three levels up.
+const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+const AUDIO_STALE_DAYS = 14;
+
+function hasLocalAudio(fragment: CollectionEntry<'fragments'>): boolean {
+  return (fragment.data.media ?? []).some((key) => key.startsWith('media/audio/'));
+}
+
+function hasSavedTranscript(id: string): boolean {
+  return existsSync(`${repoRoot}transcripts/${id}.txt`);
+}
+
+function daysSince(date: Date): number {
+  return (Date.now() - date.valueOf()) / (1000 * 60 * 60 * 24);
+}
 
 const TYPE_ICON: Record<string, string> = {
   photo: '🖼️',
@@ -83,12 +101,25 @@ const rows = fragments
     tilt: f.data.tilt ?? null,
     spark: f.data.spark,
     consumedBy: f.data.consumed_by,
+    // "Unassigned" means "not yet spoken for" — a fragment already consumed
+    // by a published post has clearly been used, even if it never picked up
+    // a journey hashtag at capture time. Without this, a photo used in a
+    // post still read as "unassigned" everywhere (row tag, counts, filter),
+    // which looked like a bug rather than what it actually is: journey and
+    // consumed-by are two different, independent facts about a fragment.
+    isAssigned: f.data.journey !== null || f.data.consumed_by !== null,
     // Full body — used both as the Fix-grammar source and as the preview
     // itself. Previously the preview clipped to 100 chars with no way to see
     // the rest; a Telegram text note could easily run past that.
     fullText: (f.body ?? '').trim(),
     previews: mediaPreviews(f),
     excerpt: (f.body ?? '').trim(),
+    // Long text fragments render clamped with a "show more" toggle instead of
+    // stretching the row to full height — see .excerpt-wrap.clampable.
+    excerptLong: (f.body ?? '').trim().length > 320 || (f.body ?? '').split('\n').length > 6,
+    hasLocalAudio: hasLocalAudio(f),
+    hasTranscript: hasSavedTranscript(f.data.id),
+    audioStale: f.data.type === 'audio' && hasLocalAudio(f) && daysSince(f.data.captured_at) >= AUDIO_STALE_DAYS,
   }))
   .sort((a, b) => b.capturedAt.valueOf() - a.capturedAt.valueOf());
 
@@ -104,7 +135,7 @@ for (const row of rows) {
 }
 
 const total = rows.length;
-const unassignedCount = rows.filter((r) => r.journey === null).length;
+const unassignedCount = rows.filter((r) => !r.isAssigned).length;
 ---
 
 <!doctype html>
@@ -163,7 +194,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         z-index: 10;
         background: var(--panel);
         border-bottom: 1px solid var(--border);
-        padding: 12px max(20px, calc((100% - 1180px) / 2));
+        padding: 12px max(20px, calc((100% - 1320px) / 2));
       }
       .title-row {
         display: flex;
@@ -173,6 +204,79 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       h1 { font-size: 16px; margin: 0; font-weight: 600; }
       .counts { color: var(--muted); font-size: 12px; }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .toolbar-sep {
+        width: 1px;
+        height: 16px;
+        background: var(--border);
+        margin: 0 2px;
+      }
+      /* One merged control instead of two separate buttons: "sync" (fast,
+         plain pull) and a small caret-like "fetch from Telegram first" — same
+         actions as before, presented as a single segmented unit. */
+      .sync-group { display: flex; }
+      .sync-group .tool-btn {
+        border-radius: 0;
+        border-right-width: 0;
+      }
+      .sync-group .tool-btn:first-child { border-radius: 6px 0 0 6px; }
+      .sync-group .tool-btn:last-child { border-radius: 0 6px 6px 0; border-right-width: 1px; }
+      .storage-row {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+      }
+      /* Collapsed once the page is scrolled: the sticky header was eating a
+         lot of vertical space on every scroll position, not just at the top.
+         Keep title + filters (still needed while scanning) always visible;
+         hide only the toolbar/storage rows, which matter at the top of a
+         session, not mid-scroll. */
+      header.compact .toolbar,
+      header.compact .storage-row {
+        display: none;
+      }
+      header { transition: padding 0.15s ease; }
+      .storage-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 200px;
+        flex: 1;
+        max-width: 320px;
+      }
+      .storage-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .storage-value { color: var(--text); font-variant-numeric: tabular-nums; }
+      .storage-bar {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--stub-bg);
+        overflow: hidden;
+      }
+      .storage-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 3px;
+        background: var(--accent);
+        transition: width 0.4s ease;
+      }
+      .storage-fill.warn { background: var(--spark); }
+      .storage-fill.danger { background: var(--danger); }
+      .storage-item.error .storage-value { color: var(--danger); }
       .controls {
         display: flex;
         gap: 16px;
@@ -214,9 +318,23 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         font-size: 12px;
         color: var(--muted);
       }
-      main { padding: 20px max(20px, calc((100% - 1180px) / 2)) 80px; }
-      .date-group { margin-top: 28px; }
+      main { padding: 20px max(20px, calc((100% - 1320px) / 2)) 80px; }
+      /* Two-column masonry per date: CSS multi-column flows cards down the
+         first column then the second, packing tight regardless of each
+         card's height (an audio row and a long text row can sit side by
+         side without leaving a gap the way a strict CSS grid row would).
+         `column-span: all` on the date heading below pulls it out of the
+         column flow so it still reads as a full-width section label. */
+      .date-group {
+        margin-top: 28px;
+        column-count: 2;
+        column-gap: 16px;
+      }
+      @media (max-width: 860px) {
+        .date-group { column-count: 1; }
+      }
       .date-head {
+        column-span: all;
         font-size: 11px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -226,14 +344,27 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       }
       .row {
         display: grid;
-        grid-template-columns: 24px minmax(150px, 240px) 1fr;
-        gap: 16px;
+        /* Identifying info (id, type, date, journey) reads FIRST, top of the
+           card, full width — not off in a column disconnected from a narrow
+           strip of thumbnail/controls on the left. Preview + its controls
+           (photo grading, audio player, text) get their own full-width row
+           underneath, so a grading toolbar has room to lay out horizontally
+           instead of wrapping awkwardly in a ~200px column. */
+        grid-template-columns: 24px 1fr;
+        grid-template-areas:
+          'check meta'
+          'check preview';
+        column-gap: 16px;
+        row-gap: 10px;
         align-items: start;
         padding: 16px;
-        margin-bottom: 10px;
+        margin-bottom: 16px;
         background: var(--panel);
         border: 1px solid var(--border);
         border-radius: 12px;
+        /* Multi-column masonry (.date-group) must never slice a card across
+           the column break. */
+        break-inside: avoid;
       }
       .row:hover { border-color: var(--accent); }
       .row.hidden { display: none; }
@@ -251,8 +382,8 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         padding: 0 5px;
         margin-left: 6px;
       }
-      .row-check { margin-top: 4px; }
-      .preview { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+      .row-check { grid-area: check; margin-top: 4px; }
+      .preview { grid-area: preview; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
       .thumb {
         max-width: 100%;
         max-height: 130px;
@@ -302,7 +433,81 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         font-size: 16px;
         cursor: pointer;
       }
-      .grade-presets { display: flex; flex-wrap: wrap; gap: 5px; }
+      /* Large-font reading modal for text fragments, transcripts, and cleaned
+         text — replaces cramped inline expansion (which used to blow out the
+         row's height) with a proper reading surface, Fix-grammar included. */
+      .read-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 40px 20px;
+        overflow-y: auto;
+      }
+      .read-modal[hidden] { display: none; }
+      .read-modal-box {
+        width: 100%;
+        max-width: 680px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px 28px;
+      }
+      .read-modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .read-modal-meta { color: var(--muted); font-size: 12px; }
+      .read-modal-close {
+        border: none;
+        background: none;
+        color: var(--muted);
+        font-size: 18px;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .read-modal-close:hover { color: var(--text); }
+      .read-modal-text {
+        font-size: 18px;
+        line-height: 1.7;
+        color: var(--text);
+        white-space: pre-wrap;
+      }
+      .read-modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+      .grade-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .grade-rotate { display: flex; gap: 5px; }
+      .icon-btn {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        font-size: 17px;
+        line-height: 1;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 0;
+      }
+      .icon-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+      .icon-btn.selected { border-color: var(--accent); color: var(--accent); }
+      .grade-select {
+        font: inherit;
+        font-size: 13px;
+        padding: 8px 10px;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        max-width: 180px;
+      }
       .grade-btn {
         font: inherit;
         font-size: 11px;
@@ -318,6 +523,11 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .grade-btn.subtle { color: var(--muted); }
       .grade-btn.selected { border-color: var(--accent); color: var(--accent); }
       .grade-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--muted); }
+      /* Same trap as .lightbox above: `display: flex` is an author rule, so
+         it beats the UA stylesheet's `[hidden] { display: none }` even
+         though `hidden` is set — every grade card was showing its confirm
+         bar (with a live "accept — overwrite") before any preset was picked. */
+      .grade-confirm[hidden] { display: none; }
       .grade-status { font-size: 11px; color: var(--muted); min-height: 14px; }
       .grade-status.error { color: var(--danger); }
       .av { max-width: 100%; width: 100%; display: block; }
@@ -332,40 +542,70 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .aplayer audio { display: none; }
       .aplayer-play {
         flex: none;
-        width: 28px;
-        height: 28px;
+        width: 40px;
+        height: 40px;
         padding: 0;
         display: grid;
         place-items: center;
         border-radius: 50%;
         border: none;
         color: var(--panel);
-        background: var(--text);
+        background: var(--accent);
       }
-      .aplayer-play:hover { color: var(--panel); border: none; }
+      .aplayer-play svg { width: 15px; height: 16px; }
+      .aplayer-play:hover { color: var(--panel); border: none; filter: brightness(1.08); }
       .aplayer-play .ic-play { margin-left: 1px; }
       .aplayer-play .ic-pause { display: none; }
       .aplayer.playing .aplayer-play .ic-play { display: none; }
       .aplayer.playing .aplayer-play .ic-pause { display: block; }
       .aplayer-track {
         flex: 1;
-        height: 4px;
+        height: 7px;
         min-width: 40px;
-        border-radius: 2px;
+        border-radius: 4px;
         background: var(--border);
         cursor: pointer;
         position: relative;
       }
-      .aplayer-fill { height: 100%; width: 0%; border-radius: 2px; background: var(--accent); }
-      .aplayer-time { flex: none; font-size: 11px; color: var(--muted); white-space: nowrap; }
+      .aplayer-fill { height: 100%; width: 0%; border-radius: 4px; background: var(--accent); }
+      .aplayer-time { flex: none; font-size: 12px; color: var(--muted); white-space: nowrap; }
+      .excerpt-wrap { position: relative; }
       .excerpt {
         color: var(--text);
         font-size: 13px;
         white-space: pre-wrap;
       }
       .excerpt.empty { color: var(--muted); font-style: italic; }
+      /* Long text fragments used to render at full height, blowing the row
+         out to match — clamp to a handful of lines with a fade, and read the
+         rest in the large-font read-modal instead of growing the row. */
+      .excerpt-wrap.clampable .excerpt {
+        max-height: 6.7em; /* ~6 lines at 1.45 line-height, 13px */
+        overflow: hidden;
+      }
+      .excerpt-wrap.clampable::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 24px;
+        height: 28px;
+        background: linear-gradient(to bottom, transparent, var(--panel));
+        pointer-events: none;
+      }
+      .excerpt-toggle {
+        margin-top: 4px;
+        padding: 2px 0;
+        font-size: 11px;
+        border: none;
+        background: none;
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .excerpt-toggle:hover { text-decoration: underline; }
       .missing { color: var(--spark); font-size: 12px; }
       .meta {
+        grid-area: meta;
         display: flex;
         flex-direction: column;
         gap: 5px;
@@ -461,12 +701,41 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .tool-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
       .tool-btn:disabled { cursor: progress; color: var(--stub-text); }
       .tool-btn.subtle { color: var(--muted); }
+      /* The handful of actions actually driving the work here (transcribe,
+         fix grammar, bake a grade) were the same tiny pill as "copy" or
+         "clear" — nothing marked them as the thing you came to this card to
+         do. Give them real size and weight so they read as the primary CTA. */
+      .tool-btn-lg {
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 18px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .tool-btn-lg:hover:not(:disabled) { filter: brightness(1.08); color: #fff; border-color: var(--accent); }
+      .tool-btn-lg:disabled { background: var(--stub-bg); border-color: var(--border); color: var(--stub-text); filter: none; }
       .tool-status {
         font-size: 11px;
         margin-top: 5px;
         color: var(--muted);
       }
       .tool-status.error { color: var(--spark); }
+      .audio-age-banner {
+        margin-top: 8px;
+        padding: 6px 9px;
+        border: 1px solid var(--spark);
+        background: var(--danger-bg);
+        border-radius: 5px;
+        font-size: 11px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        max-width: 520px;
+      }
       .tbox { margin-top: 8px; }
       .tbox-label {
         font-size: 10px;
@@ -476,6 +745,16 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         margin-bottom: 3px;
       }
       .tbox-hint { text-transform: none; letter-spacing: 0; font-style: italic; }
+      .tbox-expand {
+        margin-left: 6px;
+        font-size: 11px;
+        line-height: 1;
+        border: none;
+        background: none;
+        color: var(--accent);
+        cursor: pointer;
+        text-transform: none;
+      }
       .tbox-cost, .voice-cost { text-transform: none; letter-spacing: 0; color: var(--accent); margin-left: 6px; }
       .voice-box { margin-top: 8px; max-width: 520px; }
       .voice-box .aplayer { margin-top: 4px; }
@@ -512,7 +791,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       .capture {
         border-bottom: 1px solid var(--border);
         background: var(--panel);
-        padding: 12px max(20px, calc((100% - 1180px) / 2));
+        padding: 12px max(20px, calc((100% - 1320px) / 2));
       }
       .capture-row {
         display: flex;
@@ -599,10 +878,34 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         <span class="counts">
           {total} fragments · {unassignedCount} unassigned · internal / not indexed
         </span>
-        <button id="pull-btn" class="tool-btn" type="button">⟳ pull latest</button>
-        <button id="fetch-btn" class="tool-btn" type="button" title="Trigger the Telegram ingest Action on GitHub, wait for it, then pull. Takes ~1–2 min.">⤓ fetch from Telegram</button>
+      </div>
+      <div class="toolbar">
+        <div class="sync-group">
+          <button id="pull-btn" class="tool-btn" type="button" title="Fast: pull whatever's already on GitHub">⟳ sync</button>
+          <button id="fetch-btn" class="tool-btn" type="button" title="Slower (~1–2 min): also trigger the Telegram ingest Action first, then pull">⤓</button>
+        </div>
+        <span class="toolbar-sep"></span>
+        <a class="tool-btn" href="/field-notes/" target="_blank" rel="noreferrer" title="Open this site as served by the local dev server">🏠 local blog</a>
+        <a class="tool-btn" href="https://sumit-labz.github.io/field-notes/" target="_blank" rel="noreferrer" title="Open the deployed public site">🌐 public blog</a>
         <span id="pull-status" class="counts"></span>
         <span id="session-cost" class="counts" title="Approx OpenRouter spend this browser session"></span>
+      </div>
+      <div class="storage-row" id="storage-row">
+        <div class="storage-item" data-storage="r2">
+          <div class="storage-head">
+            <span>☁️ Cloudflare R2</span>
+            <span class="storage-value">loading…</span>
+          </div>
+          <div class="storage-bar"><div class="storage-fill"></div></div>
+        </div>
+        <div class="storage-item" data-storage="github">
+          <div class="storage-head">
+            <span>🐙 GitHub repo</span>
+            <span class="storage-value">loading…</span>
+          </div>
+          <div class="storage-bar"><div class="storage-fill"></div></div>
+        </div>
+        <button id="storage-refresh" class="tool-btn subtle" type="button" title="Re-check storage usage (bypasses the 5-minute cache)">⟳</button>
       </div>
       <div class="controls">
         <div>
@@ -696,7 +999,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                 <div
                   class="row"
                   data-type={row.type}
-                  data-assigned={row.journey === null ? 'unassigned' : 'assigned'}
+                  data-assigned={row.isAssigned ? 'assigned' : 'unassigned'}
                   data-id={row.id}
                 >
                   <input class="row-check" type="checkbox" aria-label={`select ${row.id}`} />
@@ -721,87 +1024,53 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                               </a>
                               {preview.graded && (
                                 <button type="button" class="grade-btn subtle" data-grade-revert>
-                                  ↺ revert to original
+                                  ↺ revert
                                 </button>
                               )}
                             </div>
-                            <div class="grade-presets">
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="rotate_ccw"
-                                data-grade-transform="rotate(-90deg)"
-                              >
-                                ↺ rotate left
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="rotate_cw"
-                                data-grade-transform="rotate(90deg)"
-                              >
-                                ↻ rotate right
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="rotate_180"
-                                data-grade-transform="rotate(180deg)"
-                              >
-                                ⇅ rotate 180°
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="muted"
-                                data-grade-css="saturate(0.55) contrast(1.08) brightness(0.97)"
-                              >
-                                🎬 muted
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="teal_orange"
-                                data-grade-css="sepia(0.15) saturate(1.3) hue-rotate(-8deg) contrast(1.05)"
-                              >
-                                🎬 teal/orange
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="noir"
-                                data-grade-css="grayscale(0.85) contrast(1.25) brightness(0.92)"
-                              >
-                                🎬 noir
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="grayscale"
-                                data-grade-css="grayscale(1) contrast(1.05)"
-                              >
-                                🎬 grayscale
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="vivid"
-                                data-grade-css="saturate(1.5) contrast(1.12) brightness(1.03)"
-                              >
-                                🎬 vivid
-                              </button>
-                              <button
-                                class="grade-btn"
-                                type="button"
-                                data-grade-preset="sketch"
-                                data-grade-css="contrast(1.35) brightness(0.95) saturate(1.05)"
-                              >
-                                🎬 sketch clarity
-                              </button>
+                            <div class="grade-toolbar">
+                              <div class="grade-rotate" role="group" aria-label="rotate">
+                                <button
+                                  class="icon-btn"
+                                  type="button"
+                                  data-grade-preset="rotate_ccw"
+                                  data-grade-transform="rotate(-90deg)"
+                                  title="rotate left"
+                                >
+                                  ↺
+                                </button>
+                                <button
+                                  class="icon-btn"
+                                  type="button"
+                                  data-grade-preset="rotate_cw"
+                                  data-grade-transform="rotate(90deg)"
+                                  title="rotate right"
+                                >
+                                  ↻
+                                </button>
+                                <button
+                                  class="icon-btn"
+                                  type="button"
+                                  data-grade-preset="rotate_180"
+                                  data-grade-transform="rotate(180deg)"
+                                  title="rotate 180°"
+                                >
+                                  ⇅
+                                </button>
+                              </div>
+                              <select class="grade-select" aria-label="cinematic grade">
+                                <option value="">🎬 grade…</option>
+                                <option value="muted" data-css="saturate(0.55) contrast(1.08) brightness(0.97)">Muted</option>
+                                <option value="teal_orange" data-css="sepia(0.15) saturate(1.3) hue-rotate(-8deg) contrast(1.05)">Teal / orange</option>
+                                <option value="noir" data-css="grayscale(0.85) contrast(1.25) brightness(0.92)">Noir</option>
+                                <option value="grayscale" data-css="grayscale(1) contrast(1.05)">Grayscale</option>
+                                <option value="vivid" data-css="saturate(1.5) contrast(1.12) brightness(1.03)">Vivid</option>
+                                <option value="sketch" data-css="contrast(1.35) brightness(0.95) saturate(1.05)">Sketch clarity</option>
+                              </select>
                             </div>
                             <div class="grade-confirm" hidden>
                               <span class="grade-confirm-label"></span>
-                              <button class="grade-btn grade-accept" type="button">accept — overwrite</button>
+                              <button class="grade-btn grade-accept tool-btn-lg" type="button">accept — overwrite</button>
                               <button class="grade-btn subtle grade-cancel" type="button">cancel</button>
                             </div>
                             <div class="grade-status" role="status"></div>
@@ -827,8 +1096,13 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                       </>
                     ))}
                     {row.previews.length === 0 && (
-                      <div class={`excerpt${row.excerpt ? '' : ' empty'}`}>
-                        {row.excerpt || '(no text)'}
+                      <div class={`excerpt-wrap${row.excerptLong ? ' clampable' : ''}`} data-excerpt-wrap>
+                        <div class={`excerpt${row.excerpt ? '' : ' empty'}`}>
+                          {row.excerpt || '(no text)'}
+                        </div>
+                        {row.excerptLong && (
+                          <button type="button" class="excerpt-toggle" data-excerpt-toggle>🔍 read full ⤢</button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -842,12 +1116,12 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                     <div class="tags">
                       <span class="type-tag">{TYPE_ICON[row.type] ?? ''} {row.type}</span>
                       <span>· {formatCapturedAt(row.capturedAt)}</span>
-                      {row.journey === null ? (
-                        <span class="journey-tag unassigned">· unassigned</span>
-                      ) : (
+                      {row.journey !== null ? (
                         <span class="journey-tag">
                           · <code>{row.journey}</code>
                         </span>
+                      ) : row.consumedBy ? null : (
+                        <span class="journey-tag unassigned">· unassigned</span>
                       )}
                       {row.spark && <span class="spark-tag">· ★ spark</span>}
                     </div>
@@ -875,12 +1149,12 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                       <div class="tools" data-tools-id={row.id} data-tools-type={row.type}>
                         <div class="tool-buttons">
                           {row.type === 'audio' && (
-                            <button class="tool-btn" type="button" data-action="transcribe">
+                            <button class="tool-btn tool-btn-lg" type="button" data-action="transcribe">
                               Transcribe
                             </button>
                           )}
                           {row.type === 'text' && (
-                            <button class="tool-btn" type="button" data-action="fix" data-source="body">
+                            <button class="tool-btn tool-btn-lg" type="button" data-action="fix" data-source="body">
                               Fix grammar
                             </button>
                           )}
@@ -890,12 +1164,28 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                         )}
                         <div class="tool-status" role="status" hidden></div>
 
+                        {row.audioStale && (
+                          <div class="audio-age-banner" data-audio-age-id={row.id}>
+                            {row.hasTranscript ? (
+                              <>
+                                <span>🎙️ audio is 2+ weeks old and transcript is saved.</span>
+                                <button class="tool-btn" type="button" data-action="delete-audio">delete audio, keep transcript</button>
+                              </>
+                            ) : (
+                              <span>🎙️ audio is 2+ weeks old — transcribe and save it before deleting the audio.</span>
+                            )}
+                          </div>
+                        )}
+
                         {row.type === 'audio' && (
                           <div class="tbox transcript-box" hidden>
-                            <div class="tbox-label">transcribed <span class="tbox-hint">· read-only</span><span class="tbox-cost"></span></div>
+                            <div class="tbox-label">
+                              transcribed <span class="tbox-hint">· read-only</span><span class="tbox-cost"></span>
+                              <button type="button" class="tbox-expand" data-expand="transcript" title="open in a larger reading view">⤢</button>
+                            </div>
                             <textarea class="transcript-text mono" rows="4" readonly spellcheck="false"></textarea>
                             <div class="result-actions">
-                              <button class="tool-btn" type="button" data-action="fix" data-source="transcript">Fix grammar</button>
+                              <button class="tool-btn tool-btn-lg" type="button" data-action="fix" data-source="transcript">Fix grammar</button>
                               <button class="tool-btn" type="button" data-action="copy-transcript">copy</button>
                               <button class="tool-btn" type="button" data-action="save-transcript">save</button>
                             </div>
@@ -903,7 +1193,10 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
                         )}
 
                         <div class="tbox fixed-box" hidden>
-                          <div class="tbox-label">after grammar<span class="tbox-cost"></span></div>
+                          <div class="tbox-label">
+                            after grammar<span class="tbox-cost"></span>
+                            <button type="button" class="tbox-expand" data-expand="fixed" title="open in a larger reading view">⤢</button>
+                          </div>
                           <textarea class="fixed-text mono" rows="4" spellcheck="false"></textarea>
                           <div class="result-actions">
                             <button class="tool-btn" type="button" data-action="copy-fixed">copy</button>
@@ -943,9 +1236,37 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
       <img class="lightbox-img" data-lightbox-img alt="" />
     </div>
 
+    <!-- Shared reading modal: one overlay reused for any long text — a text
+         fragment's body, a raw transcript, or grammar-fixed text. Renders it
+         at a readable size instead of a tiny clamped/scrollable box, and
+         proxies "Fix grammar" to whichever real (hidden) button belongs to
+         that row/source, so the actual fix logic stays in one place. -->
+    <div class="read-modal" data-read-modal hidden>
+      <div class="read-modal-box">
+        <div class="read-modal-head">
+          <span class="read-modal-meta" data-read-modal-meta></span>
+          <button type="button" class="read-modal-close" data-read-modal-close aria-label="close">✕</button>
+        </div>
+        <div class="read-modal-text" data-read-modal-text></div>
+        <div class="read-modal-actions">
+          <button type="button" class="tool-btn" data-read-modal-fix hidden>Fix grammar</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       // Clipboard + filtering for the internal inbox. Plain DOM, no framework —
       // this page is a local tool, function over polish.
+
+      // Collapse the toolbar/storage rows once scrolled past the top so the
+      // sticky header stops eating a big chunk of the viewport on every
+      // scroll position — title + filters (still useful mid-scroll) stay.
+      {
+        const header = document.querySelector('header')!;
+        const onScroll = () => header.classList.toggle('compact', window.scrollY > 24);
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      }
 
       async function copyText(text: string): Promise<boolean> {
         try {
@@ -1065,6 +1386,136 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
 
       applyFilter();
 
+      // -- Large-font reading modal --------------------------------------------
+      // Shared by: a long text fragment's body, a raw transcript, and
+      // grammar-fixed text. Rather than growing the row to fit (the original
+      // bug report) or cramming a "read more" toggle into a tiny box, this
+      // opens one big overlay at a comfortable reading size. "Fix grammar"
+      // just clicks the row's REAL (hidden) fix button and closes — the fix
+      // logic itself stays in one place (initTools below).
+      {
+        const modal = document.querySelector<HTMLElement>('[data-read-modal]')!;
+        const modalMeta = modal.querySelector<HTMLElement>('[data-read-modal-meta]')!;
+        const modalText = modal.querySelector<HTMLElement>('[data-read-modal-text]')!;
+        const modalFix = modal.querySelector<HTMLButtonElement>('[data-read-modal-fix]')!;
+
+        function openReadModal(text: string, meta: string, fixBtn: HTMLButtonElement | null) {
+          modalText.textContent = text;
+          modalMeta.textContent = meta;
+          modalFix.hidden = !fixBtn;
+          modalFix.onclick = () => {
+            fixBtn?.click();
+            closeReadModal();
+          };
+          modal.hidden = false;
+        }
+        function closeReadModal() {
+          modal.hidden = true;
+          modalFix.onclick = null;
+        }
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeReadModal();
+        });
+        modal.querySelector('[data-read-modal-close]')!.addEventListener('click', closeReadModal);
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !modal.hidden) closeReadModal();
+        });
+
+        // Trigger 1: a long text fragment's clamped body.
+        document.querySelectorAll<HTMLButtonElement>('[data-excerpt-toggle]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const wrap = btn.closest<HTMLElement>('[data-excerpt-wrap]')!;
+            const row = btn.closest<HTMLElement>('.row')!;
+            const text = wrap.querySelector<HTMLElement>('.excerpt')!.textContent ?? '';
+            const id = row.dataset.id ?? '';
+            const fixBtn = row.querySelector<HTMLButtonElement>('[data-action="fix"][data-source="body"]');
+            openReadModal(text, id, fixBtn);
+          });
+        });
+
+        // Trigger 2 & 3: the transcript / fixed-text boxes' "⤢" expand icons.
+        document.querySelectorAll<HTMLButtonElement>('[data-expand]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const kind = btn.dataset.expand; // "transcript" | "fixed"
+            const row = btn.closest<HTMLElement>('.row')!;
+            const id = row.dataset.id ?? '';
+            if (kind === 'transcript') {
+              const textarea = row.querySelector<HTMLTextAreaElement>('.transcript-text');
+              const fixBtn = row.querySelector<HTMLButtonElement>('[data-action="fix"][data-source="transcript"]');
+              openReadModal(textarea?.value ?? '', `${id} · transcribed`, fixBtn);
+            } else {
+              const textarea = row.querySelector<HTMLTextAreaElement>('.fixed-text');
+              openReadModal(textarea?.value ?? '', `${id} · after grammar`, null);
+            }
+          });
+        });
+      }
+
+      // -- Storage indicators (R2 + GitHub) -----------------------------------
+      // Backed by GET /api/storage-stats, which runs scripts/storage_stats.py
+      // and caches the result server-side for a few minutes (an R2 bucket
+      // listing on every page load would be wasteful).
+      const R2_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // Cloudflare R2 free tier
+      // GitHub has no hard per-repo cap, but a repo over ~5GB starts getting
+      // warned about — used only to give the bar something to measure against.
+      const GITHUB_SOFT_LIMIT_BYTES = 5 * 1024 * 1024 * 1024;
+
+      function fmtBytes(n: number): string {
+        if (n < 1024) return `${n} B`;
+        const units = ['KB', 'MB', 'GB', 'TB'];
+        let v = n / 1024;
+        let i = 0;
+        while (v >= 1024 && i < units.length - 1) {
+          v /= 1024;
+          i++;
+        }
+        return `${v.toFixed(v < 10 ? 2 : 1)} ${units[i]}`;
+      }
+
+      function renderStorageItem(key: 'r2' | 'github', bytes: number | null, limit: number, limitLabel: string, error?: string) {
+        const item = document.querySelector<HTMLElement>(`[data-storage="${key}"]`);
+        if (!item) return;
+        const valueEl = item.querySelector<HTMLElement>('.storage-value')!;
+        const fillEl = item.querySelector<HTMLElement>('.storage-fill')!;
+        if (error || bytes === null) {
+          item.classList.add('error');
+          valueEl.textContent = error || 'unavailable';
+          fillEl.style.width = '0%';
+          return;
+        }
+        item.classList.remove('error');
+        const pct = Math.min(100, (bytes / limit) * 100);
+        valueEl.textContent = `${fmtBytes(bytes)} / ${limitLabel}`;
+        fillEl.style.width = `${pct}%`;
+        fillEl.classList.toggle('warn', pct >= 75 && pct < 90);
+        fillEl.classList.toggle('danger', pct >= 90);
+      }
+
+      async function loadStorageStats(force = false) {
+        try {
+          const r = await fetch(`/api/storage-stats${force ? '?force=1' : ''}`);
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || `request failed (${r.status})`);
+          renderStorageItem('r2', d.r2 ? d.r2.bytes : null, R2_LIMIT_BYTES, '10 GB', d.errors?.r2);
+          renderStorageItem(
+            'github',
+            d.github ? d.github.bytes : null,
+            GITHUB_SOFT_LIMIT_BYTES,
+            'no hard cap',
+            d.errors?.github
+          );
+        } catch (err) {
+          renderStorageItem('r2', null, R2_LIMIT_BYTES, '10 GB', String((err as Error).message || err));
+          renderStorageItem('github', null, GITHUB_SOFT_LIMIT_BYTES, 'no hard cap', String((err as Error).message || err));
+        }
+      }
+      loadStorageStats();
+      document.getElementById('storage-refresh')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget as HTMLButtonElement;
+        btn.disabled = true;
+        loadStorageStats(true).finally(() => (btn.disabled = false));
+      });
+
       // -- Transcribe / Fix-grammar -------------------------------------------
       // These call the local dev-only endpoints in src/dev/openrouter-plugin.mjs
       // (POST /api/transcribe, /api/fix-grammar). They only work under
@@ -1142,6 +1593,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
         const status = container.querySelector<HTMLElement>('.grade-status')!;
         const linksRow = container.querySelector<HTMLElement>('.grade-links')!;
         const presetBtns = Array.from(container.querySelectorAll<HTMLButtonElement>('[data-grade-preset]'));
+        const gradeSelect = container.querySelector<HTMLSelectElement>('.grade-select');
         const acceptBtn = container.querySelector<HTMLButtonElement>('.grade-accept')!;
         const cancelBtn = container.querySelector<HTMLButtonElement>('.grade-cancel')!;
         let selectedPreset = '';
@@ -1180,7 +1632,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           btn.type = 'button';
           btn.className = 'grade-btn subtle';
           btn.dataset.gradeRevert = '';
-          btn.textContent = '↺ revert to original';
+          btn.textContent = '↺ revert';
           linksRow.appendChild(btn);
           wireRevertButton(btn);
         }
@@ -1194,8 +1646,25 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             b.disabled = false;
             b.classList.remove('selected');
           });
+          if (gradeSelect) {
+            gradeSelect.value = '';
+            gradeSelect.disabled = false;
+          }
           acceptBtn.disabled = false;
           cancelBtn.disabled = false;
+        }
+
+        // Shared by the rotate icon buttons and the cinematic-grade select —
+        // both just preview a CSS filter/transform and arm the same
+        // accept/cancel confirm bar. Nothing is written until "accept".
+        function preview(preset: string, css: string, transform: string, label: string) {
+          selectedPreset = preset;
+          img.style.filter = css;
+          img.style.transform = transform;
+          confirmLabel.textContent = `preview: ${label} — `;
+          confirmBox.hidden = false;
+          presetBtns.forEach((b) => b.classList.toggle('selected', b.dataset.gradePreset === preset));
+          setStatus('');
         }
 
         presetBtns.forEach((btn) => {
@@ -1205,14 +1674,23 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             // selection, which silently no-opped a second preset click
             // (a disabled button never fires) and left accept using the
             // FIRST preset picked, not the one actually showing in preview.
-            selectedPreset = btn.dataset.gradePreset ?? '';
-            img.style.filter = btn.dataset.gradeCss ?? '';
-            img.style.transform = btn.dataset.gradeTransform ?? '';
-            confirmLabel.textContent = `preview: ${btn.textContent?.trim()} — `;
-            confirmBox.hidden = false;
-            presetBtns.forEach((b) => b.classList.toggle('selected', b === btn));
-            setStatus('');
+            preview(
+              btn.dataset.gradePreset ?? '',
+              btn.dataset.gradeCss ?? '',
+              btn.dataset.gradeTransform ?? '',
+              btn.title || btn.textContent?.trim() || ''
+            );
+            if (gradeSelect) gradeSelect.value = '';
           });
+        });
+
+        gradeSelect?.addEventListener('change', () => {
+          const opt = gradeSelect.selectedOptions[0];
+          if (!opt || !opt.value) {
+            reset();
+            return;
+          }
+          preview(opt.value, opt.dataset.css ?? '', '', opt.textContent?.trim() || opt.value);
         });
 
         cancelBtn.addEventListener('click', () => {
@@ -1225,6 +1703,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
           acceptBtn.disabled = true;
           cancelBtn.disabled = true;
           presetBtns.forEach((b) => (b.disabled = true));
+          if (gradeSelect) gradeSelect.disabled = true;
           setStatus('baking grade into the stored image…');
           try {
             const d = await postJson('/api/apply-grade', { id, mediaIndex, preset: selectedPreset });
@@ -1250,6 +1729,7 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
             acceptBtn.disabled = false;
             cancelBtn.disabled = false;
             presetBtns.forEach((b) => (b.disabled = false));
+            if (gradeSelect) gradeSelect.disabled = false;
           }
         });
       }
@@ -1692,6 +2172,60 @@ const unassignedCount = rows.filter((r) => r.journey === null).length;
 
       document.querySelectorAll<HTMLButtonElement>('[data-del-id]').forEach((btn) => {
         btn.addEventListener('click', () => openDeleteConfirm(btn));
+      });
+
+      // -- Delete just the audio file for a stale fragment, keeping the ------
+      // saved transcript. Backed by POST /api/delete-audio (scripts/delete_audio.py).
+      // Irreversible, so also gated behind typing the fragment id.
+      function openDeleteAudioConfirm(banner: HTMLElement, btn: HTMLButtonElement) {
+        const id = banner.getAttribute('data-audio-age-id') ?? '';
+        if (banner.querySelector('.del-confirm')) return; // already open
+        btn.disabled = true;
+
+        const box = document.createElement('div');
+        box.className = 'del-confirm';
+        box.innerHTML = `
+          <p>Permanently delete the audio file for <strong>${id}</strong>? The saved transcript stays. This cannot be undone.</p>
+          <p>Type the id to confirm:</p>
+          <input type="text" class="del-input" autocomplete="off" spellcheck="false" placeholder="${id}" />
+          <div class="row-actions">
+            <button type="button" class="tool-btn del-go" disabled>delete audio</button>
+            <button type="button" class="tool-btn subtle del-cancel">cancel</button>
+            <span class="del-status" role="status"></span>
+          </div>`;
+        banner.appendChild(box);
+
+        const input = box.querySelector<HTMLInputElement>('.del-input')!;
+        const go = box.querySelector<HTMLButtonElement>('.del-go')!;
+        const cancel = box.querySelector<HTMLButtonElement>('.del-cancel')!;
+        const status = box.querySelector<HTMLElement>('.del-status')!;
+        input.focus();
+
+        input.addEventListener('input', () => {
+          go.disabled = input.value.trim() !== id;
+        });
+        function close() {
+          box.remove();
+          btn.disabled = false;
+        }
+        cancel.addEventListener('click', close);
+        go.addEventListener('click', async () => {
+          go.disabled = true;
+          cancel.disabled = true;
+          status.textContent = 'deleting audio, pushing…';
+          try {
+            await postJson('/api/delete-audio', { id, confirm: input.value.trim() });
+            banner.textContent = '✓ audio deleted — transcript kept.';
+          } catch (err) {
+            status.textContent = String((err as Error).message || err);
+            cancel.disabled = false;
+          }
+        });
+      }
+
+      document.querySelectorAll<HTMLElement>('[data-audio-age-id]').forEach((banner) => {
+        const btn = banner.querySelector<HTMLButtonElement>('[data-action="delete-audio"]');
+        if (btn) btn.addEventListener('click', () => openDeleteAudioConfirm(banner, btn));
       });
 
       // -- Pull latest fragments from GitHub ----------------------------------
