@@ -46,7 +46,10 @@ const fragments = defineCollection({
     journey: z.string().nullable(),
     spark: z.boolean(),
     consumed_by: z.string().nullable(),
-    source: z.literal('telegram'),
+    // 'dashboard': written directly by the desktop app's Write button
+    // (fragments/*.md, same shape as the Telegram path — see
+    // AppLauncher-tauri) rather than ingested from a Telegram message.
+    source: z.union([z.literal('telegram'), z.literal('dashboard')]),
   }),
 });
 
