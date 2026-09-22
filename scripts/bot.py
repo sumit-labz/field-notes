@@ -370,7 +370,8 @@ def _run_publish(st: dict) -> str:
 
 def _run_json(cmd: list[str], timeout: int) -> dict:
     """Run a scripts/*.py --json helper and parse its final stdout line."""
-    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True,
+                             encoding="utf-8", errors="replace", timeout=timeout)
     lines = [ln for ln in (result.stdout or "").splitlines() if ln.strip()]
     if not lines:
         raise RuntimeError((result.stderr or "no output").strip()[-400:])
@@ -481,7 +482,8 @@ def do_command1(chat_id: int, instruction: str, trigger_msg_id: int) -> None:
         with REPO_LOCK:
             result = subprocess.run(
                 [CLAUDE_BIN, *CLAUDE_ARGS.split(), "-p", prompt],
-                cwd=REPO_ROOT, capture_output=True, text=True, timeout=COMMAND1_TIMEOUT,
+                cwd=REPO_ROOT, capture_output=True, text=True,
+                encoding="utf-8", errors="replace", timeout=COMMAND1_TIMEOUT,
             )
     except subprocess.TimeoutExpired:
         edit_message(chat_id, msg_id, f"❌ command1 timed out after {COMMAND1_TIMEOUT}s.")
