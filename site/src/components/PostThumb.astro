@@ -12,6 +12,8 @@
 import type { LeadMedia } from '../lib/content';
 import { withBase } from '../lib/url';
 import { tiltForId } from '../lib/rotation';
+import PostOriginBadge from './PostOriginBadge.astro';
+import type { PostOrigin } from '../lib/post-origin';
 
 interface Props {
   slug: string;
@@ -19,13 +21,14 @@ interface Props {
   teaser: string;
   media: LeadMedia | null;
   inProgress: boolean;
+  origin: PostOrigin;
   // Waypoint number along the journey (oldest-first) — only passed on the
   // journey detail page, where the grid shows the whole arc in order and
   // should read as steps being traversed, not on the homepage where only
   // a recent few posts show (partial, not the full arc).
   step?: number;
 }
-const { slug, title, teaser, media, inProgress, step } = Astro.props;
+const { slug, title, teaser, media, inProgress, origin, step } = Astro.props;
 const tilt = tiltForId(slug);
 ---
 
@@ -58,6 +61,7 @@ const tilt = tiltForId(slug);
       )
     }
     {step && <span class="post-thumb__step font-mono">{String(step).padStart(2, '0')}</span>}
+    <PostOriginBadge origin={origin} size={15} class="post-thumb__origin" />
   </div>
   <div class="post-thumb__body">
     <p class="post-thumb__title">

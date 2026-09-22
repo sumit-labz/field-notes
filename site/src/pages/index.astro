@@ -15,6 +15,7 @@ import {
   postLeadMedia,
   postTeaser,
 } from '../lib/content';
+import { originFor } from '../lib/post-origin';
 
 // Homepage curation: only the most recently active journeys, and only the
 // most recent few posts per journey, so the page stays a bounded, scannable
@@ -99,6 +100,7 @@ const sections = await Promise.all(
                 teaser={teaser}
                 media={media}
                 inProgress={post.data.status === 'in_progress'}
+                origin={originFor(!!post.data.transcript)}
               />
             ))}
           </div>

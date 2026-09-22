@@ -4,10 +4,12 @@ import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import AuthorFooter from '../../components/AuthorFooter.astro';
 import MadeWith from '../../components/MadeWith.astro';
+import PostOriginBadge from '../../components/PostOriginBadge.astro';
 import { authorLineFor } from '../../lib/authorLines';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
 import { dateLine, gradedOrOriginal } from '../../lib/content';
+import { originFor } from '../../lib/post-origin';
 import { mediaUrl } from '../../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
 import { getImageDimensions, getLocalImageDimensions } from '../../lib/image-dimensions';
@@ -212,6 +214,7 @@ for (const block of blocks) {
   <h1>
     {post.data.title}
     {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
+    <PostOriginBadge origin={originFor(!!post.data.transcript)} size={17} class="post-origin--title" />
   </h1>
   <p class="meta">
     {dateLine(post.data.published)}
