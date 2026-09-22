@@ -41,7 +41,7 @@ from pathlib import Path
 import requests
 
 import ingest
-from ingest import PUBLISH_QUEUE_DIR, REPO_ROOT, TELEGRAM_API, IST, redact_secrets
+from ingest import PUBLISH_QUEUE_DIR, REPO_ROOT, TELEGRAM_API, IST, redact_secrets, git
 
 FAILED_DIR = PUBLISH_QUEUE_DIR / "failed"
 PUBLISHED_RE = re.compile(r"PUBLISHED:\s*(\S+)")
@@ -126,7 +126,21 @@ def process_queue_file(path: Path) -> None:
         base = os.environ.get("SITE_BASE_URL", "").rstrip("/")
         url = f"{base}/posts/{slug}/" if base else f"/posts/{slug}/"
         log(f"published {slug}")
-        telegram_send(f"✅ Published: {slug}\n{url}\n(site will rebuild)", reply_to)
+        # build.yml only deploys on push to `main` — checking the branch here
+        # (rather than trusting the sub-agent's prose) is what catches the repo
+        # having been left on a feature branch, which silently blocks every
+        # deploy while still reporting a clean publish.
+        branch_result = git(["rev-parse", "--abbrev-ref", "HEAD"])
+        branch = branch_result.stdout.strip() if branch_result.returncode == 0 else "?"
+        if branch == "main":
+            telegram_send(f"✅ Published: {slug}\n{url}\n(site will rebuild)", reply_to)
+        else:
+            telegram_send(
+                f"⚠️ Published: {slug}\n{url}\n"
+                f"Committed to branch '{branch}', NOT main — the site will NOT "
+                f"rebuild until this is merged into main.",
+                reply_to,
+            )
         path.unlink(missing_ok=True)
     else:
         tail = "\n".join(out.strip().splitlines()[-8:])
