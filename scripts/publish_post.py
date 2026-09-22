@@ -139,6 +139,11 @@ def stamp_consumed_by(audio_id: str, slug: str) -> str | None:
     return str(frag_path.relative_to(REPO_ROOT)).replace("\\", "/")
 
 
+def current_branch() -> str:
+    result = git(["rev-parse", "--abbrev-ref", "HEAD"])
+    return result.stdout.strip() if result.returncode == 0 else "?"
+
+
 def commit_and_push(slug: str, rel_paths: list[str], no_push: bool) -> bool:
     run_git(["add", *rel_paths])
     run_git(["commit", "-m", f"publish: {slug}"])
@@ -214,6 +219,12 @@ def publish(args: argparse.Namespace) -> dict:
         rel_paths.append(consumed_rel)
 
     pushed = commit_and_push(slug, rel_paths, args.no_push)
+    branch = current_branch()
+    # build.yml only deploys on push to `main` — pushing anywhere else commits
+    # the post to the repo but leaves the live site untouched until someone
+    # merges that branch into main. Report this honestly instead of assuming
+    # any successful push means the site will rebuild.
+    will_deploy = pushed and branch == "main"
     return {
         "ok": True,
         "slug": slug,
@@ -227,6 +238,8 @@ def publish(args: argparse.Namespace) -> dict:
         "consumed_marked": bool(consumed_rel),
         "committed": True,
         "pushed": pushed,
+        "branch": branch,
+        "will_deploy": will_deploy,
     }
 
 

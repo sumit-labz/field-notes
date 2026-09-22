@@ -70,7 +70,12 @@ Work from a scratch dir; do not leave temp files in the repo.
    ```
 
 6. **Report** the result: the returned `slug`, the local path `posts/<slug>.md`,
-   and the live path `/posts/<slug>/`. If `pushed` is true, say the site will
-   rebuild. End your reply with a single line exactly:
+   and the live path `/posts/<slug>/`. Check `branch` and `will_deploy` in the
+   JSON — `will_deploy` is only true when `pushed` is true AND `branch` is
+   `main` (the only branch `.github/workflows/build.yml` deploys from). If
+   `will_deploy` is false, say so explicitly: the commit landed on branch
+   `<branch>`, not `main`, so the site will NOT rebuild until that branch is
+   merged into `main`. Never say "the site will rebuild" unless `will_deploy`
+   is true. End your reply with a single line exactly:
    `PUBLISHED: <slug>`
    so an automated caller can parse it.

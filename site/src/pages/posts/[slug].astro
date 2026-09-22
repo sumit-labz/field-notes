@@ -179,6 +179,15 @@ for (const block of blocks) {
   }
 
   const isMarkdownDoc = fragment.data.type === 'markdown';
+
+  // A fragment with no photo, no caption text, and no markdown body renders
+  // as a bare "{date} IST · {type}" stub (see Fragment.astro) — nothing
+  // readers can actually see. That's the normal shape of an audio fragment
+  // whose content already got folded into the post's prose by hand; skip it
+  // instead of showing a dangling timestamp line.
+  const hasCaption = (fragment.body ?? '').trim().length > 0;
+  if (!imgKey && !hasCaption && !isMarkdownDoc) continue;
+
   const widthClass = spark || landscape || isMarkdownDoc ? 'w-full' : 'w-narrow';
   let breakClass = '';
   if (widthClass === 'w-narrow') {
