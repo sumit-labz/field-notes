@@ -11,6 +11,7 @@ import PostThumb from '../../components/PostThumb.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
 import { postsForJourney, postLeadMedia, postTeaser } from '../../lib/content';
+import { originFor } from '../../lib/post-origin';
 
 const POST_PREVIEW = 4;
 
@@ -115,6 +116,7 @@ const heading =
                     teaser={teaser}
                     media={media}
                     inProgress={post.data.status === 'in_progress'}
+                    origin={originFor(!!post.data.transcript)}
                   />
                 ))}
               </div>
@@ -143,6 +145,7 @@ const heading =
               teaser={teaser}
               media={media}
               inProgress={post.data.status === 'in_progress'}
+              origin={originFor(!!post.data.transcript)}
             />
           ))}
         </div>
