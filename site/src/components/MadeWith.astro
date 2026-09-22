@@ -1,10 +1,15 @@
 ---
 // The "made with" badge — a click-to-expand mark at the foot of every post,
 // naming how much AI touched it on Sumit's self-editing-pass ladder. Collapsed
-// it's a small pill ("Raw voice, <stage>"); expanded it opens a panel with an
-// honest statement, the four-rung ladder (current lit), and a note on the
-// practice. Native to Field Notes: its own tokens (--accent/--panel/--line) and
-// fonts, so it sits in light or dark without restyling.
+// it's a small pill ("[mic icon] Voice Note, <stage>"); expanded it opens a
+// panel with an honest statement, the four-rung ladder (current lit), and a
+// note on the practice. Native to Field Notes: its own tokens
+// (--accent/--panel/--line) and fonts, so it sits in light or dark without
+// restyling. Every made_with post began as a recorded voice note (see
+// lib/post-origin.ts), so the pill always carries that mark.
+import OriginGlyph from './OriginGlyph.astro';
+import { ORIGIN_LABEL } from '../lib/post-origin';
+
 interface Props {
   stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
 }
@@ -56,8 +61,11 @@ const s = STAGES[stage];
 
 <details class="mw" data-stage={stage}>
   <summary class="mw__pill">
+    <span class="mw__origin-icon" title={ORIGIN_LABEL.voice} aria-hidden="true">
+      <OriginGlyph origin="voice" size={13} />
+    </span>
     <span class="mw__dot" aria-hidden="true">{s.glyph}</span>
-    <span class="mw__pilltext">Raw voice, <b>{s.pill}</b></span>
+    <span class="mw__pilltext">{ORIGIN_LABEL.voice}, <b>{s.pill}</b></span>
     <span class="mw__chev" aria-hidden="true">⌄</span>
   </summary>
   <div class="mw__panel">
@@ -100,6 +108,11 @@ const s = STAGES[stage];
     background: transparent;
   }
   .mw__pill::-webkit-details-marker { display: none; }
+  .mw__origin-icon {
+    display: inline-flex;
+    color: var(--accent);
+    line-height: 1;
+  }
   .mw__dot {
     color: var(--accent);
     font-size: 0.7rem;

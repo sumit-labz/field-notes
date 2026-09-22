@@ -304,6 +304,15 @@ h2 { font-size: 1.05rem; }
   line-height: 1;
   padding: 0.25rem 0.4rem;
 }
+/* Voice Note / Written mark — always shown, top-right of the thumbnail. */
+.post-thumb__origin {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: var(--ground);
+  border: 1px solid var(--ink);
+  padding: 0.28rem;
+}
 .post-thumb__body { padding: 0.75rem 0.85rem 0.85rem; }
 .post-thumb__title {
   font-family: var(--font-structure);
@@ -557,6 +566,12 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
   vertical-align: 0.08em;
 }
 .inprogress::before { content: "· "; }
+
+/* Voice Note / Written mark inline with the post title. */
+.post-origin--title {
+  margin-left: 0.5rem;
+  vertical-align: 0.05em;
+}
 
 /* ---- ABOUT stack: layers down a timeline that fades into the past ---- */
 /* A vertical spine runs down the left, strong at NOW and fading as the years
