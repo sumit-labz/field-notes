@@ -1,10 +1,11 @@
 ---
 slug: 2026-09-23-you-have-to-support-yourself-a-lot
-title: "You Have to Support Yourself a Lot"
+title: "My App Has More Widgets Than I Have Willpower"
 published: 2026-09-23
 journey: being-seen
 fragments:
   - 2026-09-23-130652
+  - 2026-09-23-131517
 status: published
 kind: post
 transcript: 2026-09-23-131205.txt
@@ -27,6 +28,8 @@ And sticky notes. The notes can really go crazy, although I use Obsidian for mai
 And what I love building about this app is there I have put seven colors and seven different styles like brutalism, neo-brutalism. And there are other styles also.
 
 And apart from that, I built a widget for just for tracking what is the focus this week, next week. And I try to hide it, you know, I'm not expanding on that in a big time because I don't want to get, I just want to look at it and, you know, put it in a drawer back. So I think it's a good use of UX, you know, so far I'm liking it. I really want to expand on notes side as well.
+
+The core way this app is designed is widgets. Everything is like a desktop widget that can collapse and expand with a nice animation and you know, while the widget is collapsed, it gives you the summary of what is happening inside that widget. So I love to, you know, play around and fidget with it. When I'm free, you know, it helps me organize my brain. I don't know, visiting allows me to do fidgeting and it's fun, you know, when you are on your desktop and kind of something good to play around. And there's a mode to spark, I mean, the visual, I mean, there is a way in the music player I can actually make the background animation go really loud and respond to the rhythm of the music. Something really fun to vibe code it and I think vibe code is now some kind of a new addiction for me now.
 
 And also I have done some background nudging, you know, in terms of animations. For example, in the morning, the app subtly suggests to, you know, go for a morning walk in the evening. It is suggesting go out of the desk and, you know, do something, you know, reminding me in a very gentle way.
 
