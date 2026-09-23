@@ -1,6 +1,6 @@
 ---
-slug: 2026-09-23-for-a-long-time-i-was-trying-to
-title: "For a long time I was trying to build a"
+slug: 2026-09-23-you-have-to-support-yourself-a-lot
+title: "You Have to Support Yourself a Lot"
 published: 2026-09-23
 journey: being-seen
 fragments:
