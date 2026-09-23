@@ -1,0 +1,26 @@
+---
+slug: 2026-09-23-the-self-doubt-always-creeps-in
+title: "The Self-Doubt Always Creeps In"
+published: 2026-09-23
+journey: being-seen
+fragments:
+  - 2026-09-23-092132
+  - 2026-09-23-100107
+status: published
+kind: post
+transcript: 2026-09-23-093106.txt
+cover: 2026-09-23-100107
+made_with: raw
+---
+
+I want to take a note about the emotions that I've been going through while I built this creative studio. So recently, I went through hyper fixation loop. It was for a long time, you know, getting addicted to things I wanted to build. I should say it's more about discovering something which is so addictive that you have no control over it and you keep coming back. Sometimes it's building music, sometimes it's just creating a three value scale thumbnail. You find something more interesting and then you get hyper fixated to it.
+
+Then you come out of it and then when your dopamine level falls off, then you realize what I was doing, you know, and then at the same time, you feel a grief for missing out on your connections, relationships. And I think this year has been one of the most connected phase of my life where I was feeling so connected with people, expressing them. And I think I'm already missing that right now. And although morality doesn't play much role, but deep inside, I am, you know, always a people person. I want to feel excited about people, you know, the way they are, howsoever imperfect they are. But the way the life goes, how things change, sometimes you don't like behaviors of others, sometimes you like it. I think relationship is itself so complex in itself. And I think generally I feel well, feel so good about people around, but when I get dysregulated, then all the negative energies, negative thoughts come in about people and I have no control over it. So, and obviously this problem cannot be solved by morality.
+
+So yeah, I mean, on one side, there was a dysregulation due to hyper fixation and then now I'm getting back. I have helpized myself by giving myself a lot of rest and getting back in good energy, excited about music. I think music is giving me such a huge excitement at this time, the sound of drums of eighties. Somehow I feel that I have a zeal to explore all this, you know, how those sounds were created, the eighties synthesizer. This is what I'm excited about today. And I'm already planning that today in the evening. I will try to decode how great artists of eighties used the synthesizer. And if I could produce any of those sounds in Ableton Live, that will be so amazing.
+
+On the other hand, I was looking at the bigger picture today because one of the problems that comes with ADHD is time blindness. So I thought, okay, let's look at the bigger picture. One side, there is distribution that I'm developing my skills for and one side there is a development. So I think development is something that I have a decent hold on apart from putting up a process on UX and UI, but that I have to figure it out. But on the distribution side, I'm still building the skills and I have chosen kinetic typography as the way of my expression. And it's pretty exciting, you know, how the camera moves, the text moves. It's a very exciting field. I really don't know where it will end, but I really want to go in this journey of kinetic typography and build something, you know. I've chosen HTML as the path right now. I'm not sure about After Effects, but overall, just taking a look at the journey and how am I progressing, how the things are going. I just want to take a note of it intentionally missing out on things.
+
+You know, I think I'm rambling now, but the thing is, with ADHD brain, reflection works so well. You need to reflect on your thoughts again and again. Then only it will make sense at some point of a time. I recently started doing food logging, the food I'm eating these days. And when I reflected on it, I realized that I was consuming far more protein than I actually was cribbing about. So, so logging and reflecting, I think that will be the core part of my journey and I think that will help me stay on the path.
+
+The self-doubt always creeps in because the interests are changing. You drop out some journeys and you embark on new one. Then you think that why did I drop that? Why it became slow. So handling multiple things, learning multiple things, doing multiple things at the same time has a cost. And I think you got to give yourself a benefit of doubt also. I think that's what the message is coming from inside as I speak. Don't be harsh on yourself when you're doing well. Yeah, I think probably I'm out of that hyper fixation loop and I'm back at work with good energy.
