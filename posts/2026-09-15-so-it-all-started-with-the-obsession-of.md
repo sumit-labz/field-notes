@@ -5,7 +5,7 @@ published: 2026-09-15
 journey: scaffolding
 fragments:
   - 2026-09-15-075039
-status: published
+status: in_progress
 kind: post
 cover: 2026-09-15-075039
 made_with: raw
