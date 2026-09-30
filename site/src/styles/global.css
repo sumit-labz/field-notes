@@ -1519,3 +1519,243 @@ main.pull-armed .terms::after {
 @media (prefers-reduced-motion: reduce) {
   .is-listening .reading > p[data-speaking] { transition: none; }
 }
+
+/* ======================================================================
+   STAGE — spotlight monologue (client/stage.ts). Always a dark theatre,
+   whatever the site theme: warm light, black house, a hint of curtain.
+   ====================================================================== */
+html.stage-open { overflow: hidden; }
+html.stage-open .read-pill { opacity: 0; pointer-events: none; }
+
+/* the "on stage" link in the post meta line */
+button.stage-open {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  background-image: linear-gradient(var(--highlight), var(--highlight));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 1px;
+}
+button.stage-open::before { content: "\25D0\00A0"; color: var(--highlight); }
+
+.stage {
+  --warm: #F4E9D8;
+  --glow: #FFE2B0;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: #040406;
+  color: var(--warm);
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 450ms ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+}
+.stage.is-open { opacity: 1; }
+
+/* the pool of light, and the house fading to black around it */
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 38% 46% at 50% 44%, rgba(255, 226, 176, 0.16), rgba(255, 214, 160, 0.06) 48%, transparent 72%),
+    radial-gradient(ellipse 80% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
+  transition: opacity 700ms ease;
+}
+.stage.is-paused::before { opacity: 0.45; }
+
+/* the beam from the rig above */
+.stage__beam {
+  position: absolute;
+  top: -5%;
+  left: 50%;
+  width: min(120vw, 1100px);
+  height: 92%;
+  translate: -50% 0;
+  background: linear-gradient(to bottom, rgba(255, 232, 190, 0.13), rgba(255, 226, 180, 0.04) 70%, transparent);
+  clip-path: polygon(46% 0, 54% 0, 80% 100%, 20% 100%);
+  filter: blur(18px);
+  pointer-events: none;
+  transition: opacity 700ms ease;
+  animation: beam-breathe 7s ease-in-out infinite;
+}
+.stage.is-paused .stage__beam { opacity: 0.35; }
+@keyframes beam-breathe { 50% { opacity: 0.8; } }
+
+/* the boards: dark wood, lit where the light lands */
+.stage__floor {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 24%;
+  background:
+    radial-gradient(ellipse 34% 60% at 50% 0%, rgba(255, 214, 160, 0.14), transparent 70%),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0 1px, transparent 1px 14%),
+    linear-gradient(to bottom, #1d130c, #0b0705 70%, #050303);
+  border-top: 1px solid rgba(255, 220, 170, 0.12);
+  pointer-events: none;
+}
+
+/* just the edge of a red velvet curtain on each side */
+.stage__curtain {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: clamp(18px, 7vw, 110px);
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.55), transparent 40%, rgba(0, 0, 0, 0.45)),
+    repeating-linear-gradient(90deg, #3a0a0e 0 10px, #5a1016 10px 18px, #2c070a 18px 26px);
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 1;
+}
+.stage__curtain--l { left: 0; }
+.stage__curtain--r { right: 0; transform: scaleX(-1); }
+
+/* dust caught in the beam */
+.stage__dust { position: absolute; inset: 0; pointer-events: none; }
+.stage__dust i {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(255, 236, 205, 0.55);
+  animation: dust-drift var(--d) linear infinite;
+  animation-delay: var(--delay);
+}
+@keyframes dust-drift {
+  0% { translate: 0 0; opacity: 0; }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.6; }
+  100% { translate: 18px -60px; opacity: 0; }
+}
+
+/* the spoken line, in the light */
+.stage__lines {
+  position: relative;
+  z-index: 2;
+  width: min(34ch, 82vw);
+  min-height: 40vh;
+  display: grid;
+  align-items: center;
+  margin-top: -6vh;
+}
+.stage__line {
+  grid-area: 1 / 1;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-reading);
+  font-size: clamp(1.55rem, 5.6vw, 2.5rem);
+  line-height: 1.32;
+  letter-spacing: 0.003em;
+  text-wrap: balance;
+  transition: opacity 900ms ease, translate 900ms var(--ease-paper), filter 900ms ease, scale 900ms var(--ease-paper);
+}
+.stage__line--title {
+  font-family: var(--font-structure);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--glow);
+  animation: title-in 1400ms var(--ease-paper) both;
+}
+@keyframes title-in { from { opacity: 0; scale: 0.96; filter: blur(6px); } }
+.stage__line.is-prev { opacity: 0.16; translate: 0 -62%; scale: 0.9; filter: blur(1.5px); }
+.stage__line.is-gone { opacity: 0; translate: 0 -120%; scale: 0.84; filter: blur(4px); }
+
+/* each word waits in the dark wing, then steps into the light as it's said */
+.stage__word {
+  display: inline-block;
+  opacity: 0.07;
+  translate: 0 0.18em;
+  filter: blur(2px);
+  transition: opacity 420ms ease, translate 520ms var(--ease-paper), filter 420ms ease, color 1600ms ease, text-shadow 1600ms ease;
+}
+.stage__word.is-lit {
+  opacity: 1;
+  translate: 0 0;
+  filter: blur(0);
+  color: var(--warm);
+  text-shadow: 0 0 18px rgba(255, 214, 150, 0.18);
+  animation: word-glow 1400ms ease-out;
+}
+@keyframes word-glow {
+  0% { color: #FFF4DE; text-shadow: 0 0 22px rgba(255, 220, 160, 0.55); }
+}
+
+/* controls: a slim bar that fades away while the voice speaks */
+.stage__close {
+  position: absolute;
+  top: calc(0.9rem + env(safe-area-inset-top, 0px));
+  right: calc(1rem + env(safe-area-inset-right, 0px));
+  z-index: 3;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 1px solid rgba(244, 233, 216, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--warm);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 500ms ease;
+}
+.stage__bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 3;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(10, 8, 6, 0.72);
+  border: 1px solid rgba(244, 233, 216, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+  transition: opacity 500ms ease, translate 500ms var(--ease-paper);
+  cursor: default;
+}
+.stage:not(.show-bar):not(.is-paused) .stage__bar { opacity: 0; translate: -50% 12px; pointer-events: none; }
+.stage:not(.show-bar):not(.is-paused) .stage__close { opacity: 0.25; }
+.stage__btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--warm);
+  font-family: var(--font-meta);
+  font-size: 0.78rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.stage__btn:hover { background: rgba(244, 233, 216, 0.1); }
+.stage__btn--play { background: var(--warm); color: #0a0806; display: inline-flex; align-items: center; justify-content: center; }
+.stage__btn--play:hover { background: var(--glow); }
+.stage__btn--play .i-pause { display: block; }
+.stage__btn--play .i-play { display: none; }
+.stage.is-paused .stage__btn--play .i-pause { display: none; }
+.stage.is-paused .stage__btn--play .i-play { display: block; }
+.stage__time { font-family: var(--font-meta); font-size: 0.72rem; color: rgba(244, 233, 216, 0.7); padding: 0 0.3rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stage__progress { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; }
+.stage__progress i { display: block; height: 100%; background: var(--highlight); transform-origin: 0 50%; transform: scaleX(var(--progress, 0)); }
+@media (max-width: 380px) { .stage__time { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .stage, .stage__line, .stage__word { transition: none; }
+  .stage__beam, .stage__line--title, .stage__word.is-lit { animation: none; }
+  .stage__word { filter: none; translate: none; }
+}
