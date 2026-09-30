@@ -1373,31 +1373,23 @@ body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
      cross the middle, like leafing through prints. Composed ON TOP of the
      landing (animation-composition: add), so the two never fight; loose
      sheets keep their --rest lean from the landing. */
-  .js .post-thumb[data-reveal].is-in {
-    animation:
-      paper-drop 820ms cubic-bezier(.3, .7, .25, 1) both,
-      sheet-lean linear both;
-    animation-delay: calc(var(--i, 0) * 90ms), 0s;
-    animation-timeline: auto, view();
-    animation-range: normal, cover 0% cover 100%;
-    animation-composition: replace, add;
-  }
-  @keyframes sheet-lean {
-    0%   { rotate: calc(var(--drop, 3deg) * 0.35); }
-    35%, 65% { rotate: 0deg; }
-    100% { rotate: calc(var(--drop, 3deg) * -0.3); }
-  }
+  /* (A scroll-linked lean was tried here and removed: on phones every
+     scroll nudge — and the address bar sliding — re-tilted every card,
+     which read as shaking. Cards now land once and stay put.) */
 
-  /* 3. photos drift slightly slower than their card — depth inside the frame */
-  .post-thumb__img:not(.post-thumb__img--empty) {
-    scale: 1.14;
-    animation: photo-drift linear both;
-    animation-timeline: view();
-    animation-range: cover;
+  /* 3. photos drift slightly slower than their card — desktop only, where
+     scrolling is smooth and steady; on touch it read as jitter */
+  @media (hover: hover) and (pointer: fine) and (min-width: 721px) {
+    .post-thumb__img:not(.post-thumb__img--empty) {
+      scale: 1.08;
+      animation: photo-drift linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
   }
   @keyframes photo-drift {
-    from { translate: 0 -7%; }
-    to   { translate: 0 7%; }
+    from { translate: 0 -3.5%; }
+    to   { translate: 0 3.5%; }
   }
 
   /* 5. the obsession label gets a highlighter swipe as its section arrives —
@@ -1436,7 +1428,8 @@ body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
   transition-duration: 900ms;
   transition-delay: calc(var(--words, 8) * 70ms + 600ms);
 }
-.terms .journey-title { font-weight: inherit; display: inline; }
+.terms { position: relative; }
+.terms .journey-title { font-weight: inherit; display: inline; position: static; }
 .terms .journey-title--struck svg.strike-overlay path { stroke: var(--graphite); stroke-width: 2.4; }
 
 /* 7. pull-to-shuffle feedback: the feed eases down, and the heading

@@ -45,21 +45,8 @@ function syncLabels(): void {
   });
 }
 
-// With no saved choice, keep following the system setting live (desktop:
-// switching the OS to dark at sunset flips the site too; phones stay dark).
-function followSystem(): void {
-  const sys = matchMedia('(prefers-color-scheme: dark)');
-  sys.addEventListener?.('change', () => {
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(KEY); } catch { /* none */ }
-    if (saved || matchMedia('(max-width: 720px)').matches) return;
-    applyTheme(sys.matches ? 'dark' : 'light');
-  });
-}
-
 function init(): void {
   syncLabels();
-  followSystem();
   document.addEventListener('click', (e) => {
     const btn = (e.target as Element).closest('[data-theme-toggle]');
     if (!btn) return;

@@ -26,7 +26,15 @@ function draw(container: HTMLElement): void {
     return;
   }
 
-  const containerRect = container.getBoundingClientRect();
+  // The overlay is positioned against its containing block. A struck title
+  // is its own (relative, inline-block) box; a phrase struck inside running
+  // text (the home tagline) is a static inline span that may wrap, so the
+  // overlay spans the parent block instead — measuring against the inline
+  // span would anchor to its first line fragment and shift every stroke.
+  const frame = getComputedStyle(container).position === 'static' && container.parentElement
+    ? container.parentElement
+    : container;
+  const containerRect = frame.getBoundingClientRect();
   const seed = container.dataset.strikeSeed ?? '';
 
   while (svg.firstChild) svg.removeChild(svg.firstChild);

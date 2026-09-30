@@ -274,7 +274,7 @@ for (const block of blocks) {
           <div class="listen-track" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="listen-fill" />
           </div>
-          <span class="listen-note">AI-narrated</span>
+          <span class="listen-note" title="Read by an AI voice — the words are mine">a borrowed voice reads this<span class="sr-only"> (AI-generated narration)</span></span>
         </div>
         <audio preload="metadata" src={postAudioUrl} />
       </div>
@@ -474,10 +474,21 @@ for (const block of blocks) {
     font-size: 0.8rem;
     color: var(--graphite);
   }
+  /* A margin note in the handwriting voice rather than a system label —
+     the title/sr-only text still says plainly that the voice is AI. */
   .listen-note {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--ghost);
+    font-family: var(--font-annotation);
+    font-size: 1.05rem;
+    line-height: 1.1;
+    color: var(--graphite);
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   /* Visualiser: bar heights are set per frame from the audio's real frequency
      data while playing; at rest they sit flat. */

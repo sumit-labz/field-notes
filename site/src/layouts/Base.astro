@@ -19,20 +19,18 @@ const { title, progress = false, reading = false } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <meta name="theme-color" content="#E4E8E9" />
+    <meta name="theme-color" content="#0F1A2B" />
     <script is:inline>
-      // Theme before first paint (no flash): the reader's saved choice wins;
-      // otherwise phones always read dark, and larger screens follow the
-      // system's light/dark setting. Also restores the reader's text size.
+      // Theme before first paint (no flash): the reader's saved choice wins,
+      // otherwise dark blue. Also restores the reader's text size.
       (function () {
         var d = document.documentElement;
         d.classList.add('js');
         var t = null, z = null;
         try { t = localStorage.getItem('fn-theme'); z = localStorage.getItem('fn-text'); } catch (e) {}
         if (z && !isNaN(+z)) d.style.setProperty('--read-scale', z);
-        if (t !== 'light' && t !== 'dark' && t !== 'navy') {
-          t = matchMedia('(max-width: 720px)').matches || matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
+        // dark blue is the house default; a reader's own choice overrides it
+        if (t !== 'light' && t !== 'dark' && t !== 'navy') t = 'navy';
         // navy is a tone of dark: every dark rule applies, tokens tint blue
         d.dataset.theme = t === 'navy' ? 'dark' : t;
         if (t === 'navy') d.dataset.tone = 'navy';
