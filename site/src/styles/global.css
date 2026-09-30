@@ -1468,7 +1468,7 @@ main.pull-armed .terms::after {
    audio's ~4-per-second position updates instead of stepping. */
 @property --ink-p {
   syntax: '<percentage>';
-  inherits: false;
+  inherits: true; /* the margin mark (::before) grows with the fill */
   initial-value: 0%;
 }
 .is-listening .reading > p:not([class]) {
@@ -1490,8 +1490,30 @@ main.pull-armed .terms::after {
   -webkit-background-clip: text;
   background-clip: text;
   transition: --ink-p 400ms linear;
-  /* a thin highlighter mark in the margin says "the voice is here" */
-  box-shadow: -0.9rem 0 0 -0.72rem var(--highlight);
+  position: relative;
+}
+/* a faint pencil mark in the margin, well clear of the words, that grows
+   down alongside the ink — "the voice is here" without competing with it */
+.is-listening .reading > p[data-speaking]::before {
+  content: '';
+  position: absolute;
+  left: -0.8rem;
+  top: 0.3em;
+  width: 2px;
+  height: calc(var(--ink-p) * 0.97);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--highlight) 45%, transparent);
+  pointer-events: none;
+}
+@media (max-width: 720px) {
+  .is-listening .reading > p[data-speaking]::before { left: -0.7rem; width: 1.5px; }
+}
+/* phones: while the player is going, the pill trades share + the time-left
+   note for the speed control so it always fits on screen */
+@media (max-width: 480px) {
+  .read-pill.has-started [data-pill-share],
+  .read-pill.has-started .read-pill__left { display: none; }
+  .read-pill { max-width: calc(100vw - 1.5rem); }
 }
 .is-listening .reading > p[data-speaking] a { color: inherit; }
 @media (prefers-reduced-motion: reduce) {

@@ -41,15 +41,20 @@ const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 // it's pinned to the bottom of the ranking instead of competing on recency.
 const PINNED_LAST = new Set(['gesture-drawing-dailies']);
 
-const ranked = journeys
-  .slice()
-  .sort((a, b) => {
-    const aPinned = PINNED_LAST.has(a.data.slug);
-    const bPinned = PINNED_LAST.has(b.data.slug);
-    if (aPinned !== bPinned) return aPinned ? 1 : -1;
-    return journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf();
-  })
-  .slice(0, MAX_JOURNEYS);
+// Pinned journeys sit at the bottom but are always shown: the MAX_JOURNEYS
+// cap applies to the recency-ranked rest, never to the pinned ones (sorting
+// them last and then slicing used to drop them once there were enough
+// journeys to fill the cap).
+const byRecency = (a: (typeof journeys)[number], b: (typeof journeys)[number]) =>
+  journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf();
+const pinned = journeys.filter((j) => PINNED_LAST.has(j.data.slug));
+const ranked = [
+  ...journeys
+    .filter((j) => !PINNED_LAST.has(j.data.slug))
+    .sort(byRecency)
+    .slice(0, MAX_JOURNEYS),
+  ...pinned,
+];
 
 const sections = await Promise.all(
   ranked.map(async (journey) => {
