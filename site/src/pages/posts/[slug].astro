@@ -227,20 +227,23 @@ for (const block of blocks) {
     data-next={nextPost ? withBase(`/posts/${nextPost.data.slug}/`) : ''}
     hidden
   />
-  {
-    openerSrc && (
-      <img
-        class={`opener ${openerPortrait ? 'opener--portrait' : 'opener--landscape'}`}
-        src={openerSrc}
-        alt={post.data.title}
-      />
-    )
-  }
-  <h1>
-    {post.data.title}
-    {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
-    <PostOriginBadge origin={originFor(post.data)} size={17} class="post-origin--title" />
-  </h1>
+  <header class:list={['post-hero', { 'post-hero--image': openerSrc }]}>
+    {
+      openerSrc && (
+        <img
+          class={`opener ${openerPortrait ? 'opener--portrait' : 'opener--landscape'}`}
+          src={openerSrc}
+          alt=""
+          fetchpriority="high"
+        />
+      )
+    }
+    <h1>
+      {post.data.title}
+      {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
+      <PostOriginBadge origin={originFor(post.data)} size={17} class="post-origin--title" />
+    </h1>
+  </header>
   <p class="meta">
     {dateLine(post.data.published)}{' · '}{readMinutes} min read
     {post.data.kind === 'insight' && <> · note to self</>}
@@ -327,9 +330,13 @@ for (const block of blocks) {
       <button type="button" class="read-pill__btn" data-pill-listen aria-label="Listen">
         <svg class="ic-play" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>
         <svg class="ic-pause" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor"/></svg>
-        <span class="read-pill__label">Listen</span>
+        <span class="read-pill__label" data-pill-listen-label>Listen</span>
       </button>
     )}
+    {postAudioUrl && (
+      <button type="button" class="read-pill__btn read-pill__rate" data-pill-rate aria-label="Playback speed">0.8×</button>
+    )}
+    {postAudioUrl && <span class="read-pill__progress" data-pill-progress aria-hidden="true"><i /></span>}
     <button type="button" class="read-pill__btn read-pill__size" data-pill-size aria-label="Text size">
       <span aria-hidden="true">A<small>A</small></span>
     </button>
@@ -369,32 +376,73 @@ for (const block of blocks) {
     font-size: 0.78rem;
   }
 
-  .opener {
-    display: block;
-    margin-top: 1rem;
-    margin-bottom: 2rem;
-  }
-  /* Landscape openers: full-bleed banner, breaking out of the text column to
-     full viewport width. Cropping a wide photo to a shorter wide shape keeps
-     the composition intact. */
-  .opener--landscape {
+  /* Hero: a short cover with the title laid over its lower edge, so the
+     first lines of the post are on screen the moment it opens (a full-height
+     photo + title + player used to push the text below the fold). The whole
+     cover is kept for the reader further down only when it's portrait —
+     here it's a crop, framed toward the upper-middle where subjects sit. */
+  .post-hero { margin: 0.5rem 0 0; }
+  .post-hero--image {
+    position: relative;
     width: 100vw;
-    max-width: 100vw;
     margin-left: calc(-50vw + 50%);
-    height: 70vh;
-    object-fit: cover;
+    margin-top: 0;
+    max-height: 44svh;
+    min-height: 15rem;
+    height: 44svh;
+    overflow: hidden;
+    background: var(--paper);
   }
-  /* Portrait and square openers: cropping a tall or 1:1 photo down to a
-     short wide banner throws away most of the frame, so this stays inset in
-     the text column, at its own aspect ratio, capped in height — the whole
-     photo stays visible instead of a cropped sliver of it. */
-  .opener--portrait {
-    max-width: min(560px, 100%);
-    max-height: 80vh;
-    width: auto;
-    height: auto;
-    margin-left: auto;
-    margin-right: auto;
+  .post-hero--image .opener {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    object-fit: cover;
+    object-position: 50% 35%;
+  }
+  .opener--portrait { object-position: 50% 30%; }
+  /* the title sits on a fade into the page's own ground, so it reads on any
+     photo and the image melts into the text below instead of ending hard */
+  .post-hero--image::after {
+    content: '';
+    position: absolute;
+    inset: 35% 0 0;
+    background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--ground) 70%, transparent) 55%, var(--ground));
+    pointer-events: none;
+  }
+  .post-hero--image h1 {
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    bottom: 0.4rem;
+    translate: -50% 0;
+    width: min(43.75rem, 100%);
+    margin: 0;
+    padding: 0 1.5rem;
+    text-wrap: balance;
+    text-shadow: 0 1px 12px color-mix(in srgb, var(--ground) 80%, transparent);
+  }
+  @media (max-width: 720px) {
+    .post-hero--image { height: 40svh; min-height: 13rem; }
+    .post-hero--image h1 { padding: 0 1.25rem; }
+  }
+  @media (min-width: 721px) {
+    .post-hero--image { height: min(52vh, 520px); max-height: none; }
+  }
+  .post-hero + .meta { margin-top: 0.5rem; margin-bottom: 1.4rem; }
+
+  /* The narration player lives in the floating reading pill now (see
+     client/read-pill.ts); this block stays in the DOM as the engine —
+     one <audio>, rate, visualiser — but takes no room above the text. */
+  .listen {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
   }
 
   /* Derived rhythm for the fragment sequence. Static only — spacing, width and

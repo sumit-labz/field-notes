@@ -1448,3 +1448,26 @@ main.pull-armed .terms::after {
   .post-thumb__img, .journey-section__obsession a, .js .post-thumb[data-reveal].is-in { animation: none !important; }
   .journey-section__obsession a { background-size: 100% 100%; }
 }
+
+/* reading pill as the narration player */
+.read-pill { overflow: hidden; }
+.read-pill__rate { display: none; font-family: var(--font-meta); font-size: 0.75rem; min-width: 2.6rem; padding: 0 0.5rem; }
+.read-pill.has-started .read-pill__rate { display: inline-flex; }
+.read-pill.has-started [data-pill-listen] .read-pill__label { font-family: var(--font-meta); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.read-pill__progress {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-quick) ease;
+}
+.read-pill.has-started .read-pill__progress { opacity: 1; }
+.read-pill__progress i {
+  display: block;
+  height: 100%;
+  background: var(--highlight);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.read-pill.is-playing [data-pill-listen] { background: var(--ink); color: var(--ground); }

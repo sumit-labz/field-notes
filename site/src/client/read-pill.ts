@@ -14,6 +14,32 @@ function init(): void {
     const sync = () => pill.classList.toggle('is-playing', listen.classList.contains('playing'));
     new MutationObserver(sync).observe(listen, { attributes: true, attributeFilter: ['class'] });
     sync();
+
+    // The pill is the player now: elapsed / total in place of "Listen",
+    // a hairline of progress along its top edge, and the speed toggle —
+    // all mirrored from the one narration engine in [data-listen].
+    const audio = listen.querySelector('audio');
+    const label = pill.querySelector<HTMLElement>('[data-pill-listen-label]');
+    const bar = pill.querySelector<HTMLElement>('[data-pill-progress] i');
+    const rate = pill.querySelector<HTMLElement>('[data-pill-rate]');
+    const engineRate = listen.querySelector<HTMLElement>('.listen-rate');
+    const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+    if (audio && label) {
+      const tick = () => {
+        const started = audio.currentTime > 0 || !audio.paused;
+        label.textContent = started && isFinite(audio.duration)
+          ? `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`
+          : isFinite(audio.duration) ? `Listen · ${Math.max(1, Math.round(audio.duration / 60))} min` : 'Listen';
+        if (bar) bar.style.transform = `scaleX(${audio.duration ? audio.currentTime / audio.duration : 0})`;
+        pill.classList.toggle('has-started', started);
+      };
+      ['timeupdate', 'loadedmetadata', 'play', 'pause', 'ended'].forEach((ev) => audio.addEventListener(ev, tick));
+      tick();
+    }
+    rate?.addEventListener('click', () => {
+      engineRate?.click();
+      rate.textContent = engineRate?.textContent ?? rate.textContent;
+    });
   }
 
   const shareBtn = pill.querySelector<HTMLElement>('[data-pill-share]');
@@ -41,7 +67,8 @@ function init(): void {
     const nearEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 80;
     const goingDown = y > lastY + 4;
     const goingUp = y < lastY - 4;
-    if (nearEnd || y < 120 || goingUp) pill.classList.remove('is-hidden');
+    // never tuck the player away while it's playing
+    if (nearEnd || y < 120 || goingUp || pill.classList.contains('is-playing')) pill.classList.remove('is-hidden');
     else if (goingDown) pill.classList.add('is-hidden');
     lastY = y;
     ticking = false;
