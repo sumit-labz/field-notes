@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-22-the-grief-till-my-bones
+audio: audio/posts/2026-09-22-the-grief-till-my-bones.mp3
 title: "The Grief Till My Bones"
 published: 2026-09-22
 journey: being-seen

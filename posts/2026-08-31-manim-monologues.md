@@ -1,5 +1,6 @@
 ---
 slug: 2026-08-31-manim-monologues
+audio: audio/posts/2026-08-31-manim-monologues.mp3
 title: Simple animation for monologues
 published: 2026-08-31
 journey: monologue

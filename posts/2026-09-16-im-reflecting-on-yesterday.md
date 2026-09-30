@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-16-im-reflecting-on-yesterday
+audio: audio/posts/2026-09-16-im-reflecting-on-yesterday.mp3
 title: "Cognitive Surrender and Not Every Day Being a Sprint Day"
 published: 2026-09-16
 journey: being-seen

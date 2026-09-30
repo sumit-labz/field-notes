@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-01-how-to-write-a-monologue
+audio: audio/posts/2026-09-01-how-to-write-a-monologue.mp3
 title: How to write a monologue
 published: 2026-09-01
 journey: monologue

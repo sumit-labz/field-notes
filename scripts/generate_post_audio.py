@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Generate narration audio for a post and upload it to R2, in YOUR voice.
+"""Generate narration audio for a post and upload it to R2.
 
-Uses OpenRouter's TTS endpoint (/api/v1/audio/speech) with a voice-cloning
-model (default fish-audio/s2.1-pro): you supply a clean reference clip of your
-own voice + its transcript, and the post's prose is synthesised to mimic it.
+Default: a neutral female preset voice (Kokoro, DEFAULT_VOICE) — the author's
+own voice is deliberately NOT used for narration. Voice cloning is still
+available as an opt-in: pass --ref-audio (with the fish-audio clone model) and
+the post's prose is synthesised to mimic that reference clip.
 The mp3 is uploaded to R2 and the post's `audio:` frontmatter is set to the key
 so the "Listen" player renders. Text stays the canonical content.
 
@@ -229,6 +230,7 @@ def upload_mp3(config, key: str, data: bytes) -> None:
 
 
 PRESET_MODEL = "hexgrad/kokoro-82m"  # cheap, many preset voices (af_* = female)
+DEFAULT_VOICE = "af_heart"  # warm, neutral American female — the site's narrator
 
 
 def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, voice: str, local: bool, commit: bool, no_push: bool) -> dict:
@@ -299,11 +301,11 @@ def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, voice: s
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate voice-cloned narration for a post.")
+    parser = argparse.ArgumentParser(description="Generate narration for a post (neutral female voice by default).")
     parser.add_argument("--slug", required=True)
     parser.add_argument("--ref-audio", default="", help="reference clip for voice cloning (omit when using --voice)")
     parser.add_argument("--ref-text", default="", help="transcript .txt path or inline text; omitted → auto-transcribed")
-    parser.add_argument("--voice", default="", help="preset voice name (e.g. alloy, sage, nova) → no cloning")
+    parser.add_argument("--voice", default=DEFAULT_VOICE, help=f"preset voice (default {DEFAULT_VOICE}); ignored when --ref-audio is given")
     parser.add_argument("--voice-model", default=DEFAULT_MODEL)
     parser.add_argument("--local", action="store_true", help="save under media/posts/ instead of R2 (no R2 creds needed)")
     parser.add_argument("--commit", action="store_true", help="commit the post + audio change")
@@ -311,8 +313,10 @@ def main() -> None:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
+    # A reference clip means the caller explicitly opted into cloning.
+    voice = "" if args.ref_audio else args.voice
     try:
-        result = generate(args.slug, Path(args.ref_audio), args.ref_text, args.voice_model, args.voice, args.local, args.commit, args.no_push)
+        result = generate(args.slug, Path(args.ref_audio), args.ref_text, args.voice_model, voice, args.local, args.commit, args.no_push)
     except Exception as exc:  # noqa: BLE001
         message = redact_secrets(str(exc))
         if args.json:

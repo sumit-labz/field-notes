@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-03-gesture-warmup
+audio: audio/posts/2026-09-03-gesture-warmup.mp3
 title: Warming up with gesture drawing
 published: 2026-09-03
 journey: gesture-drawing-dailies

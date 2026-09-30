@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-10-studio-zero-lingering-with-an-idea
+audio: audio/posts/2026-09-10-studio-zero-lingering-with-an-idea.mp3
 title: "Studio Zero: Becoming a One-Person Creative Studio"
 published: 2026-09-10
 journey: scaffolding

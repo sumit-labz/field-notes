@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-23-a-start-on-composition
+audio: audio/posts/2026-09-23-a-start-on-composition.mp3
 title: A Start on Composition
 published: 2026-09-23
 journey: composition-and-value

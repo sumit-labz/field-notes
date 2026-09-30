@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-20-drinking-from-a-broken-glass
+audio: audio/posts/2026-09-20-drinking-from-a-broken-glass.mp3
 title: "Drinking From a Broken Glass: Hyperfixation and Acceptance"
 published: 2026-09-20
 journey: being-seen

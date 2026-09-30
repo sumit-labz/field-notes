@@ -1,5 +1,6 @@
 ---
 slug: 2026-08-31-revisiting-typography
+audio: audio/posts/2026-08-31-revisiting-typography.mp3
 title: Revisiting typography
 published: 2026-08-31
 journey: typography

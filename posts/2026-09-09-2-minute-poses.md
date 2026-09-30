@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-09-2-minute-poses
+audio: audio/posts/2026-09-09-2-minute-poses.mp3
 title: Two-minute poses, over and over
 published: 2026-09-09
 journey: gesture-drawing-dailies

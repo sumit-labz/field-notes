@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-26-i-built-an-operating-system-for-my-brain
+audio: audio/posts/2026-09-26-i-built-an-operating-system-for-my-brain.mp3
 title: "The Creative Operating System I Built for Myself"
 published: 2026-09-26
 journey: being-seen

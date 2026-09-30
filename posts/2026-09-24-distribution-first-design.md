@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-24-distribution-first-design
+audio: audio/posts/2026-09-24-distribution-first-design.mp3
 title: "Distribution First Design"
 published: 2026-09-24
 journey: scaffolding

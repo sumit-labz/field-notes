@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-23-you-have-to-support-yourself-a-lot
+audio: audio/posts/2026-09-23-you-have-to-support-yourself-a-lot.mp3
 title: "The Desktop App I Built to Support My ADHD Brain"
 published: 2026-09-23
 journey: being-seen

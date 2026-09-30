@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-11-when-your-adhd-brain-finally-wakes-up
+audio: audio/posts/2026-09-11-when-your-adhd-brain-finally-wakes-up.mp3
 title: "Waking Up With Clarity About Identity and Distribution"
 published: 2026-09-11
 journey: scaffolding

@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-23-my-apps-breathing-coach-doesnt-nag-me
+audio: audio/posts/2026-09-23-my-apps-breathing-coach-doesnt-nag-me.mp3
 title: "A Breathing Widget That Doesn't Nag Me"
 published: 2026-09-23
 journey: being-seen

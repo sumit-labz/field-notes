@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-30-banana-duct-tape-and-kinetic-typography
+audio: audio/posts/2026-09-30-banana-duct-tape-and-kinetic-typography.mp3
 title: "If a Banana With Duct Tape Is Art, Why Not Kinetic Typography?"
 published: 2026-09-30
 journey: being-seen

@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-16-bean-is-where-the-fun-starts-in-gesture
+audio: audio/posts/2026-09-16-bean-is-where-the-fun-starts-in-gesture.mp3
 title: "Drawing the Bean Before the Human Figure"
 published: 2026-09-16
 journey: gesture-drawing-dailies

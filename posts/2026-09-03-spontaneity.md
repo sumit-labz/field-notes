@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-03-spontaneity
+audio: audio/posts/2026-09-03-spontaneity.mp3
 title: Spontaneity
 published: 2026-09-03
 journey: being-seen

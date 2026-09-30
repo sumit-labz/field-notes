@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-11-editing-again
+audio: audio/posts/2026-09-11-editing-again.mp3
 title: "Editing, Again"
 published: 2026-09-11
 journey: publish

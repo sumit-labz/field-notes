@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-15-so-it-all-started-with-the-obsession-of
+audio: audio/posts/2026-09-15-so-it-all-started-with-the-obsession-of.mp3
 title: "Building a World Where Distribution and Product Meet"
 published: 2026-09-15
 journey: scaffolding

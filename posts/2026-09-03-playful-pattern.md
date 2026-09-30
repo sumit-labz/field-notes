@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-03-playful-pattern
+audio: audio/posts/2026-09-03-playful-pattern.mp3
 title: Trying to break the pattern of not being playful
 published: 2026-09-03
 journey: being-seen

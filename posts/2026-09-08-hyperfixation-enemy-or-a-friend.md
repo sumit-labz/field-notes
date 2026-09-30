@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-08-hyperfixation-enemy-or-a-friend
+audio: audio/posts/2026-09-08-hyperfixation-enemy-or-a-friend.mp3
 title: Hyperfixation, Enemy or a Friend?
 published: 2026-09-08
 journey: being-seen

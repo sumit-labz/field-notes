@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-16-dopamine-is-not-a-strategy
+audio: audio/posts/2026-09-16-dopamine-is-not-a-strategy.mp3
 title: "Dopamine Isn't a Strategy: Why I Keep Switching Ideas"
 published: 2026-09-16
 journey: being-seen

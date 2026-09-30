@@ -1,5 +1,6 @@
 ---
 slug: 2026-09-23-the-self-doubt-always-creeps-in
+audio: audio/posts/2026-09-23-the-self-doubt-always-creeps-in.mp3
 title: "The Self-Doubt Always Creeps In"
 published: 2026-09-23
 journey: being-seen
