@@ -4,7 +4,6 @@
 //  - text size stepper (remembered per reader)
 //  - "N min left" in the reading pill
 //  - swipe left/right to the next/previous post in the journey
-//  - the nav tucks away while scrolling down on phones
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function paragraphs(): HTMLElement[] {
@@ -140,27 +139,11 @@ function setupSwipe(): void {
   }, { passive: true });
 }
 
-// --- nav tucks away on phones -------------------------------------------------------
-function setupNavTuck(): void {
-  const nav = document.querySelector<HTMLElement>('nav');
-  if (!nav) return;
-  const mq = matchMedia('(max-width: 720px)');
-  let lastY = window.scrollY;
-  window.addEventListener('scroll', () => {
-    const y = window.scrollY;
-    if (!mq.matches || y < 80) nav.classList.remove('is-tucked');
-    else if (y > lastY + 6) nav.classList.add('is-tucked');
-    else if (y < lastY - 6) nav.classList.remove('is-tucked');
-    lastY = y;
-  }, { passive: true });
-}
-
 function init(): void {
   setupFollow();
   setupTextSize();
   setupTimeLeft();
   setupSwipe();
-  setupNavTuck();
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

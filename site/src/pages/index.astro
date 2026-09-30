@@ -76,9 +76,12 @@ const sections = await Promise.all(
 ---
 
 <Base title="Feed">
-  <p class="terms">
+  <p class="terms" data-ink-write>
     An archive of things I'm exploring.
-    <span class="q">Some of it goes nowhere.</span>
+    <span class="q journey-title journey-title--struck" data-strike-seed="home-tagline">
+      <span class="journey-title__text" data-strike-text>Some of it goes nowhere.</span>
+      <svg class="strike-overlay" aria-hidden="true"></svg>
+    </span>
   </p>
 
   {
@@ -111,3 +114,7 @@ const sections = await Promise.all(
     ))
   }
 </Base>
+
+<script>
+  import '../client/feed';
+</script>

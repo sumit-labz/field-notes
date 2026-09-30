@@ -1298,3 +1298,160 @@ body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
   background-color: color-mix(in srgb, var(--ink) 7%, transparent);
   box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--ink) 7%, transparent);
 }
+
+/* ---- feed: sheets dropped onto the desk ----
+   Each post card falls in from above at its own seeded angle (--drop), lands
+   with a small overshoot, and settles flat — like paper tossed onto a table.
+   Uses the individual translate/rotate properties so the hover lift (which
+   uses transform) keeps working after the landing. */
+.js .post-thumb[data-reveal] {
+  opacity: 0;
+  translate: 0 -70px;
+  rotate: var(--drop, 3deg);
+  transition: transform var(--dur-settle) var(--ease-paper), box-shadow var(--dur-settle) var(--ease-paper);
+}
+.js .post-thumb[data-reveal].is-in {
+  animation: paper-drop 820ms cubic-bezier(.3, .7, .25, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+@keyframes paper-drop {
+  0%   { opacity: 0; translate: 0 -70px; rotate: var(--drop, 3deg); box-shadow: 10px 16px 0 color-mix(in srgb, var(--ink) 0%, transparent); }
+  45%  { opacity: 1; }
+  62%  { translate: 0 5px; rotate: calc(var(--drop, 3deg) * -0.25); box-shadow: 0 0 0 transparent; }
+  80%  { translate: 0 -2px; rotate: calc(var(--drop, 3deg) * 0.08); }
+  100% { opacity: 1; translate: 0 0; rotate: var(--rest, 0deg); }
+}
+/* the landing: a faint dust-ring under the sheet as it touches down */
+.js .post-thumb[data-reveal].is-in::after {
+  content: '';
+  position: absolute;
+  inset: auto 8% -6px;
+  height: 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+  filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  animation: paper-thud 820ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+.post-thumb { position: relative; }
+@keyframes paper-thud {
+  0%, 50% { opacity: 0; transform: scaleX(0.6); }
+  62% { opacity: 1; transform: scaleX(1.05); }
+  100% { opacity: 0; transform: scaleX(1.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .post-thumb[data-reveal] { opacity: 1; translate: none; rotate: none; }
+  .js .post-thumb[data-reveal].is-in, .js .post-thumb[data-reveal].is-in::after { animation: none; }
+}
+
+/* ======================================================================
+   FEED SCROLL MOTION — scroll-driven where the browser supports it
+   (animation-timeline: view()); elsewhere these simply don't run.
+   ====================================================================== */
+
+/* 1. journey headings pin while their cards scroll past, then the next
+      section pushes them away (sticky is scoped to its own section) */
+.journey-section__head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ground);
+  padding: 0.7rem 0 0.6rem;
+  margin: 0 0 0.9rem;
+  box-shadow: 0 1px 0 var(--line);
+}
+@media (max-width: 720px) {
+  /* ride below the nav while it's showing; slide up when it tucks away */
+  .js .journey-section__head { top: var(--nav-h, 0px); transition: top var(--dur-settle) var(--ease-paper); }
+  .js body:has(nav.is-tucked) .journey-section__head { top: 0; }
+}
+
+@supports (animation-timeline: view()) {
+  /* 2 + 6. cards lean a touch at the screen's edges and straighten as they
+     cross the middle, like leafing through prints. Composed ON TOP of the
+     landing (animation-composition: add), so the two never fight; loose
+     sheets keep their --rest lean from the landing. */
+  .js .post-thumb[data-reveal].is-in {
+    animation:
+      paper-drop 820ms cubic-bezier(.3, .7, .25, 1) both,
+      sheet-lean linear both;
+    animation-delay: calc(var(--i, 0) * 90ms), 0s;
+    animation-timeline: auto, view();
+    animation-range: normal, cover 0% cover 100%;
+    animation-composition: replace, add;
+  }
+  @keyframes sheet-lean {
+    0%   { rotate: calc(var(--drop, 3deg) * 0.35); }
+    35%, 65% { rotate: 0deg; }
+    100% { rotate: calc(var(--drop, 3deg) * -0.3); }
+  }
+
+  /* 3. photos drift slightly slower than their card — depth inside the frame */
+  .post-thumb__img:not(.post-thumb__img--empty) {
+    scale: 1.14;
+    animation: photo-drift linear both;
+    animation-timeline: view();
+    animation-range: cover;
+  }
+  @keyframes photo-drift {
+    from { translate: 0 -7%; }
+    to   { translate: 0 7%; }
+  }
+
+  /* 5. the obsession label gets a highlighter swipe as its section arrives —
+     significance, which is what --highlight is for */
+  .journey-section__obsession a {
+    background-image: linear-gradient(color-mix(in srgb, var(--highlight) 38%, transparent), color-mix(in srgb, var(--highlight) 38%, transparent));
+    background-position: 0 50%;
+    background-size: 0% 100%;
+    padding: 0.1em 0.3em;
+    margin: 0 -0.3em;
+    color: var(--ink);
+    animation: highlighter-swipe linear both;
+    animation-timeline: view();
+    animation-range: entry 30% cover 35%;
+  }
+  @keyframes highlighter-swipe { to { background-size: 100% 100%; } }
+}
+
+/* 4. the opening line writes itself in, then the pen strikes the second half */
+.terms.is-writing .ink-word {
+  display: inline-block;
+  opacity: 0;
+  translate: 0 0.25em;
+  filter: blur(3px);
+  animation: ink-in 520ms var(--ease-paper) forwards;
+  animation-delay: calc(var(--w) * 70ms + 150ms);
+}
+@keyframes ink-in { to { opacity: 1; translate: 0 0; filter: blur(0); } }
+.terms.is-writing .ink-phrase {
+  opacity: 0;
+  animation: ink-in 700ms var(--ease-paper) forwards;
+  animation-delay: calc(var(--w) * 70ms + 150ms);
+}
+/* the tagline's strike waits for the last word, then draws */
+.js .terms .journey-title--struck.is-drawn svg.strike-overlay path {
+  transition-duration: 900ms;
+  transition-delay: calc(var(--words, 8) * 70ms + 600ms);
+}
+.terms .journey-title { font-weight: inherit; display: inline; }
+.terms .journey-title--struck svg.strike-overlay path { stroke: var(--graphite); stroke-width: 2.4; }
+
+/* 7. pull-to-shuffle feedback: the feed eases down, and the heading
+   announces the release once the pull is far enough */
+main.pull-armed .terms::after {
+  content: 'release to shuffle';
+  display: block;
+  font-family: var(--font-annotation);
+  font-weight: 400;
+  font-size: 1.1rem;
+  color: var(--graphite);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terms.is-writing .ink-word, .terms.is-writing .ink-phrase { opacity: 1; translate: none; filter: none; animation: none; }
+  .post-thumb__img, .journey-section__obsession a, .js .post-thumb[data-reveal].is-in { animation: none !important; }
+  .journey-section__obsession a { background-size: 100% 100%; }
+}

@@ -12,6 +12,7 @@
 import type { LeadMedia } from '../lib/content';
 import { withBase } from '../lib/url';
 import { tiltForId } from '../lib/rotation';
+import { hashString } from '../lib/hash';
 import type { PostOrigin } from '../lib/post-origin';
 
 interface Props {
@@ -29,9 +30,17 @@ interface Props {
 }
 const { slug, title, teaser, media, inProgress, origin, step } = Astro.props;
 const tilt = tiltForId(slug);
+// The angle this sheet falls in at when the feed drops it into place (see
+// .post-thumb reveal in global.css): ±2°..±6°, seeded by slug so it is the
+// same fall on every visit, never Math.random().
+const dropHash = Math.abs(hashString(`${slug}:drop`));
+const drop = ((dropHash & 1 ? 1 : -1) * (2 + (dropHash % 400) / 100)).toFixed(2);
+// A few "loose sheets" (about 1 in 6, by hash) never quite settle flat —
+// they keep a slight lean after landing, like a real pile of prints.
+const rest = dropHash % 6 === 0 ? (Number(drop) * 0.35).toFixed(2) : '0';
 ---
 
-<a class="post-thumb" href={withBase(`/posts/${slug}/`)} style={`--tilt: ${tilt}deg`} data-reveal>
+<a class="post-thumb" href={withBase(`/posts/${slug}/`)} style={`--tilt: ${tilt}deg; --drop: ${drop}deg; --rest: ${rest}deg`} data-reveal>
   <div class="post-thumb__img-wrap">
     {
       media?.kind === 'image' ? (
