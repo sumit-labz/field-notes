@@ -152,6 +152,10 @@ export async function postLeadMedia(
   return null;
 }
 
+// "Sep 24, 2026". Dates are stored date-only (midnight UTC), so format in UTC
+// or a reader west of Greenwich would see the previous day.
 export function dateLine(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric',
+  }).format(date);
 }

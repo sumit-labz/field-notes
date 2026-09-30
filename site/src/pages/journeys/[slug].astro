@@ -43,7 +43,6 @@ const allPosts = await getCollection('posts');
 const posts = allPosts
   .filter((p) => p.data.journey === data.slug)
   .sort((a, b) => a.data.published.valueOf() - b.data.published.valueOf());
-const fragmentCount = posts.reduce((total, post) => total + post.data.fragments.length, 0);
 
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
@@ -68,9 +67,9 @@ const postCards = await Promise.all(
   <JourneyTitle title={data.title} status={data.status} as="h1" seed={data.slug} />
   <p class="meta" style="display:flex;align-items:center;gap:0.5rem;margin-top:0.6rem">
     <ModeGlyph path={data.path} size={18} color="var(--graphite)" />
-    {data.path} · status: {data.status}
-    {' · started '}{dateLine(data.started)}
+    Started {dateLine(data.started)}
     {data.ended && <> · ended {dateLine(data.ended)}</>}
+    {data.status !== 'active' && <> · {data.status}</>}
   </p>
   {
     emergedFrom && (
@@ -92,8 +91,7 @@ const postCards = await Promise.all(
 
   <Fragment set:html={paragraphs(journey.body ?? '')} />
 
-  <h2>Posts</h2>
-  <p class="meta">{posts.length} posts · {fragmentCount} fragments</p>
+  <h2>Posts <span class="meta">· {posts.length}</span></h2>
   {
     postCards.length > 0 && (
       <div class="post-grid post-grid--sequential">
@@ -105,7 +103,7 @@ const postCards = await Promise.all(
             teaser={teaser}
             media={media}
             inProgress={post.data.status === 'in_progress'}
-            origin={originFor(!!post.data.transcript)}
+            origin={originFor(post.data)}
           />
         ))}
       </div>

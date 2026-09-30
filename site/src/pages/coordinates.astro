@@ -29,7 +29,7 @@ const sorted = posts.sort(
       sorted.map((post) => {
         const journey = post.data.journey ? journeyBySlug.get(post.data.journey) : null;
         return (
-          <div class="coord">
+          <div class="coord" data-reveal>
             <div class="mark" aria-hidden="true">
               <svg width="34" height="34" viewBox="0 0 34 34">
                 <circle cx="17" cy="17" r="13" stroke="var(--graphite)" stroke-width="1" fill="none" stroke-dasharray="2 4" />

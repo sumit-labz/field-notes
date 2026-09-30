@@ -14,6 +14,10 @@ export const ORIGIN_TOOLTIP: Record<PostOrigin, string> = {
   written: 'Written — typed by hand from the start',
 };
 
-export function originFor(hasTranscript: boolean): PostOrigin {
-  return hasTranscript ? 'voice' : 'written';
+// A post is a voice note if it has a transcript on record OR carries a
+// `made_with` stage — every made_with post began as recorded voice (see
+// MadeWith.astro). Checking both keeps the title badge and the footer pill
+// from ever disagreeing.
+export function originFor(data: { transcript?: unknown; made_with?: unknown }): PostOrigin {
+  return data.transcript || data.made_with ? 'voice' : 'written';
 }

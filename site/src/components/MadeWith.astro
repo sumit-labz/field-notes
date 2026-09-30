@@ -2,8 +2,8 @@
 // The "made with" badge — a click-to-expand mark at the foot of every post,
 // naming how much AI touched it on Sumit's self-editing-pass ladder. Collapsed
 // it's a small pill ("[mic icon] Voice Note, <stage>"); expanded it opens a
-// panel with an honest statement, the four-rung ladder (current lit), and a
-// note on the practice. Native to Field Notes: its own tokens
+// panel with this post's honest statement only (the full ladder was cut from
+// every post as repeated noise). Native to Field Notes: its own tokens
 // (--accent/--panel/--line) and fonts, so it sits in light or dark without
 // restyling. Every made_with post began as a recorded voice note (see
 // lib/post-origin.ts), so the pill always carries that mark.
@@ -48,14 +48,6 @@ const STAGES: Record<Props['stage'], { pill: string; glyph: string; before: stri
   },
 };
 
-const SCALE = [
-  { key: 'raw', glyph: '◉', label: 'Raw', sub: 'Recorded voice, transcribed. Only mechanical fixes.' },
-  { key: 'self-edited', glyph: '●', label: 'Self-edited', sub: 'AI as a mirror. Its eye, my words.' },
-  { key: 'feedback', glyph: '◐', label: 'With AI feedback', sub: 'The crutch. A few phrasings adopted.' },
-  { key: 'unaided', glyph: '○', label: 'Unaided', sub: 'No AI. Where the practice matures to.' },
-] as const;
-
-const NOTE = 'The badge names where a piece sits on the ladder I’m climbing — from leaning on the tool toward needing none of it.';
 const s = STAGES[stage];
 ---
 
@@ -70,22 +62,6 @@ const s = STAGES[stage];
   </summary>
   <div class="mw__panel">
     <p class="mw__statement">{s.before}<em class="mw__accent">{s.accent}</em>{s.after}</p>
-    <hr class="mw__rule" />
-    <ol class="mw__scale">
-      {
-        SCALE.map((rung) => (
-          <li class:list={['mw__rung', { 'is-current': rung.key === stage }]}>
-            <span class="mw__rung-dot" aria-hidden="true">{rung.glyph}</span>
-            <span class="mw__rung-text">
-              <b class="mw__rung-label">{rung.label}</b>
-              <span class="mw__rung-sub">{rung.sub}</span>
-            </span>
-          </li>
-        ))
-      }
-    </ol>
-    <hr class="mw__rule" />
-    <p class="mw__note">{NOTE}</p>
   </div>
 </details>
 
@@ -154,60 +130,5 @@ const s = STAGES[stage];
   .mw__accent {
     font-style: italic;
     color: var(--accent);
-  }
-  .mw__rule {
-    border: 0;
-    border-top: 1px solid var(--line);
-    margin: 1.25rem 0;
-  }
-
-  .mw__scale {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-  }
-  .mw__rung {
-    display: flex;
-    align-items: baseline;
-    gap: 0.7rem;
-  }
-  .mw__rung-dot {
-    flex: none;
-    width: 1rem;
-    font-size: 0.85rem;
-    line-height: 1.2;
-    color: var(--ghost);
-  }
-  .mw__rung-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-  .mw__rung-label {
-    font-family: var(--font-meta, 'Space Mono', monospace);
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: var(--graphite);
-  }
-  .mw__rung-sub {
-    font-family: var(--font-meta, 'Space Mono', monospace);
-    font-size: 0.78rem;
-    color: var(--ghost);
-  }
-  /* the current rung lights up in the accent colour */
-  .mw__rung.is-current .mw__rung-dot,
-  .mw__rung.is-current .mw__rung-label {
-    color: var(--accent);
-  }
-
-  .mw__note {
-    margin: 0;
-    font-family: var(--font-meta, 'Space Mono', monospace);
-    font-size: 0.8rem;
-    line-height: 1.6;
-    color: var(--ghost);
   }
 </style>

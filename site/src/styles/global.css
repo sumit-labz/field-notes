@@ -1,8 +1,11 @@
 /* site/src/styles/global.css
    Field-notes visual language — as redesigned in field-notes-design-bundle
-   (IMPLEMENTATION-SPEC.md + references/*.html). Static only: no motion, no
-   hover animation beyond a plain underline. Irregularity only from data or a
-   hashed seed — never decorative.
+   (IMPLEMENTATION-SPEC.md + references/*.html). Tactile motion only: things
+   move the way paper and ink would — sheets lift and press, ink lines draw,
+   tilted cards settle straight, pages fade in like being set down. No bounce,
+   no glow, no --highlight on hover. Everything collapses to static under
+   prefers-reduced-motion, and without JS all content is simply visible.
+   Irregularity only from data or a hashed seed — never decorative.
 
    Materials (each token is a material with a meaning, not a UI slider):
      --ground     the paper the whole archive sits on
@@ -28,6 +31,13 @@
   --font-body: 'Instrument Sans', sans-serif;
   --font-meta: 'Space Mono', monospace;
   --font-annotation: 'Caveat', cursive;
+
+  /* motion materials */
+  --ease-paper: cubic-bezier(.2, .7, .2, 1);  /* a sheet settling */
+  --ease-ink: cubic-bezier(.65, 0, .35, 1);   /* a pen stroke */
+  --dur-quick: 160ms;
+  --dur-settle: 420ms;
+  --dur-draw: 700ms;
 }
 
 *, *::before, *::after {
@@ -72,16 +82,22 @@ main {
   padding: 2.25rem 1.5rem 7rem;
 }
 
-/* links: underline is the only hover/focus effect this site has */
+/* links: an ink underline that draws itself left→right on hover/focus */
 a {
   color: var(--ink);
   text-decoration: none;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition: background-size var(--dur-settle) var(--ease-ink), color var(--dur-quick) ease;
 }
 a:hover,
-a:focus {
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
+a:focus-visible {
+  background-size: 100% 1px;
 }
+/* block-level card links draw no underline — they lift instead */
+a.post-thumb, a.sz-page { background-image: none; }
 
 /* person links — reveal on hover only, connection significance */
 a[href*="linkedin.com/in/"] {
@@ -895,3 +911,374 @@ figure > p {
   border: 1px solid var(--ink);
   padding: 0.25rem 0.6rem;
 }
+/* ======================================================================
+   TACTILE MOTION — paper and ink only (see header). Kept in one place so
+   the static design above still reads on its own.
+   ====================================================================== */
+
+/* wordmark: a small hand-written wobble */
+nav .wordmark {
+  display: inline-block;
+  background-image: none;
+  transition: transform var(--dur-settle) var(--ease-paper);
+}
+nav .wordmark:hover { transform: rotate(-3deg) translateY(-1px); }
+
+/* focus: keyboard users get the same life, plus a clear ink ring */
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+/* post thumbnails — a sheet that lifts off the ground, casts a hard ink
+   shadow, and presses back down when clicked. The image inside sits at its
+   hashed tilt and straightens as you pick it up. */
+.post-thumb {
+  transition:
+    transform var(--dur-settle) var(--ease-paper),
+    box-shadow var(--dur-settle) var(--ease-paper);
+}
+.post-thumb__img-wrap { overflow: hidden; }
+.post-thumb__img {
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform var(--dur-draw) var(--ease-paper);
+}
+.post-thumb:hover,
+.post-thumb:focus-visible {
+  transform: translate(-2px, -3px);
+  box-shadow: 4px 5px 0 var(--ink);
+}
+.post-thumb:hover .post-thumb__img,
+.post-thumb:focus-visible .post-thumb__img { transform: rotate(0deg) scale(1.04); }
+.post-thumb:active {
+  transform: translate(0, 0);
+  box-shadow: 0 0 0 var(--ink);
+  transition-duration: 80ms;
+}
+.post-thumb__title { transition: letter-spacing var(--dur-settle) var(--ease-paper); }
+.post-thumb:hover .post-thumb__title { letter-spacing: 0.005em; }
+
+/* list rows — a nudge to the right, graphite ink darkening */
+.sz-page,
+.coord,
+.journeys .j {
+  transition: padding-left var(--dur-settle) var(--ease-paper), color var(--dur-quick) ease;
+}
+.sz-page:hover,
+.journeys .j:hover,
+.coord:hover { padding-left: 0.45rem; }
+.sz-page:hover .sz-page__body,
+.coord:hover .provenance,
+.journeys .j:hover .st { color: var(--ink); }
+.sz-page__body, .coord .provenance, .journeys .j .st { transition: color var(--dur-quick) ease; }
+
+/* about eras — tilted past cards straighten as you reach for them */
+.era {
+  transition:
+    transform var(--dur-settle) var(--ease-paper),
+    border-color var(--dur-quick) ease;
+}
+.era:hover { transform: rotate(0deg) translateX(2px); border-color: var(--graphite); }
+.era--current:hover { border-color: var(--ink); }
+.era::before { transition: background var(--dur-quick) ease, transform var(--dur-settle) var(--ease-paper); }
+.era:hover::before { background: var(--ink); border-color: var(--ink); transform: scale(1.3); }
+.era__title::after { display: inline-block; transition: transform var(--dur-settle) var(--ease-paper); }
+.era:hover .era__title::after { transform: rotate(90deg); }
+.era[open] .era__title::after { transform: none; }
+
+/* details bodies unfold rather than snap (progressive: browsers without
+   ::details-content / interpolate-size just open instantly) */
+:root { interpolate-size: allow-keywords; }
+details::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: clip;
+  transition:
+    block-size var(--dur-settle) var(--ease-paper),
+    opacity var(--dur-settle) ease,
+    content-visibility var(--dur-settle) allow-discrete;
+}
+details[open]::details-content { block-size: auto; opacity: 1; }
+.md-fragment summary { transition: padding-left var(--dur-quick) var(--ease-paper); }
+.md-fragment summary:hover { padding-left: 0.3rem; }
+
+/* scroll reveal — only when JS has marked the page (html.js), so a no-JS
+   reader never sees hidden content. Uses the individual `translate`
+   property so it composes with each card's own rotate/lift transforms. */
+.js [data-reveal] {
+  opacity: 0;
+  translate: 0 10px;
+  transition:
+    opacity var(--dur-draw) var(--ease-paper),
+    translate var(--dur-draw) var(--ease-paper),
+    transform var(--dur-settle) var(--ease-paper),
+    box-shadow var(--dur-settle) var(--ease-paper),
+    padding-left var(--dur-settle) var(--ease-paper);
+  transition-delay: calc(var(--i, 0) * 45ms), calc(var(--i, 0) * 45ms), 0s, 0s, 0s;
+}
+.js [data-reveal].is-in { opacity: 1; translate: 0 0; }
+
+/* the abandoned-journey strike and completion tick draw themselves */
+.journey-title--struck svg.strike-overlay path {
+  stroke-dasharray: var(--len, 0);
+  stroke-dashoffset: 0;
+}
+.js .journey-title--struck svg.strike-overlay path { stroke-dashoffset: var(--len, 0); }
+.js .journey-title--struck.is-drawn svg.strike-overlay path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--dur-draw) var(--ease-ink);
+  transition-delay: calc(var(--line, 0) * 220ms + 150ms);
+}
+
+/* pull-quote settles like a note pinned down */
+.js .pull-quote[data-reveal] { translate: 0 6px; }
+
+/* page-to-page: a soft crossfade, the nav rule stays put */
+@view-transition { navigation: auto; }
+nav { view-transition-name: site-nav; }
+::view-transition-old(root) { animation: 220ms ease both vt-out; }
+::view-transition-new(root) { animation: 380ms var(--ease-paper) both vt-in; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; translate: 0 8px; } }
+
+/* reading progress — a hairline of ink under the nav, drawn by scroll */
+.read-progress {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--ink);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  z-index: 10;
+  pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  .read-progress { animation: read-grow linear both; animation-timeline: scroll(root); }
+}
+@supports not (animation-timeline: scroll()) { .read-progress { display: none; } }
+@keyframes read-grow { to { transform: scaleX(1); } }
+
+/* no motion requested: everything static and visible */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+  .js [data-reveal] { opacity: 1; translate: none; }
+  .js .journey-title--struck svg.strike-overlay path { stroke-dashoffset: 0; }
+  .read-progress { display: none; }
+}
+
+/* ======================================================================
+   DARK READING — the same materials after dark: a near-black desk, warm
+   off-white ink. Phones default to it (set inline in Base.astro before
+   paint); the reader's own choice is remembered.
+   ====================================================================== */
+:root { --font-reading: 'Source Serif 4', Georgia, serif; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #141414;
+  --paper: #1E1E1E;
+  --ink: #ECE8E1;
+  --graphite: #A7A298;
+  --ghost: #6F6B63;
+  --line: #2F2F2F;
+  --ink-2: var(--graphite);
+}
+/* the grain reads as dust on black — keep it, but lighter-touch */
+:root[data-theme="dark"] body { background-blend-mode: soft-light; }
+/* full-ink borders glare on black; the paper edges go quiet instead */
+:root[data-theme="dark"] .post-thumb,
+:root[data-theme="dark"] .fragment-photo,
+:root[data-theme="dark"] .post-thumb__img { border-color: var(--line); }
+:root[data-theme="dark"] .post-thumb:hover,
+:root[data-theme="dark"] .post-thumb:focus-visible { border-color: var(--graphite); box-shadow: 4px 5px 0 var(--graphite); }
+:root[data-theme="dark"] img,
+:root[data-theme="dark"] video { filter: brightness(0.92); }
+
+/* theme toggle — a quiet glyph at the end of the nav */
+.theme-toggle,
+.read-pill__btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+nav .theme-toggle {
+  align-self: center;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.35rem -0.4rem 0.35rem 0;
+  border-radius: 50%;
+  transition: transform var(--dur-settle) var(--ease-paper), background var(--dur-quick) ease;
+}
+nav .theme-toggle:hover { background: var(--line); transform: rotate(-20deg); }
+.ic-sun { display: none; }
+:root[data-theme="dark"] .ic-sun { display: block; }
+:root[data-theme="dark"] .ic-moon { display: none; }
+@media (max-width: 480px) { nav .theme-toggle { margin: 0 0 0 auto; } }
+
+/* long-form reading type — a book serif, generous and calm */
+.reading > p:not([class]):not(:first-child),
+.reading .pull-quote + p {
+  font-family: var(--font-reading);
+  font-size: calc(1.22rem * var(--read-scale, 1));
+  line-height: 1.7;
+  letter-spacing: 0.002em;
+  margin: 0 0 1.3em;
+  font-optical-sizing: auto;
+  hanging-punctuation: first;
+  text-wrap: pretty;
+}
+.reading h1 { font-size: 2rem; line-height: 1.15; letter-spacing: -0.01em; margin-top: 1rem; }
+@media (max-width: 720px) {
+  .reading > p:not([class]):not(:first-child) { font-size: calc(1.32rem * var(--read-scale, 1)); line-height: 1.6; }
+  .reading h1 { font-size: 1.85rem; }
+  main.reading { padding-left: 1.25rem; padding-right: 1.25rem; padding-bottom: 9rem; }
+}
+:root[data-theme="dark"] .reading > p:not([class]) { color: #E4E0D8; }
+
+/* floating reading pill — listen / share / theme / top */
+.read-pill {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform: translate(-50%, 0);
+  transition: transform var(--dur-settle) var(--ease-paper), opacity var(--dur-settle) ease;
+}
+.read-pill.is-hidden { transform: translate(-50%, calc(100% + 2rem)); opacity: 0; }
+.read-pill__btn {
+  gap: 0.45rem;
+  min-width: 2.9rem;
+  height: 2.9rem;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  font-family: var(--font-structure);
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background var(--dur-quick) ease, transform var(--dur-quick) var(--ease-paper);
+}
+.read-pill__btn:hover { background: var(--line); }
+.read-pill__btn:active { transform: scale(0.92); }
+.read-pill .ic-pause { display: none; }
+.read-pill.is-playing .ic-play { display: none; }
+.read-pill.is-playing .ic-pause { display: block; }
+.read-pill.is-playing [data-pill-listen] { background: var(--ink); color: var(--ground); }
+@media (max-width: 380px) { .read-pill__label { display: none; } }
+@media print { .read-pill, .theme-toggle, .read-progress { display: none; } }
+
+/* ---- reading aids (client/reading.ts) ---- */
+
+/* the paragraph being narrated: a soft highlighter wash, like a reader's pen */
+.reading > p:not([class]) {
+  transition: background-color var(--dur-settle) ease, box-shadow var(--dur-settle) ease;
+  border-radius: 3px;
+}
+.is-listening .reading > p:not([class]) { cursor: pointer; }
+.reading > p[data-speaking] {
+  background-color: color-mix(in srgb, var(--highlight) 16%, transparent);
+  box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--highlight) 16%, transparent);
+}
+:root[data-theme="dark"] .reading > p[data-speaking] {
+  background-color: color-mix(in srgb, var(--highlight) 12%, transparent);
+  box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--highlight) 12%, transparent);
+}
+
+/* next post in the journey — the invitation at the end of the read */
+.next-post {
+  display: block;
+  margin-top: 3.5rem;
+  padding: 1.1rem 1.2rem 1.25rem;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  background-image: none;
+  color: var(--ink);
+  transition: transform var(--dur-settle) var(--ease-paper), box-shadow var(--dur-settle) var(--ease-paper), border-color var(--dur-quick) ease;
+}
+.next-post:hover, .next-post:focus-visible {
+  transform: translate(-2px, -3px);
+  box-shadow: 4px 5px 0 var(--ink);
+  border-color: var(--ink);
+}
+:root[data-theme="dark"] .next-post:hover { box-shadow: 4px 5px 0 var(--graphite); border-color: var(--graphite); }
+.next-post:active { transform: none; box-shadow: none; }
+.next-post__kicker {
+  display: block;
+  font-family: var(--font-structure);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.68rem;
+  color: var(--graphite);
+  margin-bottom: 0.7rem;
+}
+.next-post__img {
+  display: block;
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  margin-bottom: 0.8rem;
+}
+.next-post__title {
+  display: block;
+  font-family: var(--font-structure);
+  font-weight: 600;
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+.next-post__teaser {
+  display: block;
+  margin-top: 0.4rem;
+  font-family: var(--font-reading);
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--graphite);
+}
+
+/* pill: text size + minutes left */
+.read-pill { align-items: center; }
+.read-pill__size span { font-family: var(--font-reading); font-size: 1.05rem; font-weight: 600; letter-spacing: -0.02em; }
+.read-pill__size small { font-size: 0.7em; }
+.read-pill__left {
+  font-family: var(--font-meta);
+  font-size: 0.7rem;
+  color: var(--graphite);
+  white-space: nowrap;
+  padding: 0 0.35rem;
+}
+.read-pill__left:empty { display: none; }
+@media (max-width: 480px) {
+  .read-pill__btn { min-width: 2.75rem; padding: 0 0.6rem; }
+  [data-pill-share] .read-pill__label { display: none; }
+}
+
+/* phones: the nav rides along, then tucks away while you read downward */
+@media (max-width: 720px) {
+  .js nav {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    background: var(--ground);
+    transition: transform var(--dur-settle) var(--ease-paper);
+  }
+  .js nav.is-tucked { transform: translateY(-100%); }
+}
+
+/* swipe to the next/previous post: the page slides the way your finger went */
+body.swipe-next main { animation: swipe-out-left 220ms var(--ease-ink) both; }
+body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
+@keyframes swipe-out-left { to { opacity: 0; translate: -40px 0; } }
+@keyframes swipe-out-right { to { opacity: 0; translate: 40px 0; } }

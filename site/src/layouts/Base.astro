@@ -4,9 +4,13 @@ import { withBase } from '../lib/url';
 
 interface Props {
   title: string;
+  // show the scroll-driven reading-progress hairline (long-form pages)
+  progress?: boolean;
+  // long-form reading page: serif reading type + floating action pill
+  reading?: boolean;
 }
 
-const { title } = Astro.props;
+const { title, progress = false, reading = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -15,21 +19,49 @@ const { title } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
+    <meta name="theme-color" content="#E4E8E9" />
+    <script is:inline>
+      // Theme before first paint (no flash): the reader's saved choice wins;
+      // otherwise phones always read dark, and larger screens follow the
+      // system's light/dark setting. Also restores the reader's text size.
+      (function () {
+        var d = document.documentElement;
+        d.classList.add('js');
+        var t = null, z = null;
+        try { t = localStorage.getItem('fn-theme'); z = localStorage.getItem('fn-text'); } catch (e) {}
+        if (z && !isNaN(+z)) d.style.setProperty('--read-scale', z);
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(max-width: 720px)').matches || matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        d.dataset.theme = t;
+        var m = document.querySelector('meta[name=theme-color]');
+        if (m) m.content = t === 'dark' ? '#141414' : '#E4E8E9';
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Sans:wght@400;500&family=Space+Mono:wght@400;700&family=Caveat:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
+    {progress && <div class="read-progress" aria-hidden="true" />}
     <nav>
       <a class="wordmark" href={withBase('/')}>field notes</a>
       <a href={withBase('/identities')}>obsessions</a>
       <a href={withBase('/about')}>about</a>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark reading">
+        <svg class="ic-moon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <svg class="ic-sun" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
     </nav>
-    <main>
+    <main class:list={[{ reading }]}>
       <slot />
     </main>
+    <script>
+      import '../client/reveal';
+      import '../client/theme';
+    </script>
   </body>
 </html>

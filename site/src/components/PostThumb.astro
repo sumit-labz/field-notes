@@ -8,11 +8,10 @@
 // A video thumbnail is static (paused, first frame) until the viewer engages
 // with it: hover-to-play on a device with real hover (desktop), or autoplay
 // when scrolled into view otherwise (touch) — see client/thumb-video.ts. This
-// is the one deliberate exception to the site's "no motion" default.
+// is part of the site's tactile-motion layer.
 import type { LeadMedia } from '../lib/content';
 import { withBase } from '../lib/url';
 import { tiltForId } from '../lib/rotation';
-import PostOriginBadge from './PostOriginBadge.astro';
 import type { PostOrigin } from '../lib/post-origin';
 
 interface Props {
@@ -32,7 +31,7 @@ const { slug, title, teaser, media, inProgress, origin, step } = Astro.props;
 const tilt = tiltForId(slug);
 ---
 
-<a class="post-thumb" href={withBase(`/posts/${slug}/`)}>
+<a class="post-thumb" href={withBase(`/posts/${slug}/`)} style={`--tilt: ${tilt}deg`} data-reveal>
   <div class="post-thumb__img-wrap">
     {
       media?.kind === 'image' ? (
@@ -43,7 +42,6 @@ const tilt = tiltForId(slug);
           height={media.height}
           loading="lazy"
           alt=""
-          style={`transform: rotate(${tilt}deg)`}
         />
       ) : media?.kind === 'video' ? (
         <video
@@ -54,14 +52,12 @@ const tilt = tiltForId(slug);
           loop
           playsinline
           preload="metadata"
-          style={`transform: rotate(${tilt}deg)`}
         />
       ) : (
         <div class="post-thumb__img post-thumb__img--empty" />
       )
     }
     {step && <span class="post-thumb__step font-mono">{String(step).padStart(2, '0')}</span>}
-    <PostOriginBadge origin={origin} size={15} class="post-thumb__origin" />
   </div>
   <div class="post-thumb__body">
     <p class="post-thumb__title">

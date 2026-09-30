@@ -42,6 +42,9 @@ function draw(container: HTMLElement): void {
     path.setAttribute('d', d);
     path.setAttribute('transform', `translate(${offsetX.toFixed(1)}, ${offsetY.toFixed(1)})`);
     svg.appendChild(path);
+    // dash length + line index drive the self-drawing stroke in global.css
+    path.style.setProperty('--len', String(Math.ceil(path.getTotalLength())));
+    path.style.setProperty('--line', String(lineIndex));
   });
 
   // wobble drawn — drop the plain CSS line so the two marks don't stack
@@ -58,8 +61,27 @@ function drawAll(): void {
   });
 }
 
+// Once a struck title scrolls into view, let the pen cross it out.
+const drawObserver =
+  'IntersectionObserver' in window
+    ? new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            (e.target as HTMLElement).classList.add('is-drawn');
+            drawObserver?.unobserve(e.target);
+          });
+        },
+        { threshold: 0.6 },
+      )
+    : null;
+
 function init(): void {
   drawAll();
+  document.querySelectorAll<HTMLElement>(SELECTOR).forEach((el) => {
+    if (drawObserver) drawObserver.observe(el);
+    else el.classList.add('is-drawn');
+  });
 
   if (document.fonts?.ready) {
     // web fonts can swap in after first paint and reflow the text, moving

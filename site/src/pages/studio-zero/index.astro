@@ -86,7 +86,7 @@ const journeyBlocks = await Promise.all(
                     teaser={teaser}
                     media={media}
                     inProgress={post.data.status === 'in_progress'}
-                    origin={originFor(!!post.data.transcript)}
+                    origin={originFor(post.data)}
                   />
                 ))}
               </div>
