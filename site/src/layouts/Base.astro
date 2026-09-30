@@ -30,12 +30,14 @@ const { title, progress = false, reading = false } = Astro.props;
         var t = null, z = null;
         try { t = localStorage.getItem('fn-theme'); z = localStorage.getItem('fn-text'); } catch (e) {}
         if (z && !isNaN(+z)) d.style.setProperty('--read-scale', z);
-        if (t !== 'light' && t !== 'dark') {
+        if (t !== 'light' && t !== 'dark' && t !== 'navy') {
           t = matchMedia('(max-width: 720px)').matches || matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
-        d.dataset.theme = t;
+        // navy is a tone of dark: every dark rule applies, tokens tint blue
+        d.dataset.theme = t === 'navy' ? 'dark' : t;
+        if (t === 'navy') d.dataset.tone = 'navy';
         var m = document.querySelector('meta[name=theme-color]');
-        if (m) m.content = t === 'dark' ? '#141414' : '#E4E8E9';
+        if (m) m.content = t === 'navy' ? '#0F1A2B' : t === 'dark' ? '#141414' : '#E4E8E9';
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

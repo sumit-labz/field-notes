@@ -628,6 +628,10 @@ for (const block of blocks) {
     function ensureGraph() {
       if (graphTried) return;
       graphTried = true;
+      // Cross-origin audio (R2) without CORS headers is silenced by Web Audio:
+      // the element "plays" but outputs zeros. Only route same-origin audio
+      // through the graph; remote narration gets the idle visualiser instead.
+      if (new URL(audio.currentSrc || audio.src, location.href).origin !== location.origin) return;
       try {
         const Ctx = window.AudioContext || (window as any).webkitAudioContext;
         if (!Ctx) return;
@@ -643,8 +647,22 @@ for (const block of blocks) {
         analyser = null; // audio element keeps playing on its own
       }
     }
+    // No frequency data (remote audio): a gentle, seeded breathing pattern
+    // so the bars still say "speaking" without pretending to be the signal.
+    function idleViz() {
+      const loop = (t: number) => {
+        if (audio.paused) { raf = 0; restViz(); return; }
+        bars.forEach((b, i) => {
+          const v = (Math.sin(t / 260 + i * 1.7) + Math.sin(t / 410 + i * 0.9)) / 4 + 0.5;
+          b.style.height = `${20 + v * 60}%`;
+        });
+        raf = requestAnimationFrame(loop);
+      };
+      raf = requestAnimationFrame(loop);
+    }
     function startViz() {
-      if (raf || !analyser || !data) return;
+      if (raf) return;
+      if (!analyser || !data) { idleViz(); return; }
       try {
         if (ac && ac.state === 'suspended') ac.resume();
         const n = bars.length;

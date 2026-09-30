@@ -1,20 +1,31 @@
 // Light/dark toggle. The initial theme is set inline in <head> (before paint);
 // this only handles switching and remembering the reader's choice.
 const KEY = 'fn-theme';
-type Theme = 'light' | 'dark';
+// light → black → navy → light. Navy is a tone of dark (data-theme="dark"
+// + data-tone="navy"), so every dark-mode rule applies to it as well.
+type Theme = 'light' | 'dark' | 'navy';
+const ORDER: Theme[] = ['light', 'dark', 'navy'];
+const META: Record<Theme, string> = { light: '#E4E8E9', dark: '#141414', navy: '#0F1A2B' };
+const NAME: Record<Theme, string> = { light: 'light', dark: 'black', navy: 'dark blue' };
 
 export function currentTheme(): Theme {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  const d = document.documentElement;
+  if (d.dataset.theme !== 'dark') return 'light';
+  return d.dataset.tone === 'navy' ? 'navy' : 'dark';
+}
+
+function applyTheme(t: Theme): void {
+  const d = document.documentElement;
+  d.dataset.theme = t === 'navy' ? 'dark' : t;
+  if (t === 'navy') d.dataset.tone = 'navy';
+  else delete d.dataset.tone;
+  const meta = document.querySelector<HTMLMetaElement>('meta[name=theme-color]');
+  if (meta) meta.content = META[t];
+  syncLabels();
 }
 
 export function setTheme(t: Theme): void {
-  const d = document.documentElement;
-  const apply = () => {
-    d.dataset.theme = t;
-    const meta = document.querySelector<HTMLMetaElement>('meta[name=theme-color]');
-    if (meta) meta.content = t === 'dark' ? '#141414' : '#E4E8E9';
-    syncLabels();
-  };
+  const apply = () => applyTheme(t);
   try { localStorage.setItem(KEY, t); } catch { /* private mode: session-only */ }
   // a soft crossfade between the two papers where supported
   const vt = (document as Document & { startViewTransition?: (cb: () => void) => unknown }).startViewTransition;
@@ -22,11 +33,15 @@ export function setTheme(t: Theme): void {
   else apply();
 }
 
+function nextTheme(): Theme {
+  return ORDER[(ORDER.indexOf(currentTheme()) + 1) % ORDER.length];
+}
+
 function syncLabels(): void {
-  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  const next = NAME[nextTheme()];
   document.querySelectorAll<HTMLElement>('[data-theme-toggle]').forEach((b) => {
-    b.setAttribute('aria-label', `Switch to ${next} reading`);
-    b.title = `Switch to ${next} reading`;
+    b.setAttribute('aria-label', `Switch to ${next} background`);
+    b.title = `Switch to ${next} background`;
   });
 }
 
@@ -38,8 +53,7 @@ function followSystem(): void {
     let saved: string | null = null;
     try { saved = localStorage.getItem(KEY); } catch { /* none */ }
     if (saved || matchMedia('(max-width: 720px)').matches) return;
-    document.documentElement.dataset.theme = sys.matches ? 'dark' : 'light';
-    syncLabels();
+    applyTheme(sys.matches ? 'dark' : 'light');
   });
 }
 
@@ -49,7 +63,7 @@ function init(): void {
   document.addEventListener('click', (e) => {
     const btn = (e.target as Element).closest('[data-theme-toggle]');
     if (!btn) return;
-    setTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+    setTheme(nextTheme());
   });
 }
 

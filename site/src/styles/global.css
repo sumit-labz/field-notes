@@ -1084,6 +1084,17 @@ nav { view-transition-name: site-nav; }
   --line: #2F2F2F;
   --ink-2: var(--graphite);
 }
+/* dark blue: a deep ink-navy night. Contrast (WCAG): prose 13.4:1, ink
+   14.7:1, graphite 7.9:1, ghost 4.6:1 — all pass AA for body text. */
+:root[data-theme="dark"][data-tone="navy"] {
+  --ground: #0F1A2B;
+  --paper: #172338;
+  --ink: #E8ECF2;
+  --graphite: #A3AFC2;
+  --ghost: #7D8AA0;
+  --line: #26334A;
+}
+:root[data-theme="dark"][data-tone="navy"] .reading > p:not([class]) { color: #DCE2EC; }
 /* the grain reads as dust on black — keep it, but lighter-touch */
 :root[data-theme="dark"] body { background-blend-mode: soft-light; }
 /* full-ink borders glare on black; the paper edges go quiet instead */
@@ -1282,3 +1293,8 @@ body.swipe-next main { animation: swipe-out-left 220ms var(--ease-ink) both; }
 body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
 @keyframes swipe-out-left { to { opacity: 0; translate: -40px 0; } }
 @keyframes swipe-out-right { to { opacity: 0; translate: 40px 0; } }
+/* on navy the amber wash turns muddy green — a cool ink wash reads cleaner */
+:root[data-theme="dark"][data-tone="navy"] .reading > p[data-speaking] {
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+  box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--ink) 7%, transparent);
+}
