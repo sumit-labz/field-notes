@@ -1,6 +1,6 @@
 ---
 slug: 2026-09-15-so-it-all-started-with-the-obsession-of
-title: "Exploring a Visual World"
+title: "Building a World Where Distribution and Product Meet"
 published: 2026-09-15
 journey: scaffolding
 fragments:
@@ -19,7 +19,7 @@ While I was reading the book, simultaneously I was creating a tool through Claud
 
 Then I kept building the tool, and one day I realized the whole experience of typing so much is so awkward that nobody's gonna use that tool — even I'm not gonna do it myself. So I integrated an OpenRouter transcription-based API — now I can actually press the mic button and load the stuff there. And the good thing that happened was, while I was building the tool, I showed it to my child and I was able to spot the bugs, because I could see him moving through the difficulties he was facing. A tool in which people can speak, record, and build their story really fast.
 
-So I said, let's give this tool for free, and I may start developing it in open source as I keep reading the book from John Truby. After finishing every chapter, I'd redefine the software, and then I made it a self-hosted book. After that, I realized: why not use this tool — StoryDojo itself — and make it available for others?
+So I said, let's give this tool for free, and I may start developing it in open source as I keep reading the book from John Truby. After finishing every chapter, I'd redefine the software, and then I made it a self-hosted tool. After that, I realized: why not use this tool — StoryDojo itself — and make it available for others?
 
 But then I thought, what will be the distribution strategy? How am I gonna distribute? One of the challenges I'm facing: imagine if this becomes a product, even a free one — the distribution of it means double effort. One is the tool itself, and the second is creating the distribution content, which I can publish on Instagram and YouTube.
 

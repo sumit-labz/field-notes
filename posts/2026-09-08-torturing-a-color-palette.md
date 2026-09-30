@@ -1,6 +1,6 @@
 ---
 slug: 2026-09-08-torturing-a-color-palette
-title: Torturing a Color Palette
+title: "Torturing the Words \"Color Palette\" Into a Poster"
 published: 2026-09-08
 journey: typography
 fragments:

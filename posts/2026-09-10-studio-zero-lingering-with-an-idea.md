@@ -1,6 +1,6 @@
 ---
 slug: 2026-09-10-studio-zero-lingering-with-an-idea
-title: Studio Zero — Letting Myself Linger With This Idea
+title: "Studio Zero: Becoming a One-Person Creative Studio"
 published: 2026-09-10
 journey: scaffolding
 obsession: self
