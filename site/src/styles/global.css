@@ -1200,15 +1200,7 @@ nav .theme-toggle:hover { background: var(--line); transform: rotate(-20deg); }
   border-radius: 3px;
 }
 .is-listening .reading > p:not([class]) { cursor: pointer; }
-.reading > p[data-speaking] {
-  background-color: color-mix(in srgb, var(--highlight) 16%, transparent);
-  box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--highlight) 16%, transparent);
-}
-:root[data-theme="dark"] .reading > p[data-speaking] {
-  background-color: color-mix(in srgb, var(--highlight) 12%, transparent);
-  box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--highlight) 12%, transparent);
-}
-
+:root[data-theme="dark"] 
 /* next post in the journey — the invitation at the end of the read */
 .next-post {
   display: block;
@@ -1294,11 +1286,7 @@ body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
 @keyframes swipe-out-left { to { opacity: 0; translate: -40px 0; } }
 @keyframes swipe-out-right { to { opacity: 0; translate: 40px 0; } }
 /* on navy the amber wash turns muddy green — a cool ink wash reads cleaner */
-:root[data-theme="dark"][data-tone="navy"] .reading > p[data-speaking] {
-  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
-  box-shadow: 0 0 0 0.35em color-mix(in srgb, var(--ink) 7%, transparent);
-}
-
+:root[data-theme="dark"][data-tone="navy"] 
 /* ---- feed: sheets dropped onto the desk ----
    Each post card falls in from above at its own seeded angle (--drop), lands
    with a small overshoot, and settles flat — like paper tossed onto a table.
@@ -1471,3 +1459,41 @@ main.pull-armed .terms::after {
   transform: scaleX(0);
 }
 .read-pill.is-playing [data-pill-listen] { background: var(--ink); color: var(--ground); }
+
+/* ---- narration ink fill ----
+   While listening: text ahead of the voice waits in graphite (still ≥7:1
+   contrast in every theme), the paragraph being read fills with full ink
+   from the top down as the voice moves through it, and finished paragraphs
+   stay inked. --ink-p is registered so the fill glides between the
+   audio's ~4-per-second position updates instead of stepping. */
+@property --ink-p {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+.is-listening .reading > p:not([class]) {
+  /* !important: the per-theme prose colours are more specific, and the
+     listening states must win over them in every theme */
+  color: var(--graphite) !important;
+  transition: color 600ms ease;
+}
+.is-listening .reading > p[data-read] { color: var(--ink) !important; }
+.is-listening .reading > p[data-speaking] {
+  color: transparent !important;
+  background-image: linear-gradient(
+    to bottom,
+    var(--ink) 0,
+    var(--ink) calc(var(--ink-p) - 1.2em),
+    var(--graphite) calc(var(--ink-p) + 1.2em),
+    var(--graphite) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: --ink-p 400ms linear;
+  /* a thin highlighter mark in the margin says "the voice is here" */
+  box-shadow: -0.9rem 0 0 -0.72rem var(--highlight);
+}
+.is-listening .reading > p[data-speaking] a { color: inherit; }
+@media (prefers-reduced-motion: reduce) {
+  .is-listening .reading > p[data-speaking] { transition: none; }
+}

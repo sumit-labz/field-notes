@@ -30,12 +30,24 @@ function setupFollow(): void {
   let programmatic = false;
   window.addEventListener('scroll', () => { if (!programmatic) userScrollAt = Date.now(); }, { passive: true });
 
+  // Ink fill: paragraphs before the voice are fully inked (data-read), the
+  // one being read fills top-to-bottom with --ink-p, the rest wait faint.
+  // Recomputed from the audio position on every tick, so seeking back or
+  // forward (or changing speed) can never leave a stale state behind.
+  const markRead = (i: number) => {
+    paras.forEach((p, k) => {
+      if (k < i) p.setAttribute('data-read', '');
+      else p.removeAttribute('data-read');
+    });
+  };
   const setCurrent = (i: number) => {
     if (i === current) return;
     paras[current]?.removeAttribute('data-speaking');
     current = i;
+    markRead(i);
     const el = paras[i];
     if (!el) return;
+    el.style.setProperty('--ink-p', '0%');
     el.setAttribute('data-speaking', '');
     // follow along, unless the reader has scrolled away on purpose recently
     if (!audio.paused && Date.now() - userScrollAt > 4000) {
@@ -55,8 +67,12 @@ function setupFollow(): void {
     let i = 0;
     while (i + 1 < starts.length && starts[i + 1] <= f) i++;
     setCurrent(i);
+    const end = starts[i + 1] ?? 1;
+    const within = Math.min(1, Math.max(0, (f - starts[i]) / Math.max(end - starts[i], 1e-6)));
+    paras[i]?.style.setProperty('--ink-p', `${(within * 100).toFixed(1)}%`);
   });
   audio.addEventListener('ended', () => {
+    markRead(paras.length);
     paras[current]?.removeAttribute('data-speaking');
     current = -1;
     document.body.classList.remove('is-listening');
