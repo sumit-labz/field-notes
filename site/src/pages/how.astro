@@ -224,14 +224,17 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
     </section>
 
     <!-- end credits -->
-    <section class="scene scene--credits" data-scene>
+    <section class="scene scene--shout" data-scene>
+      <p class="credits__small">nobody is coming.</p>
       <p class="credits__shout" aria-label="Nobody is coming. Invest in yourself.">
         <span class="shout__w shout__w--1" aria-hidden="true">INVEST</span>
         <span class="shout__w shout__w--2" aria-hidden="true">IN</span>
         <span class="shout__w shout__w--3" aria-hidden="true">YOURSELF</span>
       </p>
+    </section>
+
+    <section class="scene scene--credits" data-scene>
       <div class="credits__rest">
-      <p class="credits__small">nobody is coming.</p>
       <a class="how-free" href={REPO} rel="noopener">
         <span class="how-free__q">Want this full system for free?</span>
         <span class="how-free__a">Follow the source code <span aria-hidden="true">→</span></span>
@@ -597,27 +600,27 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
     filter: blur(calc((1 - var(--p, 0)) * 14px));
   }
 
-  /* --- credits */
-  /* safe: a tall credits screen starts at the top instead of clipping it */
-  /* end card: the shout stands up the left edge, read bottom to top */
-  .scene--credits {
-    grid-template-columns: auto minmax(0, 1fr);
+  /* --- the takeaway: INVEST IN YOURSELF, alone on a screen, standing up,
+     read bottom to top. Sized from the screen so it always fits whole. */
+  .film > .scene--shout {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: clamp(1rem, 4vw, 4rem);
-    padding: 2rem 0 5rem;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem 0;
   }
-  .credits__rest { display: grid; justify-items: center; text-align: center; align-content: center; gap: 0.4rem; }
   .credits__small { margin: 0; font-family: var(--font-meta); font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--graphite); }
   .credits__shout {
-    --h: calc(100svh - 12rem);
+    --h: calc(100svh - 10rem);
     display: flex;
-    gap: 0.04em;
+    gap: 0.05em;
     height: var(--h);
     margin: 0;
     font-family: var(--font-structure);
     font-variation-settings: 'wdth' 125;
     font-weight: 800;
-    font-size: min(calc(var(--h) / 7), 17vw);
+    font-size: min(calc(var(--h) / 6.9), 28vw);
     line-height: 0.82;
     letter-spacing: -0.04em;
   }
@@ -633,29 +636,15 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
   .shout__w--2 { color: color-mix(in srgb, var(--red) 55%, var(--ink)); transition-delay: 300ms; font-size: 0.7em; align-self: flex-end; }
   .shout__w--3 { color: #ff2d1a; transition-delay: 450ms; -webkit-text-stroke: 0.02em var(--ink); }
   .is-on .shout__w { translate: 0 0; opacity: 1; }
+
+  /* --- credits: the free system, who made it, the end */
+  .film > .scene--credits { display: flex; justify-content: center; align-items: center; padding: 2rem 0 3rem; }
+  .credits__rest { display: grid; justify-items: center; text-align: center; gap: 0.4rem; width: 100%; max-width: 40rem; min-width: 0; }
+  .credits__rest .how-free { width: 100%; box-sizing: border-box; }
   @media (max-width: 720px) {
-    /* on a phone the shout fills the screen's height behind everything */
-    .film > .scene--credits { display: block; position: relative; padding: 0; overflow: hidden; }
-    .credits__shout {
-      --h: calc(100svh - 8rem);
-      position: absolute;
-      left: -0.2rem;
-      top: 0.5rem;
-      font-size: calc(var(--h) / 7.2);
-    }
-    .credits__rest {
-      position: relative;
-      z-index: 1;
-      margin: 36svh 0 0 auto;
-      width: 80%;
-      padding: 1rem 0.8rem 4.5rem;
-      background: color-mix(in srgb, var(--ground) 82%, transparent);
-      backdrop-filter: blur(3px);
-    }
-    .credits__rest .how-free { padding: 0.9rem; }
-    .how-free__q { font-size: 1.4rem; }
-    .how-free__note { font-size: 1rem; }
-    .credits__made { font-size: 0.6rem; }
+    .how-free__q { font-size: 1.5rem; }
+    .how-free__note { font-size: 1.05rem; }
+    .credits__made { font-size: 0.62rem; }
   }
   .credits__made {
     display: grid;
