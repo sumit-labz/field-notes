@@ -1,113 +1,63 @@
-// /how: a reel, not a scroll. Scenes sit side by side and play left to
-// right on their own (~7s each) with a story-style progress strip. Tap the
-// right/left edge, swipe, or use the arrow keys to move; hold or press pause
-// to stop. Each scene's animation replays whenever it comes back on screen.
-const DUR = 7000;
-
+// /how: a vertical film that scrolls one scene at a time (the page snaps, see
+// how.astro). A scene plays its animation when it fills the screen and resets
+// when it leaves, so coming back plays it again. The dots on the right show
+// where you are and jump to any scene.
 function init(): void {
-  const reel = document.querySelector<HTMLElement>('[data-reel]');
-  const film = reel?.querySelector<HTMLElement>('[data-film]');
-  if (!reel || !film) return;
+  const film = document.querySelector<HTMLElement>('[data-film]');
+  if (!film) return;
   const scenes = Array.from(film.querySelectorAll<HTMLElement>('[data-scene]'));
-  const bar = reel.querySelector<HTMLElement>('[data-reel-bar]')!;
-  const count = reel.querySelector<HTMLElement>('[data-reel-count]');
+  const dotsNav = document.querySelector<HTMLElement>('[data-film-dots]');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  bar.style.setProperty('--dur', `${DUR}ms`);
-  bar.replaceChildren(...scenes.map(() => { const i = document.createElement('i'); i.append(document.createElement('b')); return i; }));
-  const segs = Array.from(bar.children) as HTMLElement[];
 
-  let idx = 0;
-  let timer = 0;
-  let paused = reduced;
-  reel.classList.toggle('is-paused', paused);
-
-  const mark = (n: number) => {
-    segs.forEach((s, k) => {
-      s.classList.toggle('done', k < n);
-      s.classList.remove('now');
-    });
-    void bar.offsetWidth; // restart the fill
-    segs[n]?.classList.add('now');
-    if (count) count.textContent = `${String(n + 1).padStart(2, '0')} / ${String(scenes.length).padStart(2, '0')}`;
-  };
-  const schedule = () => {
-    clearTimeout(timer);
-    if (paused || idx >= scenes.length - 1) return;
-    timer = window.setTimeout(() => go(idx + 1), DUR);
-  };
-  // a frame of TV static between scenes, like changing channels
-  const staticEl = document.createElement('div');
-  staticEl.className = 'reel__static';
-  staticEl.setAttribute('aria-hidden', 'true');
-  reel.append(staticEl);
-  const flash = () => {
-    if (reduced) return;
-    staticEl.classList.remove('is-flash');
-    void staticEl.offsetWidth;
-    staticEl.classList.add('is-flash');
-  };
-  const show = (n: number) => {
-    if (n !== idx) { scenes[idx]?.classList.remove('is-on'); flash(); }
-    idx = n;
-    const s = scenes[n];
-    s.classList.remove('is-on');
-    void s.offsetWidth; // replay its animation
-    s.classList.add('is-on');
-    s.scrollTop = 0;
-    mark(n);
-    schedule();
-  };
-  // the scene we're sliding to; swipe-settling ignores the slide until it lands
-  let target: number | null = null;
-  const go = (n: number) => {
-    n = Math.max(0, Math.min(scenes.length - 1, n));
-    // a jump, or a click while still sliding: cut, don't slide
-    const far = target !== null || Math.abs(n - Math.round(film.scrollLeft / film.clientWidth)) > 1;
-    target = n;
-    film.scrollTo({ left: n * film.clientWidth, behavior: reduced || far ? 'auto' : 'smooth' });
-    show(n);
-  };
-  const setPaused = (p: boolean) => {
-    paused = p;
-    reel.classList.toggle('is-paused', p);
-    reel.querySelector('[data-reel-play]')?.setAttribute('aria-label', p ? 'Play' : 'Pause');
-    schedule();
-  };
-
-  // swipes and trackpads: whichever scene settles in view becomes current
-  let settle = 0;
-  film.addEventListener('scroll', () => {
-    clearTimeout(settle);
-    settle = window.setTimeout(() => {
-      const n = Math.round(film.scrollLeft / film.clientWidth);
-      if (target !== null) {
-        if (n === target) target = null;
-        else { film.scrollTo({ left: target * film.clientWidth }); return; }
-      }
-      if (n !== idx) show(n);
-    }, 140);
-  }, { passive: true });
-
-  reel.querySelectorAll('[data-reel-next]').forEach((b) => b.addEventListener('click', () => go(idx + 1)));
-  reel.querySelectorAll('[data-reel-prev]').forEach((b) => b.addEventListener('click', () => go(idx - 1)));
-  reel.querySelector('[data-reel-play]')?.addEventListener('click', () => setPaused(!paused));
-  document.addEventListener('keydown', (e) => {
-    if ((e.target as HTMLElement).closest('input, textarea')) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); go(idx + 1); }
-    if (e.key === 'ArrowLeft') { e.preventDefault(); go(idx - 1); }
+  const dots = scenes.map((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-label', `Scene ${i + 1}`);
+    b.addEventListener('click', () => s.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' }));
+    dotsNav?.append(b);
+    return b;
   });
-  // hold on the film to pause, like a story
-  let held = false;
-  const down = () => { if (!paused) { held = true; reel.classList.add('is-paused'); clearTimeout(timer); } };
-  const up = () => { if (held) { held = false; reel.classList.remove('is-paused'); schedule(); } };
-  film.addEventListener('pointerdown', () => { target = null; down(); });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => film.addEventListener(ev, up));
-  // don't play to an empty room
-  document.addEventListener('visibilitychange', () => (document.hidden ? clearTimeout(timer) : schedule()));
 
-  // browsers restore the old sideways position on return — always start at the title card
-  film.scrollLeft = 0;
-  show(0);
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      const s = e.target as HTMLElement;
+      const i = scenes.indexOf(s);
+      if (e.isIntersecting) {
+        s.classList.add('is-on');
+        dots.forEach((d, k) => d.classList.toggle('is-here', k === i));
+      } else if (!reduced) {
+        s.classList.remove('is-on');
+      }
+    });
+  }, { threshold: 0.4 });
+  scenes.forEach((s) => io.observe(s));
+
+  // one wheel nudge = one scene (a phone flick already does this natively)
+  let cooldown = 0;
+  const step = (dir: number) => {
+    const cur = Math.max(0, dots.findIndex((d) => d.classList.contains('is-here')));
+    const next = cur + dir;
+    if (next < 0) return false;
+    if (next >= scenes.length) return false; // past the end: let the page reach the footer
+    scenes[next].scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+    return true;
+  };
+  window.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) < 4 || e.ctrlKey) return;
+    const now = performance.now();
+    if (now < cooldown) { e.preventDefault(); return; }
+    if (step(e.deltaY > 0 ? 1 : -1)) { e.preventDefault(); cooldown = now + 750; }
+  }, { passive: false });
+
+  // arrow keys / page keys move a whole scene
+  document.addEventListener('keydown', (e) => {
+    if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp'].includes(e.key)) return;
+    const cur = dots.findIndex((d) => d.classList.contains('is-here'));
+    const next = cur + (e.key === 'ArrowDown' || e.key === 'PageDown' ? 1 : -1);
+    if (next < 0 || next >= scenes.length) return;
+    e.preventDefault();
+    scenes[next].scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+  });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

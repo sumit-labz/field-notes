@@ -139,11 +139,11 @@ const STATUS_STAMP: Record<string, string> = {
   abandoned: 'abandoned',
   completed: 'finished',
 };
-// The pencil line in the masthead margin: three absurdities, taking turns —
-// one fades out, the next is written in (see the script at the bottom).
+// The pencil line in the masthead margin: one line per visit, and the next
+// one on the next visit (a counter in localStorage — see the script below).
 const ABSURD = [
-  'this sentence has been rejected by three galleries',
   'the paint is still wet. please lean on it.',
+  'this sentence has been rejected by three galleries',
   'every page here was left out in the rain, on purpose',
 ];
 
@@ -286,17 +286,12 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   (function () {
     var el = document.querySelector('[data-absurd]');
     if (!el) return;
-    var k = Math.floor(Math.random() * ABSURD.length);
+    var k = 0;
+    try {
+      k = (parseInt(localStorage.getItem('fn-absurd') || '-1', 10) + 1) % ABSURD.length;
+      localStorage.setItem('fn-absurd', String(k));
+    } catch (e) { /* private mode: always the first line */ }
     el.textContent = ABSURD[k];
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    setInterval(function () {
-      el.classList.add('is-erasing');
-      setTimeout(function () {
-        k = (k + 1) % ABSURD.length;
-        el.textContent = ABSURD[k];
-        el.classList.remove('is-erasing');
-      }, 700);
-    }, 5200);
   })();
 </script>
 

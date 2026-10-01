@@ -10,9 +10,17 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 ---
 
 <Base title="How it works" wide>
-  <div class="reel" data-reel>
-  <div class="reel__bar" aria-hidden="true" data-reel-bar></div>
-  <div class="film" data-film aria-label="How it works, a short film. Arrow keys move between scenes.">
+  <!-- hand-drawn line boil: three wobbles the drawings cycle through -->
+  <svg class="boil-defs" aria-hidden="true" width="0" height="0">
+    <defs>
+      <filter id="boil-1"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="1" /><feDisplacementMap in="SourceGraphic" scale="5" /></filter>
+      <filter id="boil-2"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" /><feDisplacementMap in="SourceGraphic" scale="5" /></filter>
+      <filter id="boil-3"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="13" /><feDisplacementMap in="SourceGraphic" scale="5" /></filter>
+      <filter id="brush-edge"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.05" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="9" /></filter>
+    </defs>
+  </svg>
+  <nav class="film__dots" aria-label="Scenes" data-film-dots></nav>
+  <div class="film" data-film>
     <!-- the title card -->
     <section class="scene scene--title" data-scene>
       <div class="letterbox" aria-hidden="true"></div>
@@ -21,7 +29,7 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
         <span>How</span> <span>this</span> <span>place</span> <span class="film__title-big">works</span>
       </h1>
       <p class="film__sub">nobody is coming. so I built my own support.</p>
-      <p class="film__scroll" aria-hidden="true">tap the right side to skip · hold to pause →</p>
+      <p class="film__scroll" aria-hidden="true">one flick per scene ↓</p>
     </section>
 
     <!-- 01 the idea -->
@@ -238,15 +246,6 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </div>
     </section>
   </div>
-  <button type="button" class="reel__tap reel__tap--prev" data-reel-prev aria-label="Previous scene"></button>
-  <button type="button" class="reel__tap reel__tap--next" data-reel-next aria-label="Next scene"></button>
-  <div class="reel__ctrl">
-    <button type="button" data-reel-prev aria-label="Previous scene">&larr;</button>
-    <button type="button" data-reel-play aria-label="Pause"><span class="reel__pause">&#10074;&#10074;</span><span class="reel__play">&#9654;</span></button>
-    <button type="button" data-reel-next aria-label="Next scene">&rarr;</button>
-    <span class="reel__count" data-reel-count>01 / 11</span>
-  </div>
-  </div>
 </Base>
 
 <script>
@@ -255,75 +254,72 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 
 <style>
   /* ---------------------------------------------------------- the film */
-  /* the reel: one scene per screen, sliding left to right */
-  .reel { position: relative; }
-  .film {
-    position: relative;
-    display: flex;
-    height: calc(100svh - 5.5rem);
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-  }
-  .film::-webkit-scrollbar { display: none; }
-  .film > .scene {
-    flex: 0 0 100%;
-    min-height: 0;
-    height: 100%;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-  .film > .scene::-webkit-scrollbar { display: none; }
-  .reel__bar { position: absolute; z-index: 5; top: 0.6rem; left: 0; right: 0; display: flex; gap: 4px; }
-  .reel__bar i { flex: 1; height: 3px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; border-radius: 2px; }
-  .reel__bar i b { display: block; height: 100%; width: 100%; background: var(--red); transform-origin: left; transform: scaleX(0); }
-  .reel__bar i.done b { transform: scaleX(1); }
-  .reel__bar i.now b { animation: fill var(--dur, 7s) linear forwards; }
-  .reel.is-paused .reel__bar i.now b { animation-play-state: paused; }
-  @keyframes fill { to { transform: scaleX(1); } }
-  .reel__tap { position: absolute; z-index: 4; top: 2rem; bottom: 4.5rem; width: 18%; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .reel__tap--prev { left: 0; cursor: w-resize; }
-  .reel__tap--next { right: 0; cursor: e-resize; }
-  .reel__ctrl {
-    position: absolute;
-    z-index: 6;
-    left: 50%;
-    bottom: 0.8rem;
-    translate: -50% 0;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.3rem 0.5rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--paper) 85%, transparent);
-    backdrop-filter: blur(6px);
-  }
-  .reel__ctrl button { width: 2.2rem; height: 2.2rem; border: 0; border-radius: 50%; background: none; color: var(--ink); font: inherit; font-size: 0.9rem; cursor: pointer; }
-  .reel__ctrl button:hover { background: var(--line); }
-  .reel__play, .reel.is-paused .reel__pause { display: none; }
-  .reel.is-paused .reel__play { display: inline; }
-  .reel__count { white-space: nowrap; font-family: var(--font-meta); font-size: 0.7rem; color: var(--graphite); padding: 0 0.5rem; }
+  /* vertical, but assisted: every scene is one screen and a flick lands
+     on the next one (the page snaps), so nobody has to scroll far */
+  :global(html:has(.film)) { scroll-snap-type: y mandatory; scroll-padding-top: 0; }
+  :global(html:has(.film) .colophon) { scroll-snap-align: end; }
+  .film { position: relative; }
+  .film > .scene { scroll-snap-align: start; scroll-snap-stop: always; min-height: 100svh; }
   .scene.is-on { --p: 1; }
-  .reel__static {
-    position: absolute;
-    z-index: 7;
-    inset: 0 0 0 0;
-    pointer-events: none;
-    opacity: 0;
-    background-color: #111;
-    background-image: var(--tex-static), var(--tex-static);
-    background-size: 140px, 90px;
+  .boil-defs { position: absolute; width: 0; height: 0; }
+
+  /* scene dots down the right edge: where you are, and a tap to jump */
+  .film__dots {
+    position: fixed;
+    z-index: 8;
+    right: 0.7rem;
+    top: 50%;
+    translate: 0 -50%;
+    display: grid;
+    gap: 0.55rem;
   }
-  .reel__static.is-flash { animation: channel 320ms steps(4) forwards; }
-  @keyframes channel {
-    0% { opacity: 0.95; background-position: 0 0, 10px 30px; transform: translateX(-6px); }
-    33% { opacity: 0.85; background-position: 40px -20px, -30px 10px; transform: translateX(5px) scaleY(1.02); }
-    66% { opacity: 0.6; background-position: -25px 35px, 20px -40px; transform: translateX(-2px); }
-    100% { opacity: 0; transform: none; }
+  .film__dots :global(button) {
+    width: 0.7rem;
+    height: 0.7rem;
+    padding: 0;
+    border: 1.5px solid var(--graphite);
+    border-radius: 48% 52% 45% 55%;
+    background: none;
+    cursor: pointer;
+    transition: background 300ms, scale 300ms, border-color 300ms;
+  }
+  .film__dots :global(button.is-here) { background: var(--red); border-color: var(--red); scale: 1.35; }
+
+  /* ---- artsy: every drawing boils like hand-animated line, in loose ink */
+  .prop { filter: url(#boil-1); }
+  .is-on .prop { animation: boil 480ms steps(1) infinite; }
+  @keyframes boil {
+    0% { filter: url(#boil-1); }
+    33% { filter: url(#boil-2); }
+    66% { filter: url(#boil-3); }
+  }
+  svg.prop { stroke-width: 5.5; }
+  svg.prop :is(path, rect, circle) { stroke-dasharray: none; }
+  /* a loose brush swipe behind every headline, laid down as the scene arrives */
+  .scene h2 { position: relative; isolation: isolate; }
+  .scene h2::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    left: -0.3em;
+    right: 18%;
+    bottom: 0.02em;
+    height: 0.42em;
+    background: color-mix(in srgb, var(--red) 70%, transparent);
+    border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%;
+    filter: url(#brush-edge);
+    rotate: -1.6deg;
+    transform-origin: left;
+    scale: 0 1;
+    transition: scale 700ms cubic-bezier(0.6, 0, 0.2, 1) 450ms;
+  }
+  .scene--flip h2::before { background: color-mix(in srgb, var(--blue) 60%, transparent); rotate: 1.2deg; }
+  .is-on h2::before { scale: 1 1; }
+  /* the drawings sit on a scrubbed wash of paint, never a clean box */
+  .prop::before { content: none; }
+  .scene > svg.prop, .scene > .prop {
+    background:
+      radial-gradient(ellipse 60% 48% at 52% 55%, color-mix(in srgb, var(--yellow) 16%, transparent), transparent 70%);
   }
   .loop__word { transition: filter 2.5s ease 0.8s; }
   .scene {
@@ -696,6 +692,7 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 
   /* --- phones: one column, prop above the words */
   @media (max-width: 720px) {
+    .film__dots { display: none; }
     .scene { grid-template-columns: 1fr; align-content: center; gap: 0.6rem; padding: 2.2rem 0 4.5rem; }
     .scene h2 { font-size: 2.3rem; }
     .scene__text > p:not([class]) { font-size: 1rem; }
