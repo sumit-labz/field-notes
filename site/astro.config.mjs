@@ -36,6 +36,8 @@ function internalRoutePrivacy() {
 }
 
 export default defineConfig({
+  // feed thumbnails are cut from the R2 originals at build time (lib/content.ts)
+  image: { remotePatterns: [{ protocol: 'https' }] },
   integrations: [internalRoutePrivacy()],
   // Astro's dev toolbar floats over the reading pill on every page in
   // `npm run dev`; it never ships to production, but it gets in the way here.

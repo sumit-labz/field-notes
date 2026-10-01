@@ -53,3 +53,20 @@ export function localMediaUrl(key: string): string | null {
   }
   return byRepoPath.get(key) ?? null;
 }
+
+// Local photos as image modules (with their dimensions), so the build can cut
+// feed-sized copies of them the same way it does for R2 originals.
+const imageModules = import.meta.glob<{ default: ImageMetadata }>(
+  '../../../media/**/*.{webp,jpg,jpeg,png,avif}',
+  { eager: true }
+);
+const imageByRepoPath = new Map<string, ImageMetadata>();
+for (const [globKey, mod] of Object.entries(imageModules)) {
+  const idx = globKey.indexOf('media/');
+  if (idx !== -1) imageByRepoPath.set(globKey.slice(idx), mod.default);
+}
+
+/** The image module for a locally-committed photo, if there is one. */
+export function localImageMeta(key: string): ImageMetadata | null {
+  return imageByRepoPath.get(key) ?? null;
+}

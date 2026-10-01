@@ -320,7 +320,7 @@ for (const block of blocks) {
     nextPost && (
       <a class="next-post" href={withBase(`/posts/${nextPost.data.slug}/`)}>
         <span class="next-post__kicker">Next in {journeyTitle} · {posIdx + 2} of {journeyPosts.length}</span>
-        {nextMedia?.kind === 'image' && <span class="next-post__frame"><img class="next-post__img" src={nextMedia.src} alt="" loading="lazy" /></span>}
+        {nextMedia?.kind === 'image' && <span class="next-post__frame"><img class="next-post__img" src={nextMedia.thumb} alt="" loading="lazy" /></span>}
         <span class="next-post__title">{nextPost.data.title} →</span>
         {nextTeaser && <span class="next-post__teaser">{nextTeaser}</span>}
       </a>

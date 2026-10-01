@@ -4,8 +4,9 @@
 // small and honest. Nothing here is user-authored prose reflowed by a system.
 
 import type { CollectionEntry } from 'astro:content';
+import { getImage } from 'astro:assets';
 import { mediaUrl } from './media-url';
-import { isLocalMedia, localMediaUrl } from './local-media';
+import { isLocalMedia, localImageMeta, localMediaUrl } from './local-media';
 import { getImageDimensions, getLocalImageDimensions } from './image-dimensions';
 
 const IMAGE_RE = /\.(webp|jpe?g|png|gif|avif)$/i;
@@ -15,17 +16,43 @@ const VIDEO_RE = /\.(mp4|webm|mov|mkv)$/i;
 
 // A media[] entry is EITHER an R2 object key OR a repo-relative local path
 // (photos from the web inbox's record/upload/paste tool — lib/local-media.ts).
+// Feed-sized copy of a photo: the cards, wall and catalogue show photos a few
+// hundred pixels wide, so they get a ~720px webp made at build time (Astro
+// downloads the original once and writes the copy into the site). `src`
+// stays the full photo for the loupe and the post itself. Any failure just
+// falls back to the original.
+const THUMB_W = 720;
+async function thumbFor(src: string, width: number, height: number, from: string | ImageMetadata = src): Promise<string> {
+  if (width <= THUMB_W) return src;
+  try {
+    const img = await getImage({
+      src: from,
+      width: THUMB_W,
+      height: Math.round((height / width) * THUMB_W),
+      format: 'webp',
+      quality: 72,
+    });
+    return img.src;
+  } catch {
+    return src;
+  }
+}
+
 async function resolveImage(
   key: string
-): Promise<{ src: string; width: number; height: number } | null> {
+): Promise<{ src: string; thumb: string; width: number; height: number } | null> {
   try {
     if (isLocalMedia(key)) {
       const src = localMediaUrl(key);
       if (!src) return null;
-      return { src, ...getLocalImageDimensions(key) };
+      const dims = getLocalImageDimensions(key);
+      const meta = localImageMeta(key);
+      const thumb = meta ? await thumbFor(src, dims.width, dims.height, meta) : src;
+      return { src, thumb, ...dims };
     }
     const src = mediaUrl(key);
-    return { src, ...(await getImageDimensions(src)) };
+    const dims = await getImageDimensions(src);
+    return { src, thumb: await thumbFor(src, dims.width, dims.height), ...dims };
   } catch {
     return null;
   }
@@ -120,7 +147,7 @@ export function postTeaser(post: Post, maxChars = 170): string {
 }
 
 export type LeadMedia =
-  | { kind: 'image'; src: string; width: number; height: number }
+  | { kind: 'image'; src: string; thumb: string; width: number; height: number }
   | { kind: 'video'; src: string };
 
 // The lead media for a single post's thumbnail: the first image- OR
@@ -166,8 +193,8 @@ export function dateLine(date: Date): string {
 export async function postImages(
   post: Post,
   fragments: Map<string, Fragment>
-): Promise<{ src: string; width: number; height: number; fragmentId: string }[]> {
-  const out: { src: string; width: number; height: number; fragmentId: string }[] = [];
+): Promise<{ src: string; thumb: string; width: number; height: number; fragmentId: string }[]> {
+  const out: { src: string; thumb: string; width: number; height: number; fragmentId: string }[] = [];
   for (const id of post.data.fragments) {
     const fragment = fragments.get(id);
     const media = fragment?.data?.media;

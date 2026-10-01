@@ -76,7 +76,7 @@ const drawers = await Promise.all(
           </div>
           {media?.kind === 'image' && (
             <span class="drawer__print" style={`--lean: ${lean}deg`} aria-hidden="true">
-              <img src={media.src} width={media.width} height={media.height} alt="" loading="lazy" />
+              <img src={media.thumb} width={media.width} height={media.height} alt="" loading="lazy" decoding="async" />
             </span>
           )}
         </li>
