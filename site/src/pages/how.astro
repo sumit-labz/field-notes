@@ -10,7 +10,9 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 ---
 
 <Base title="How it works" wide>
-  <div class="film">
+  <div class="reel" data-reel>
+  <div class="reel__bar" aria-hidden="true" data-reel-bar></div>
+  <div class="film" data-film aria-label="How it works, a short film. Arrow keys move between scenes.">
     <!-- the title card -->
     <section class="scene scene--title" data-scene>
       <div class="letterbox" aria-hidden="true"></div>
@@ -19,7 +21,7 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
         <span>How</span> <span>this</span> <span>place</span> <span class="film__title-big">works</span>
       </h1>
       <p class="film__sub">nobody is coming. so I built my own support.</p>
-      <p class="film__scroll" aria-hidden="true">scroll to roll film ↓</p>
+      <p class="film__scroll" aria-hidden="true">tap the right side to skip · hold to pause →</p>
     </section>
 
     <!-- 01 the idea -->
@@ -230,6 +232,15 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       <p class="credits__end">THE END <small>(it isn't. it loops.)</small></p>
     </section>
   </div>
+  <button type="button" class="reel__tap reel__tap--prev" data-reel-prev aria-label="Previous scene"></button>
+  <button type="button" class="reel__tap reel__tap--next" data-reel-next aria-label="Next scene"></button>
+  <div class="reel__ctrl">
+    <button type="button" data-reel-prev aria-label="Previous scene">&larr;</button>
+    <button type="button" data-reel-play aria-label="Pause"><span class="reel__pause">&#10074;&#10074;</span><span class="reel__play">&#9654;</span></button>
+    <button type="button" data-reel-next aria-label="Next scene">&rarr;</button>
+    <span class="reel__count" data-reel-count>01 / 11</span>
+  </div>
+  </div>
 </Base>
 
 <script>
@@ -238,7 +249,58 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 
 <style>
   /* ---------------------------------------------------------- the film */
-  .film { position: relative; }
+  /* the reel: one scene per screen, sliding left to right */
+  .reel { position: relative; }
+  .film {
+    position: relative;
+    display: flex;
+    height: calc(100svh - 5.5rem);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .film::-webkit-scrollbar { display: none; }
+  .film > .scene {
+    flex: 0 0 100%;
+    min-height: 0;
+    height: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    overflow-y: auto;
+  }
+  .reel__bar { position: absolute; z-index: 5; top: 0.6rem; left: 0; right: 0; display: flex; gap: 4px; }
+  .reel__bar i { flex: 1; height: 3px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; border-radius: 2px; }
+  .reel__bar i b { display: block; height: 100%; width: 100%; background: var(--red); transform-origin: left; transform: scaleX(0); }
+  .reel__bar i.done b { transform: scaleX(1); }
+  .reel__bar i.now b { animation: fill var(--dur, 7s) linear forwards; }
+  .reel.is-paused .reel__bar i.now b { animation-play-state: paused; }
+  @keyframes fill { to { transform: scaleX(1); } }
+  .reel__tap { position: absolute; z-index: 4; top: 2rem; bottom: 4.5rem; width: 18%; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .reel__tap--prev { left: 0; cursor: w-resize; }
+  .reel__tap--next { right: 0; cursor: e-resize; }
+  .reel__ctrl {
+    position: absolute;
+    z-index: 6;
+    left: 50%;
+    bottom: 0.8rem;
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--paper) 85%, transparent);
+    backdrop-filter: blur(6px);
+  }
+  .reel__ctrl button { width: 2.2rem; height: 2.2rem; border: 0; border-radius: 50%; background: none; color: var(--ink); font: inherit; font-size: 0.9rem; cursor: pointer; }
+  .reel__ctrl button:hover { background: var(--line); }
+  .reel__play, .reel.is-paused .reel__pause { display: none; }
+  .reel.is-paused .reel__play { display: inline; }
+  .reel__count { white-space: nowrap; font-family: var(--font-meta); font-size: 0.7rem; color: var(--graphite); padding: 0 0.5rem; }
+  .scene.is-on { --p: 1; }
+  .loop__word { transition: filter 2.5s ease 0.8s; }
   .scene {
     position: relative;
     min-height: 100svh;
@@ -553,9 +615,12 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 
   /* --- phones: one column, prop above the words */
   @media (max-width: 720px) {
-    .scene { grid-template-columns: 1fr; min-height: 92svh; gap: 1rem; padding: 3rem 0; }
+    .scene { grid-template-columns: 1fr; align-content: center; gap: 0.6rem; padding: 2.2rem 0 4.5rem; }
+    .scene h2 { font-size: 2.3rem; }
+    .scene__text > p:not([class]) { font-size: 1rem; }
+    .scene__aside { font-size: 1.2rem; margin-top: 0.4rem; }
     .scene--flip .prop { order: 0; }
-    .prop { max-width: 17rem; }
+    .prop { max-width: 12rem; }
     .scene__num { font-size: 7rem; }
     .tidy__line { font-size: 1.7rem; }
     @keyframes type { to { width: 100%; } }
