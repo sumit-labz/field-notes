@@ -39,7 +39,7 @@ function inkWrite(): void {
 }
 
 function redrop(): void {
-  const cards = Array.from(document.querySelectorAll<HTMLElement>('.post-thumb[data-reveal]'));
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('.art[data-reveal]'));
   let n = 0;
   cards.forEach((card) => {
     const r = card.getBoundingClientRect();

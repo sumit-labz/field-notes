@@ -8,7 +8,7 @@ import PostOriginBadge from '../../components/PostOriginBadge.astro';
 import { authorLineFor } from '../../lib/authorLines';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
-import { dateLine, gradedOrOriginal, postLeadMedia, postTeaser } from '../../lib/content';
+import { dateLine, gradedOrOriginal, postLeadMedia, postTeaser, stampDate } from '../../lib/content';
 import { originFor } from '../../lib/post-origin';
 import { mediaUrl } from '../../lib/media-url';
 import { isLocalMedia, localMediaUrl } from '../../lib/local-media';
@@ -248,11 +248,18 @@ for (const block of blocks) {
         />
       )
     }
-    <h1>
-      {post.data.title}
-      {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
-      <PostOriginBadge origin={originFor(post.data)} size={17} class="post-origin--title" />
-    </h1>
+    <div class="post-hero__text">
+      <p class="post-kicker">
+        <span>{journeyTitle ? `${journeyTitle}` : 'loose sheet'}</span>
+        {posIdx >= 0 && <span>item {String(posIdx + 1).padStart(2, '0')} / {String(journeyPosts.length).padStart(2, '0')}</span>}
+        <span>{stampDate(post.data.published)}</span>
+      </p>
+      <h1>
+        {post.data.title}
+        {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
+        <PostOriginBadge origin={originFor(post.data)} size={17} class="post-origin--title" />
+      </h1>
+    </div>
   </header>
   <p class="meta">
     {dateLine(post.data.published)}{' · '}{readMinutes} min read
@@ -439,7 +446,8 @@ for (const block of blocks) {
     background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--ground) 70%, transparent) 55%, var(--ground));
     pointer-events: none;
   }
-  .post-hero--image h1 {
+  .post-hero--image h1 { margin: 0; }
+  .post-hero--image .post-hero__text {
     position: absolute;
     z-index: 1;
     left: 50%;
@@ -453,7 +461,7 @@ for (const block of blocks) {
   }
   @media (max-width: 720px) {
     .post-hero--image { height: 40svh; min-height: 13rem; }
-    .post-hero--image h1 { padding: 0 1.25rem; }
+    .post-hero--image .post-hero__text { padding: 0 1.25rem; }
   }
   @media (min-width: 721px) {
     .post-hero--image { height: min(52vh, 520px); max-height: none; }

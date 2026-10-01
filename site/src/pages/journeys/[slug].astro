@@ -6,7 +6,7 @@ import ModeGlyph from '../../components/ModeGlyph.astro';
 import PostThumb from '../../components/PostThumb.astro';
 import { paragraphs } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
-import { dateLine, postLeadMedia, postTeaser } from '../../lib/content';
+import { postLeadMedia, postTeaser, stampDate } from '../../lib/content';
 import { originFor } from '../../lib/post-origin';
 
 export async function getStaticPaths() {
@@ -44,6 +44,13 @@ const posts = allPosts
   .filter((p) => p.data.journey === data.slug)
   .sort((a, b) => a.data.published.valueOf() - b.data.published.valueOf());
 
+const STATUS_STAMP: Record<string, string> = {
+  active: 'in progress',
+  paused: 'on hold',
+  abandoned: 'abandoned',
+  completed: 'finished',
+};
+
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 const postCards = await Promise.all(
@@ -55,58 +62,68 @@ const postCards = await Promise.all(
 );
 ---
 
-<Base title={data.title}>
-  <p><a href={withBase('/')}>← feed</a></p>
-  {
-    owner && (
-      <p class="journey-obsession">
-        <a href={withBase(owner.href)}>{owner.title}</a>
+<Base title={data.title} wide>
+  <article class="box">
+    <header class="box__head">
+      <p class="plate__kicker">
+        <a href={withBase('/')}>← studio</a>
+        {owner && <a href={withBase(owner.href)}>{owner.title}</a>}
+        <span>{data.path}</span>
+        <span>box {data.slug}</span>
       </p>
-    )
-  }
-  <JourneyTitle title={data.title} status={data.status} as="h1" seed={data.slug} />
-  <p class="meta" style="display:flex;align-items:center;gap:0.5rem;margin-top:0.6rem">
-    <ModeGlyph path={data.path} size={18} color="var(--graphite)" />
-    Started {dateLine(data.started)}
-    {data.ended && <> · ended {dateLine(data.ended)}</>}
-    {data.status !== 'active' && <> · {data.status}</>}
-  </p>
-  {
-    emergedFrom && (
-      <p>
-        emerged from <a href={withBase(`/journeys/${emergedFrom.data.slug}/`)}>{emergedFrom.data.title}</a>
+      <h1 class="box__title">
+        <JourneyTitle title={data.title} status={data.status} seed={data.slug} />
+      </h1>
+      <p class="box__meta">
+        <ModeGlyph path={data.path} size={16} color="var(--graphite)" />
+        begun {stampDate(data.started)}
+        {data.ended && <> · ended {stampDate(data.ended)}</>}
+        · {posts.length} {posts.length === 1 ? 'item' : 'items'} inside
       </p>
-    )
-  }
-  {
-    data.status === 'abandoned' && data.reason && <p class="annotation">{data.reason}</p>
-  }
-  {
-    becameJourneys.map((child) => (
-      <p>
-        ↳ became: <a href={withBase(`/journeys/${child.data.slug}/`)}>{child.data.title}</a>
-      </p>
-    ))
-  }
+      <span class={`stamp-mark stamp-mark--${data.status}`}>{STATUS_STAMP[data.status]}</span>
+    </header>
 
-  <Fragment set:html={paragraphs(journey.body ?? '')} />
-
-  <h2>Posts <span class="meta">· {posts.length}</span></h2>
-  {
-    postCards.length > 0 && (
-      <div class="post-grid post-grid--sequential">
-        {postCards.map(({ post, media, teaser }, index) => (
-          <PostThumb
-            slug={post.data.slug}
-            title={post.data.title}
-            step={index + 1}
-            teaser={teaser}
-            media={media}
-            inProgress={post.data.status === 'in_progress'}
-            origin={originFor(post.data)}
-          />
-        ))}
+    <div class="box__note">
+      {
+        emergedFrom && (
+          <p class="box__lineage">
+            emerged from <a href={withBase(`/journeys/${emergedFrom.data.slug}/`)}>{emergedFrom.data.title}</a>
+          </p>
+        )
+      }
+      {data.status === 'abandoned' && data.reason && <p class="annotation">{data.reason}</p>}
+      {
+        becameJourneys.map((child) => (
+          <p class="box__lineage">
+            ↳ became: <a href={withBase(`/journeys/${child.data.slug}/`)}>{child.data.title}</a>
+          </p>
+        ))
+      }
+      <div class="box__text">
+        <Fragment set:html={paragraphs(journey.body ?? '')} />
       </div>
-    )
-  }
+    </div>
+
+    <h2 class="box__contents">Contents <span>{String(posts.length).padStart(2, '0')}</span></h2>
+    {
+      postCards.length > 0 && (
+        <div class="box__items">
+          {postCards.map(({ post, media, teaser }, index) => (
+            <div class="box__item">
+              <PostThumb
+                slug={post.data.slug}
+                title={post.data.title}
+                step={index + 1}
+                teaser={teaser}
+                media={media}
+                inProgress={post.data.status === 'in_progress'}
+                origin={originFor(post.data)}
+                date={stampDate(post.data.published)}
+              />
+            </div>
+          ))}
+        </div>
+      )
+    }
+  </article>
 </Base>

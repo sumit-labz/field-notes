@@ -103,7 +103,8 @@ export function postExcerpt(post: Post): string {
     .split('\n')
     .map((line) => line.replace(/^>\s?/, ''))
     .join(' ');
-  return withoutQuoteMarkers.replace(/[*_`]/g, '');
+  // [text](url) → text: a teaser is prose, never a raw link
+  return withoutQuoteMarkers.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '');
 }
 
 // A short teaser (2-3 lines) from the post's excerpt, for the homepage grid —
@@ -158,4 +159,33 @@ export function dateLine(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric',
   }).format(date);
+}
+// Every photo a post carries, in fragment order, resolved to a renderable
+// src + real dimensions. Feeds the homepage's studio wall, which pins the
+// newest material up loose rather than as each post's lead thumbnail.
+export async function postImages(
+  post: Post,
+  fragments: Map<string, Fragment>
+): Promise<{ src: string; width: number; height: number; fragmentId: string }[]> {
+  const out: { src: string; width: number; height: number; fragmentId: string }[] = [];
+  for (const id of post.data.fragments) {
+    const fragment = fragments.get(id);
+    const media = fragment?.data?.media;
+    if (!fragment || !media) continue;
+    for (let i = 0; i < media.length; i++) {
+      if (!IMAGE_RE.test(media[i])) continue;
+      const image = await resolveImage(gradedOrOriginal(fragment, i));
+      if (image) out.push({ ...image, fragmentId: id });
+    }
+  }
+  return out;
+}
+
+// "30.09.26" — the archival stamp used on labels across the studio pages.
+export function stampDate(date: Date): string {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC', day: '2-digit', month: '2-digit', year: '2-digit',
+  }).formatToParts(date);
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? '';
+  return `${g('day')}.${g('month')}.${g('year')}`;
 }

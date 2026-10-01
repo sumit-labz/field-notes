@@ -5,8 +5,8 @@ const KEY = 'fn-theme';
 // + data-tone="navy"), so every dark-mode rule applies to it as well.
 type Theme = 'light' | 'dark' | 'navy';
 const ORDER: Theme[] = ['light', 'dark', 'navy'];
-const META: Record<Theme, string> = { light: '#E4E8E9', dark: '#141414', navy: '#0F1A2B' };
-const NAME: Record<Theme, string> = { light: 'light', dark: 'black', navy: 'dark blue' };
+const META: Record<Theme, string> = { light: '#EAE4D8', dark: '#1A1917', navy: '#0F1A2B' };
+const NAME: Record<Theme, string> = { light: 'paper', dark: 'night studio', navy: 'dark blue' };
 
 export function currentTheme(): Theme {
   const d = document.documentElement;
