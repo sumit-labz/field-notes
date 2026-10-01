@@ -1533,3 +1533,16 @@ html, body { overflow-x: clip; }
 @media (max-width: 720px) {
   .plate__title .journey-title--torn, .box__title .journey-title--torn { font-size: clamp(2.2rem, 11vw, 3.4rem); }
 }
+
+/* looking closely, on any device: hover with a mouse, the middle of the
+   screen on a phone (client/focus.ts). Photocopies lose their toner; graded
+   prints develop to full colour, grain lifting off like a print in a tray. */
+.art--xerox.is-focus .art__img--top { opacity: 0; }
+[class*="grade--"] .art__img { transition: filter 900ms var(--ease-paper); }
+.art__grain { transition: opacity 900ms var(--ease-paper); }
+[class*="grade--"].is-focus .art__img { filter: none !important; }
+[class*="grade--"].is-focus .art__grain { opacity: 0.15; }
+@media (hover: hover) and (pointer: fine) {
+  [class*="grade--"]:hover .art__img { filter: none !important; }
+  [class*="grade--"]:hover .art__grain { opacity: 0.15; }
+}
