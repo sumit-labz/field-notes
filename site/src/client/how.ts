@@ -46,9 +46,14 @@ function init(): void {
     mark(n);
     schedule();
   };
+  // the scene we're sliding to; swipe-settling ignores the slide until it lands
+  let target: number | null = null;
   const go = (n: number) => {
     n = Math.max(0, Math.min(scenes.length - 1, n));
-    film.scrollTo({ left: n * film.clientWidth, behavior: reduced ? 'auto' : 'smooth' });
+    // a jump, or a click while still sliding: cut, don't slide
+    const far = target !== null || Math.abs(n - Math.round(film.scrollLeft / film.clientWidth)) > 1;
+    target = n;
+    film.scrollTo({ left: n * film.clientWidth, behavior: reduced || far ? 'auto' : 'smooth' });
     show(n);
   };
   const setPaused = (p: boolean) => {
@@ -64,6 +69,10 @@ function init(): void {
     clearTimeout(settle);
     settle = window.setTimeout(() => {
       const n = Math.round(film.scrollLeft / film.clientWidth);
+      if (target !== null) {
+        if (n === target) target = null;
+        else { film.scrollTo({ left: target * film.clientWidth }); return; }
+      }
       if (n !== idx) show(n);
     }, 140);
   }, { passive: true });
@@ -80,7 +89,7 @@ function init(): void {
   let held = false;
   const down = () => { if (!paused) { held = true; reel.classList.add('is-paused'); clearTimeout(timer); } };
   const up = () => { if (held) { held = false; reel.classList.remove('is-paused'); schedule(); } };
-  film.addEventListener('pointerdown', down);
+  film.addEventListener('pointerdown', () => { target = null; down(); });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => film.addEventListener(ev, up));
   // don't play to an empty room
   document.addEventListener('visibilitychange', () => (document.hidden ? clearTimeout(timer) : schedule()));

@@ -217,8 +217,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
 
     <!-- end credits -->
     <section class="scene scene--credits" data-scene>
-      <p class="credits__roll">pen → voice → evidence → bot → transcript → tidy → film grade → post → ↺</p>
-      <p class="credits__line">Building self-worth by investing in yourself is a great idea.</p>
+      <p class="credits__line">
+        <span class="credits__small">nobody is coming.</span>
+        <span class="credits__big">Invest in <em>yourself.</em></span>
+      </p>
       <a class="how-free" href={REPO} rel="noopener">
         <span class="how-free__q">Want this full system for free?</span>
         <span class="how-free__a">Follow the source code <span aria-hidden="true">→</span></span>
@@ -268,7 +270,9 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
     scroll-snap-align: start;
     scroll-snap-stop: always;
     overflow-y: auto;
+    scrollbar-width: none;
   }
+  .film > .scene::-webkit-scrollbar { display: none; }
   .reel__bar { position: absolute; z-index: 5; top: 0.6rem; left: 0; right: 0; display: flex; gap: 4px; }
   .reel__bar i { flex: 1; height: 3px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; border-radius: 2px; }
   .reel__bar i b { display: block; height: 100%; width: 100%; background: var(--red); transform-origin: left; transform: scaleX(0); }
@@ -577,25 +581,47 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
   }
 
   /* --- credits */
-  .scene--credits { grid-template-columns: 1fr; justify-items: center; text-align: center; align-content: center; }
+  /* safe: a tall credits screen starts at the top instead of clipping it */
+  .scene--credits { grid-template-columns: 1fr; justify-items: center; text-align: center; align-content: safe center; gap: 0.4rem; padding-bottom: 6rem; }
   .credits__roll { font-family: var(--font-annotation); font-size: clamp(1.4rem, 3vw, 2.2rem); color: var(--blue); rotate: -1.5deg; }
-  .credits__line { font-family: var(--font-display); font-size: clamp(1.6rem, 3.5vw, 2.6rem); line-height: 1.1; max-width: 22ch; color: var(--ink); }
+  .credits__line { margin: 0.5rem 0 0; color: var(--ink); }
+  .credits__small { display: block; font-family: var(--font-meta); font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--graphite); }
+  .credits__big {
+    display: block;
+    font-family: var(--font-structure);
+    font-variation-settings: 'wdth' 62;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: clamp(2.8rem, 9vw, 7rem);
+    line-height: 0.88;
+    letter-spacing: -0.01em;
+    scale: 1.4;
+    opacity: 0;
+    transition: scale 600ms cubic-bezier(0.2, 1.6, 0.4, 1) 300ms, opacity 300ms ease 300ms;
+  }
+  .is-on .credits__big { scale: 1; opacity: 1; }
+  .credits__big em {
+    font-style: normal;
+    color: var(--red);
+    background: linear-gradient(transparent 62%, color-mix(in srgb, var(--yellow) 55%, transparent) 62% 92%, transparent 92%);
+    padding: 0 0.06em;
+  }
   .credits__made {
     display: grid;
     gap: 0.35rem;
-    margin-top: 2.5rem;
+    margin-top: 1.2rem;
     font-family: var(--font-meta);
-    font-size: 0.74rem;
+    font-size: 0.66rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--graphite);
   }
   .credits__made span:last-child { color: var(--red); }
-  .credits__end { margin-top: 3rem; font-family: var(--font-structure); font-variation-settings: 'wdth' 62; font-weight: 800; font-size: 3rem; letter-spacing: 0.1em; color: var(--ink); }
+  .credits__end { margin-top: 1rem; font-family: var(--font-structure); font-variation-settings: 'wdth' 62; font-weight: 800; font-size: 1.8rem; letter-spacing: 0.1em; color: var(--ink); }
   .credits__end small { display: block; font-family: var(--font-annotation); font-weight: 400; font-size: 1.3rem; letter-spacing: 0; color: var(--red); }
   .how-free {
     display: block;
-    margin: 2rem auto 0;
+    margin: 1.4rem auto 0;
     max-width: 34rem;
     padding: 1.5rem 1.6rem;
     border: 1px dashed var(--ink);
