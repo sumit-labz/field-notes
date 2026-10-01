@@ -11,7 +11,7 @@ import OriginGlyph from './OriginGlyph.astro';
 import { ORIGIN_LABEL } from '../lib/post-origin';
 
 interface Props {
-  stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
+  stage: 'raw' | 'tidied' | 'self-edited' | 'feedback' | 'unaided';
 }
 const { stage } = Astro.props;
 
@@ -24,6 +24,13 @@ const STAGES: Record<Props['stage'], { pill: string; glyph: string; before: stri
     before: 'This began as raw recorded voice — spoken from the unconscious, feeling intact. Only the mechanical typos were fixed; the rough edges stayed. AI was a ',
     accent: 'transcriber, not an editor',
     after: ': none of its wording is in these words — so a fumbled sentence here and there is all mine, kept on purpose.',
+  },
+  tidied: {
+    pill: 'tidied',
+    glyph: '◎',
+    before: 'This began as raw recorded voice — spoken for myself, feeling intact. Before it went out, the noise of talking was taken out: filler words, false starts, the warm-up before the first real thought. AI did that pass as a ',
+    accent: 'cleaner, not a writer',
+    after: ': the words, their order, the doubts and the tangents are all still mine. Rules: docs/editing/clean-verbatim.md.',
   },
   'self-edited': {
     pill: 'self-edited',

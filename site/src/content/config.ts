@@ -89,7 +89,7 @@ const posts = defineCollection({
     // Optional AI-usage stage — the honest rung of the self-editing-pass
     // practice this post reached, rendered as the MadeWith badge (see
     // components/MadeWith.astro). Absent → no badge.
-    made_with: z.enum(['raw', 'self-edited', 'feedback', 'unaided']).optional(),
+    made_with: z.enum(['raw', 'tidied', 'self-edited', 'feedback', 'unaided']).optional(),
   }),
 });
 

@@ -9,7 +9,7 @@ Usage:
         [--cover-id <fragment-id>]  # a photo fragment -> hero/opener \
         [--title "My Title"] [--slug <slug>] \
         [--journey <slug>] [--obsession <slug>] \
-        [--stage raw|self-edited|feedback|unaided]  (default raw) \
+        [--stage raw|tidied|self-edited|feedback|unaided]  (default raw) \
         [--published YYYY-MM-DD] [--no-push] [--json]
 
 The last step of the Telegram /publish chain (transcribe -> self-editing-pass
@@ -41,7 +41,7 @@ from delete_fragment import find_fragment_file, parse_frontmatter
 POSTS_DIR = REPO_ROOT / "posts"
 TRANSCRIPTS_DIR = REPO_ROOT / "transcripts"
 ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}$")
-STAGES = ("raw", "self-edited", "feedback", "unaided")
+STAGES = ("raw", "tidied", "self-edited", "feedback", "unaided")
 
 
 def log(msg: str) -> None:
