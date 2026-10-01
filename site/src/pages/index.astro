@@ -105,8 +105,11 @@ const plateSrcs = new Set(
   sections.flatMap((s) => s.postCards.map((c) => (c.media?.kind === 'image' ? c.media.src : ''))).filter(Boolean)
 );
 const wall: { src: string; width: number; height: number; slug: string; title: string; date: string; i: number }[] = [];
+// Posts kept off the wall by hand (still in their journey plates).
+const OFF_WALL = new Set(['2026-09-22-the-grief-till-my-bones']);
 for (const post of newest) {
   if (wall.length >= WALL_SIZE) break;
+  if (OFF_WALL.has(post.data.slug)) continue;
   const imgs = await postImages(post, fragmentsById);
   if (!imgs.length) continue;
   const fresh = imgs.filter((im) => !plateSrcs.has(im.src));

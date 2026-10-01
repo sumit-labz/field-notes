@@ -1487,3 +1487,32 @@ html:not(.js) .tear__new { opacity: 1; }
 html:not(.js) .tear__old { display: none; }
 .box__turn s { text-decoration-color: var(--red); text-decoration-thickness: 2px; }
 .box__turn b { color: var(--ink); }
+
+/* ---- mobile pass: a quiet nav, unclipped clippings, smaller pins */
+.art--clip .art__plate { overflow: visible; }
+.art--clip .art__grain { overflow: hidden; }
+.wall__item::before { top: -7px; width: 14px; height: 14px; margin-left: -7px; box-shadow: 1px 2px 3px rgba(0, 0, 0, 0.4); }
+@media (max-width: 720px) {
+  .studio-nav__meta { display: none; }
+  nav.studio-nav {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.4rem 1.1rem;
+    padding-top: 0.9rem;
+    padding-bottom: 0.7rem;
+  }
+  /* row one: wordmark + theme; row two: the links, left-aligned */
+  nav.studio-nav .wordmark { flex: 1 1 calc(100% - 3.5rem); margin-right: 0; }
+  nav.studio-nav .theme-toggle { order: 1; margin: 0; }
+  nav.studio-nav > a:not(.wordmark) { order: 2; font-size: 0.72rem; }
+  /* the title is the first thing on a phone, with room to arrive */
+  .mast__inventory { display: none; }
+  .mast { padding-top: 1.6rem; }
+  .mast__hand {
+    max-width: 100%;
+    font-size: 1.2rem;
+    rotate: -3deg;
+    padding-left: 0.4rem;
+    overflow-wrap: anywhere;
+  }
+}
