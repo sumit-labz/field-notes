@@ -9,7 +9,7 @@ Usage:
         [--cover-id <fragment-id>]  # a photo fragment -> hero/opener \
         [--title "My Title"] [--slug <slug>] \
         [--journey <slug>] [--obsession <slug>] \
-        [--stage raw|self-edited|feedback|unaided]  (default raw) \
+        [--stage raw|tidied|self-edited|feedback|unaided]  (default raw) \
         [--published YYYY-MM-DD] [--no-push] [--json]
 
 The last step of the Telegram /publish chain (transcribe -> self-editing-pass
@@ -41,7 +41,7 @@ from delete_fragment import find_fragment_file, parse_frontmatter
 POSTS_DIR = REPO_ROOT / "posts"
 TRANSCRIPTS_DIR = REPO_ROOT / "transcripts"
 ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}$")
-STAGES = ("raw", "self-edited", "feedback", "unaided")
+STAGES = ("raw", "tidied", "self-edited", "feedback", "unaided")
 
 
 def log(msg: str) -> None:
@@ -93,6 +93,7 @@ def render_post(
     cover_id: str | None,
     stage: str,
     body: str,
+    trimmed: int | None = None,
 ) -> str:
     lines = ["---", f"slug: {slug}", f"title: {yaml_str(title)}", f"published: {published}"]
     lines.append(f"journey: {journey if journey else 'null'}")
@@ -110,6 +111,8 @@ def render_post(
     if cover_id:
         lines.append(f"cover: {cover_id}")
     lines.append(f"made_with: {stage}")
+    if trimmed:
+        lines.append(f"trimmed: {trimmed}")
     lines.append("---")
     lines.append("")
     lines.append(body.strip())
@@ -207,6 +210,7 @@ def publish(args: argparse.Namespace) -> dict:
             transcript_name=transcript_name,
             cover_id=args.cover_id,
             stage=args.stage,
+            trimmed=args.trimmed,
             body=body,
         ),
         encoding="utf-8",
@@ -254,6 +258,7 @@ def main() -> None:
     parser.add_argument("--journey")
     parser.add_argument("--obsession")
     parser.add_argument("--stage", default="raw")
+    parser.add_argument("--trimmed", type=int, default=None, help="spoken words removed by the tidy pass (shown on the badge)")
     parser.add_argument("--published")
     parser.add_argument("--no-push", action="store_true")
     parser.add_argument("--json", action="store_true")

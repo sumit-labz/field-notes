@@ -75,8 +75,7 @@ const posts = defineCollection({
     // kind: insight posts are realizations returned to on /coordinates.
     kind: z.enum(['post', 'insight']).optional().default('post'),
     // Optional raw transcript: a filename in the repo-root transcripts/ dir.
-    // When present it renders at the very bottom of the post, collapsed, as the
-    // "before cleanup" record. Absent → nothing renders.
+    // Not rendered — it only marks the post as a voice note (lib/post-origin.ts).
     transcript: z.string().optional(),
     // Optional narration: an R2 key (or local media/ path) to an audio file
     // that reads the post aloud. When present, a "Listen" player renders at the
@@ -90,7 +89,9 @@ const posts = defineCollection({
     // Optional AI-usage stage — the honest rung of the self-editing-pass
     // practice this post reached, rendered as the MadeWith badge (see
     // components/MadeWith.astro). Absent → no badge.
-    made_with: z.enum(['raw', 'self-edited', 'feedback', 'unaided']).optional(),
+    made_with: z.enum(['raw', 'tidied', 'self-edited', 'feedback', 'unaided']).optional(),
+    // tidied posts: how many spoken words the clean-verbatim pass removed.
+    trimmed: z.number().optional(),
   }),
 });
 

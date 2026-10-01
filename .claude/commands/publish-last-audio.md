@@ -1,13 +1,13 @@
 ---
-description: Transcribe the latest voice note, run the self-editing-pass raw cleanup, grade the cover photo, and publish it as a blog post.
+description: Transcribe the latest voice note, run the clean-verbatim pass (docs/editing/clean-verbatim.md), grade the cover photo, and publish it as a blog post.
 argument-hint: [--audio <id>] [--cover <id>] [--journey <slug>] [--obsession <slug>] [--title "My Title"]
 allowed-tools: Bash, Read, Write, Skill
 ---
 
 # Publish last audio → blog post
 
-Turn a recorded voice note into a published Field Notes post, in `raw` (Cleanup)
-mode. Arguments (all optional): `$ARGUMENTS`
+Turn a recorded voice note into a published Field Notes post, at the `tidied`
+(clean verbatim) stage. Arguments (all optional): `$ARGUMENTS`
 
 - `--audio <id>` — the audio fragment to publish. If omitted, use the **newest**
   fragment with `type: audio` whose `consumed_by` is `null`.
@@ -37,16 +37,20 @@ Work from a scratch dir; do not leave temp files in the repo.
    ```bash
    scripts/.venv/Scripts/python.exe scripts/transcribe.py --id <AUDIO_ID> --json
    ```
-   Save the `text` field verbatim to a scratch file `raw.txt`. This is the
-   "before cleanup" record — do not alter it.
+   Save the `text` field verbatim to a scratch file `raw.txt` — do not alter
+   it; it is kept as `transcripts/<id>.txt` (not shown on the site).
 
-3. **Run the self-editing-pass skill in CLEANUP / `raw` mode** on `raw.txt`.
-   Invoke the `self-editing-pass` skill and follow its Cleanup mode exactly:
-   fix only unambiguous mistakes (typos, obvious homophones, sentence
-   capitals/end punctuation, paragraph breaks where a wall of text has none).
-   **Do not reword, restructure, or smooth anything** — the raw voice stays.
-   This maps to the `◉ raw` stage. Save the result to a scratch file `body.txt`.
-   Keep the fix list visible in your reply so nothing crept in.
+3. **Clean-verbatim pass** on `raw.txt` — the house editing standard for voice
+   notes, defined in `docs/editing/clean-verbatim.md` (fillers, false starts,
+   warm-up and crutch connectives out; the speaker's words, order, doubts and
+   tangents stay). Run the script rather than editing by hand, so every path
+   applies the identical rules:
+   ```bash
+   scripts/.venv/Scripts/python.exe scripts/tidy_transcript.py --file raw.txt --out body.txt --json
+   ```
+   This maps to the `◎ tidied` stage. If it fails, fall back to `raw.txt` as
+   the body and publish with `--stage raw` — never lose the capture. Show the
+   before/after word counts and the cost from its JSON in your reply.
 
 4. **Grade the cover photo** (fresh from its original, teal_orange):
    ```bash
@@ -63,7 +67,7 @@ Work from a scratch dir; do not leave temp files in the repo.
      --body-file body.txt \
      --transcript-file raw.txt \
      --cover-id <COVER_ID> \
-     --stage raw \
+     --stage tidied \
      [--journey <JOURNEY>] [--obsession <OBSESSION>] \
      [--title "<TITLE if provided or generated>"] \
      --json

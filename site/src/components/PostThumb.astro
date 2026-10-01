@@ -1,19 +1,22 @@
 ---
 // site/src/components/PostThumb.astro
-// One post, shown as a medium thumbnail + title + a short teaser (not the
-// full excerpt) — used both on the homepage (grouped under a journey) and
-// on the journey detail page's post grid. A single destination (the post),
-// so this is a plain wrapping <a>, unlike JourneyCard.
+// One post, shown as a piece of physical evidence on the studio table rather
+// than a card in a grid: a taped print, a photocopy, an index card, or a
+// clipping with its title set over the image. Every irregularity (which
+// material, the lean, where the tape lands) is seeded from the slug — never
+// Math.random() — so the wall looks the same on every visit and only changes
+// when new material arrives.
 //
 // A video thumbnail is static (paused, first frame) until the viewer engages
 // with it: hover-to-play on a device with real hover (desktop), or autoplay
-// when scrolled into view otherwise (touch) — see client/thumb-video.ts. This
-// is part of the site's tactile-motion layer.
+// when scrolled into view otherwise (touch) — see client/thumb-video.ts.
 import type { LeadMedia } from '../lib/content';
 import { withBase } from '../lib/url';
-import { tiltForId } from '../lib/rotation';
 import { hashString } from '../lib/hash';
 import type { PostOrigin } from '../lib/post-origin';
+import OriginGlyph from './OriginGlyph.astro';
+
+export type ArtifactVariant = 'print' | 'xerox' | 'card' | 'clip';
 
 interface Props {
   slug: string;
@@ -22,61 +25,103 @@ interface Props {
   media: LeadMedia | null;
   inProgress: boolean;
   origin: PostOrigin;
-  // Waypoint number along the journey (oldest-first) — only passed on the
-  // journey detail page, where the grid shows the whole arc in order and
-  // should read as steps being traversed, not on the homepage where only
-  // a recent few posts show (partial, not the full arc).
+  // Waypoint number along the journey (oldest-first) — journey page only.
   step?: number;
+  // Which material this post is printed on. Omitted: picked from the slug.
+  variant?: ArtifactVariant;
+  // Archive label printed beside it ("fig. 04", a date).
+  fig?: string;
+  date?: string;
+  // Hide the teaser (dense collage slots).
+  quiet?: boolean;
 }
-const { slug, title, teaser, media, inProgress, origin, step } = Astro.props;
-const tilt = tiltForId(slug);
-// The angle this sheet falls in at when the feed drops it into place (see
-// .post-thumb reveal in global.css): ±2°..±6°, seeded by slug so it is the
-// same fall on every visit, never Math.random().
-const dropHash = Math.abs(hashString(`${slug}:drop`));
-const drop = ((dropHash & 1 ? 1 : -1) * (2 + (dropHash % 400) / 100)).toFixed(2);
-// A few "loose sheets" (about 1 in 6, by hash) never quite settle flat —
-// they keep a slight lean after landing, like a real pile of prints.
-const rest = dropHash % 6 === 0 ? (Number(drop) * 0.35).toFixed(2) : '0';
+const { slug, title, teaser, media, inProgress, origin, step, fig, date, quiet = false } = Astro.props;
+
+const h = Math.abs(hashString(`${slug}:artifact`));
+const materials: ArtifactVariant[] = ['print', 'xerox', 'print', 'clip'];
+// No image: it can only ever be an index card — honest, never a placeholder.
+const variant: ArtifactVariant = !media ? 'card' : (Astro.props.variant ?? materials[h % materials.length]);
+// The lean it rests at: most sit nearly straight, a few lean further.
+const lean = (((h >> 3) % 100) / 100 - 0.5) * (h % 5 === 0 ? 4.2 : 1.8);
+// The angle it falls in at when the wall reveals it (see .art reveal).
+const drop = ((h & 1 ? 1 : -1) * (2 + ((h >> 5) % 300) / 100)).toFixed(2);
+// Tape: where along the top edge, and its own skew.
+const tapeX = 18 + ((h >> 7) % 55);
+const tapeR = (((h >> 9) % 14) - 7).toFixed(1);
+const second = (h >> 11) % 3 === 0; // a second strip, now and then
+const label = fig ?? (step ? `no. ${String(step).padStart(2, '0')}` : null);
+const originMark = origin === 'voice' ? 'voice note' : 'written';
 ---
 
-<a class="post-thumb" href={withBase(`/posts/${slug}/`)} style={`--tilt: ${tilt}deg; --drop: ${drop}deg; --rest: ${rest}deg`} data-reveal>
-  <div class="post-thumb__img-wrap">
+<div
+  class:list={['art', `art--${variant}`, { 'art--quiet': quiet }]}
+  style={`--lean: ${lean.toFixed(2)}deg; --drop: ${drop}deg; --tape-x: ${tapeX}%; --tape-r: ${tapeR}deg`}
+  data-reveal
+>
+  <!-- the whole object is the link; the loupe sits above it -->
+  <a class="art__hit" href={withBase(`/posts/${slug}/`)} aria-label={title}></a>
+  {variant !== 'card' && <span class="art__tape" aria-hidden="true" />}
+  {second && variant === 'print' && <span class="art__tape art__tape--b" aria-hidden="true" />}
+  {variant === 'xerox' && <span class="art__staple" aria-hidden="true" />}
+
+  {
+    variant !== 'card' && (
+      <span class="art__plate">
+        {media?.kind === 'image' ? (
+          <>
+            {variant === 'xerox' && (
+              <img class="art__img art__img--clean" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+            )}
+            <img class="art__img art__img--top" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+          </>
+        ) : media?.kind === 'video' ? (
+          <video class="art__img" data-thumb-video src={media.src} muted loop playsinline preload="metadata" />
+        ) : null}
+        {variant === 'clip' && <span class="art__over"><span>{title}</span></span>}
+      </span>
+    )
+  }
+  {
+    media?.kind === 'image' && (
+      <button
+        type="button"
+        class="art__loupe"
+        data-loupe={media.src}
+        data-loupe-title={title}
+        data-loupe-href={withBase(`/posts/${slug}/`)}
+        data-loupe-w={media.width}
+        data-loupe-h={media.height}
+        aria-label={`See the whole photograph — ${title}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    )
+  }
+
+  <span class="art__body">
     {
-      media?.kind === 'image' ? (
-        <img
-          class="post-thumb__img"
-          src={media.src}
-          width={media.width}
-          height={media.height}
-          loading="lazy"
-          alt=""
-        />
-      ) : media?.kind === 'video' ? (
-        <video
-          class="post-thumb__img post-thumb__video"
-          data-thumb-video
-          src={media.src}
-          muted
-          loop
-          playsinline
-          preload="metadata"
-        />
-      ) : (
-        <div class="post-thumb__img post-thumb__img--empty" />
+      variant === 'card' && (
+        <span class="art__cardhead" aria-hidden="true">
+          <span>{label ?? 'note'}</span>
+          <span>{date}</span>
+        </span>
       )
     }
-    {step && <span class="post-thumb__step font-mono">{String(step).padStart(2, '0')}</span>}
-  </div>
-  <div class="post-thumb__body">
-    <p class="post-thumb__title">
-      {title}
-      {inProgress && <span class="inprogress">in progress</span>}
-    </p>
-    {teaser && <p class="post-thumb__teaser">{teaser}</p>}
-  </div>
-</a>
+    {variant !== 'clip' && <span class="art__title">{title}</span>}
+    {!quiet && teaser && <span class="art__teaser">{teaser}</span>}
+    <span class="art__meta">
+      {variant !== 'card' && label && <span class="art__fig">{label}</span>}
+      {variant !== 'card' && date && <span>{date}</span>}
+      <span class={`art__origin art__origin--${origin}`}>
+        <OriginGlyph origin={origin} size={11} />
+        {originMark}
+      </span>
+      {inProgress && <span class="art__wip">in progress</span>}
+    </span>
+  </span>
+</div>
 
 <script>
   import '../client/thumb-video';
+  import '../client/loupe';
 </script>

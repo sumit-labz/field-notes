@@ -17,6 +17,8 @@ I am seeking guidance on how to write monologues. According to AI, it referred m
 
 Currently I am writing a story premise, and I can feel the character and his weakness. What if my monologues are a form of soliloquy?
 
+>> What if my monologues are a form of soliloquy?
+
 My memory of someone talking to themselves in front of a mirror — this could be an amazing idea: write a story, and also write a monologue for it.
 
 But how do I do that? I'm still at the chapter-1 premise stage, and there's no sign of a monologue developing yet. To answer this impatience, here's what AI responded:

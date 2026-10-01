@@ -58,7 +58,7 @@ export function paragraphs(text: string): string {
     .filter(Boolean)
     .map((block) =>
       isPullQuoteBlock(block)
-        ? `<blockquote class="pull-quote">${autolink(escapeHtml(stripPullQuoteMarkers(block)))}</blockquote>`
+        ? `<blockquote class="pull-quote"><span>${autolink(escapeHtml(stripPullQuoteMarkers(block)))}</span></blockquote>`
         : isQuoteBlock(block)
           ? `<blockquote class="ai-quote">${autolink(escapeHtml(stripQuoteMarkers(block)))}</blockquote>`
           : `<p>${autolink(escapeHtml(block))}</p>`

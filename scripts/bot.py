@@ -11,16 +11,19 @@ CI ingest cron stays disabled). It long-polls getUpdates and:
     as the old pipeline did;
   - when you REPLY to a voice note / text / photo with `/publish`, walks an
     inline-button wizard: Obsession → Journey → Cover → Title → Confirm, then
-    publishes at the `raw` self-editing stage and replies with the post URL.
+    publishes and replies with the post URL. Voice notes go out `tidied`
+    (clean verbatim, docs/editing/clean-verbatim.md); text and photo captions
+    go out `raw`.
 
 Content types:
-  - voice/audio → transcribe + self-editing-pass raw cleanup (via the
-    `/publish-last-audio` slash command, run through `claude -p`);
+  - voice/audio → transcribe, then the clean-verbatim pass
+    (scripts/tidy_transcript.py) — falls back to the raw transcript, staged
+    `raw`, if that pass fails, so a capture is never lost;
   - text       → the message text becomes the body (raw);
   - photo      → the photo is the cover; its caption becomes the body.
 
-Only the `raw` stage is offered for now (the deeper feedback/self-edited rungs
-need you in the loop — do those in a Claude session).
+The deeper feedback/self-edited rungs need you in the loop — do those in a
+Claude session.
 
 State is in-memory per chat; a restart drops any half-finished wizard (just
 resend `/publish`). Env comes from the repo-root .env via ingest.
@@ -235,7 +238,7 @@ def render_confirm(chat_id: int, st: dict) -> None:
     home = next((j["identity"] for j in st["journeys"] if j["slug"] == st.get("journey")), None)
     cross = st.get("obsession") if st.get("obsession") and st.get("obsession") != home else None
     lines = [
-        "⑤ Ready to publish (raw):",
+        "⑤ Ready to publish" + (" (tidied — clean verbatim):" if st.get("kind") == "audio" else " (raw):"),
         f"• kind: {st['kind']}",
         f"• journey: {st.get('journey')}",
         f"• obsession: {obs}" + ("" if cross else "  (home — not cross-tagged)"),
@@ -403,9 +406,11 @@ def _ensure_cover_graded(cover_id: str) -> None:
 
 
 def _publish_audio(st: dict) -> str:
-    """Deterministic raw publish — no model in the loop. Transcribe the voice,
-    use the transcript verbatim as the body (that IS the raw stage), grade the
-    cover, publish. No `claude -p` that could hesitate or refuse."""
+    """Transcribe the voice, run the clean-verbatim pass (tidy_transcript.py —
+    fillers, false starts and warm-up out; the words stay the speaker's), grade
+    the cover, publish as `tidied`. If the tidy pass fails for any reason, the
+    raw transcript is published as `raw` instead — a capture is never lost.
+    No `claude -p` that could hesitate or refuse."""
     audio = st["content_id"]
     data = _run_json([PY, str(REPO_ROOT / "scripts" / "transcribe.py"),
                       "--id", audio, "--json"], timeout=600)
@@ -417,10 +422,23 @@ def _publish_audio(st: dict) -> str:
         _ensure_cover_graded(cover)
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
         fh.write(text)
-        body_file = fh.name
+        raw_file = fh.name
+    stage, body_file, trimmed = "raw", raw_file, 0
+    try:
+        tidy = _run_json([PY, str(REPO_ROOT / "scripts" / "tidy_transcript.py"),
+                          "--file", raw_file, "--json"], timeout=600)
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
+            fh.write(tidy["text"])
+            body_file = fh.name
+        stage = "tidied"
+        trimmed = max(0, int(tidy.get("words_before", 0)) - int(tidy.get("words_after", 0)))
+    except Exception as exc:  # noqa: BLE001
+        log(f"tidy pass failed, publishing raw: {redact_secrets(str(exc))}")
     try:
         cmd = [PY, str(REPO_ROOT / "scripts" / "publish_post.py"),
-               "--audio-id", audio, "--body-file", body_file, "--stage", "raw", "--json"]
+               "--audio-id", audio, "--body-file", body_file, "--stage", stage, "--json"]
+        if trimmed:
+            cmd += ["--trimmed", str(trimmed)]
         if cover:
             cmd += ["--cover-id", cover]
         if st.get("journey"):
@@ -431,10 +449,11 @@ def _publish_audio(st: dict) -> str:
             cmd += ["--title", st["title"]]
         return _run_json(cmd, timeout=600)["slug"]
     finally:
-        try:
-            os.unlink(body_file)
-        except OSError:
-            pass
+        for f in {raw_file, body_file}:
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
 
 
 def _publish_direct(st: dict) -> str:

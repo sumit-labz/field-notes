@@ -17,7 +17,11 @@ When I say the help of AI, I mean authorship. The authorship has to be mine. It 
 
 In the coming time, I have to deeply introspect what authorship even means. AI can generate — but authorship has to be mine. The line is thin, and holding it is the whole job: what I make is mine because I choose to own it.
 
+>> AI can generate — but authorship has to be mine.
+
 Spontaneity could be such an amazing thing for an ADHD mind. If you have time and resources, spontaneity and curiosity can take you miles beyond what you could ever imagine. I could never imagine I was able to do it, but I allowed myself to be spontaneous.
+
+>> Spontaneity and curiosity can take you miles beyond what you could ever imagine.
 
 So here's the real question: next time spontaneity shows up uninvited, will I know how to use it — or just get lucky again?
 

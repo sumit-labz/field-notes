@@ -119,7 +119,7 @@ function setupTimeLeft(): void {
     const read = Math.min(1, Math.max(0, (window.innerHeight - r.top) / r.height));
     // same rounding as the "N min read" line, so the two never disagree
     const mins = Math.max(1, Math.round((words * (1 - read)) / 220));
-    el.textContent = read > 0.97 ? 'done' : `${mins} min left`;
+    el.textContent = read > 0.97 ? 'the end ✓' : `${mins} min left`;
   };
   update();
   window.addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });

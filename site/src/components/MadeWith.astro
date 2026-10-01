@@ -11,9 +11,11 @@ import OriginGlyph from './OriginGlyph.astro';
 import { ORIGIN_LABEL } from '../lib/post-origin';
 
 interface Props {
-  stage: 'raw' | 'self-edited' | 'feedback' | 'unaided';
+  stage: 'raw' | 'tidied' | 'self-edited' | 'feedback' | 'unaided';
+  // tidied: spoken words the clean-verbatim pass took out
+  trimmed?: number;
 }
-const { stage } = Astro.props;
+const { stage, trimmed } = Astro.props;
 
 // Per-stage pill label + the honest statement, split so the accent phrase can
 // carry the --accent colour (the "mirror, not a ghostwriter" beat).
@@ -24,6 +26,13 @@ const STAGES: Record<Props['stage'], { pill: string; glyph: string; before: stri
     before: 'This began as raw recorded voice — spoken from the unconscious, feeling intact. Only the mechanical typos were fixed; the rough edges stayed. AI was a ',
     accent: 'transcriber, not an editor',
     after: ': none of its wording is in these words — so a fumbled sentence here and there is all mine, kept on purpose.',
+  },
+  tidied: {
+    pill: 'tidied',
+    glyph: '◎',
+    before: 'Spoken for myself, then sent out into the world. Before it went, the noise of talking came out — filler, false starts, the warm-up before the first real thought. AI did that pass as a ',
+    accent: 'sweeper, not a writer',
+    after: ': nothing was added, nothing reordered. The words, the doubts and the tangents are all still mine.',
   },
   'self-edited': {
     pill: 'self-edited',
@@ -57,11 +66,21 @@ const s = STAGES[stage];
       <OriginGlyph origin="voice" size={13} />
     </span>
     <span class="mw__dot" aria-hidden="true">{s.glyph}</span>
-    <span class="mw__pilltext">{ORIGIN_LABEL.voice}, <b>{s.pill}</b></span>
+    {stage === 'tidied' ? (
+      <span class="mw__pilltext">Raw voice, <b>tidied</b>{trimmed ? <span class="mw__count"> · {trimmed} words swept</span> : null}</span>
+    ) : (
+      <span class="mw__pilltext">{ORIGIN_LABEL.voice}, <b>{s.pill}</b></span>
+    )}
     <span class="mw__chev" aria-hidden="true">⌄</span>
   </summary>
   <div class="mw__panel">
     <p class="mw__statement">{s.before}<em class="mw__accent">{s.accent}</em>{s.after}</p>
+    {stage === 'tidied' && (
+      <p class="mw__swept" aria-label="The kind of words that were taken out">
+        <span>you know</span><span>so</span><span>I mean</span><span>kind of</span><span>okay</span><span>apart from that</span><span>yeah</span><span>I think, I think</span>
+        <small>{trimmed ? `${trimmed} words like these, swept off the page` : 'words like these, swept off the page'}</small>
+      </p>
+    )}
   </div>
 </details>
 
@@ -126,6 +145,38 @@ const s = STAGES[stage];
     font-size: 1.14rem;
     line-height: 1.55;
     color: var(--ink);
+  }
+  .mw__count {
+    font-family: var(--font-meta, monospace);
+    font-size: 0.78rem;
+    color: var(--graphite);
+  }
+  /* the swept words, crossed out in red pencil like an edited proof */
+  .mw__swept {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    margin: 1.1rem 0 0;
+    padding-top: 0.9rem;
+    border-top: 1px dashed var(--line);
+    font-family: var(--font-annotation, cursive);
+    font-size: 1.25rem;
+    color: var(--graphite);
+  }
+  .mw__swept span {
+    text-decoration: line-through;
+    text-decoration-color: var(--red, #d23a22);
+    text-decoration-thickness: 2px;
+    rotate: -1deg;
+  }
+  .mw__swept span:nth-child(even) { rotate: 1.5deg; }
+  .mw__swept small {
+    flex-basis: 100%;
+    font-family: var(--font-meta, monospace);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ghost);
   }
   .mw__accent {
     font-style: italic;

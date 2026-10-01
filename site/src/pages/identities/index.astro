@@ -1,59 +1,97 @@
 ---
 // /identities — the obsessions (label "Obsessions" in the UI; schema/route
-// name stays `identity`), then Studio Zero: the independent practice that
-// draws on all of them.
+// name stays `identity`), laid out like the drawers of a plan chest: a big
+// drawer label, what's filed inside, and one print of the newest material
+// lying on top. Then Studio Zero: the practice that draws on all of them.
 import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import { withBase } from '../../lib/url';
+import { postLeadMedia, stampDate } from '../../lib/content';
+import { hashString } from '../../lib/hash';
 
 const identities = (await getCollection('identities')).sort((a, b) => a.data.order - b.data.order);
 const journeys = await getCollection('journeys');
-const journeysFor = (slug: string) =>
-  journeys
-    .filter((j) => j.data.identity === slug)
-    .map((j) => ({ slug: j.data.slug, title: j.data.title }));
+const posts = await getCollection('posts');
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+
+const drawers = await Promise.all(
+  identities.map(async (identity, i) => {
+    const js = journeys.filter((j) => j.data.identity === identity.data.slug);
+    const slugs = new Set(js.map((j) => j.data.slug));
+    const ps = posts
+      .filter((p) => p.data.journey && slugs.has(p.data.journey))
+      .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf());
+    let media = null;
+    for (const p of ps) {
+      media = await postLeadMedia(p, fragmentsById);
+      if (media?.kind === 'image') break;
+      media = null;
+    }
+    const h = Math.abs(hashString(`${identity.data.slug}:drawer`));
+    return {
+      identity,
+      n: i + 1,
+      journeys: js,
+      count: ps.length,
+      last: ps[0] ? stampDate(ps[0].data.published) : null,
+      media,
+      lean: (((h % 100) / 100 - 0.5) * 6).toFixed(2),
+    };
+  })
+);
 ---
 
-<Base title="Obsessions">
-  <h1>Obsessions</h1>
-  <p class="meta">what am I making pictures out of, and where's it going</p>
-  <ul class="obsession-list">
-    {
-      identities.map((identity) => {
-        const journeys = journeysFor(identity.data.slug);
-        return (
-          <li>
-            <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
-            {journeys.length > 0 && (
-              <span class="journey-of">
-                {' · '}
-                {journeys.map((j, i) => (
-                  <>
-                    {i > 0 && ', '}
-                    <a href={withBase(`/journeys/${j.slug}/`)}>{j.title}</a>
-                  </>
-                ))}
-              </span>
-            )}
-          </li>
-        );
-      })
-    }
-  </ul>
+<Base title="Obsessions" wide>
+  <header class="chest__head">
+    <p class="plate__kicker"><span>Plan chest</span><span>{identities.length} drawers</span><span>sorted by hand</span></p>
+    <h1 class="chest__title">Obsessions</h1>
+    <p class="chest__hand">what am I making pictures out of, and where's it going</p>
+  </header>
 
-  <section class="studio-zero">
-    <p class="label">practice</p>
+  <ol class="chest">
+    {
+      drawers.map(({ identity, n, journeys, count, last, media, lean }) => (
+        <li class:list={['drawer', { 'drawer--empty': count === 0 }]}>
+          <a class="drawer__label" href={withBase(`/identities/${identity.data.slug}/`)}>
+            <span class="drawer__no">{String(n).padStart(2, '0')}</span>
+            <span class="drawer__name">{identity.data.title}</span>
+          </a>
+          <div class="drawer__inside">
+            {journeys.length > 0 ? (
+              <ul>
+                {journeys.map((j) => (
+                  <li>
+                    <a href={withBase(`/journeys/${j.data.slug}/`)}>{j.data.title}</a>
+                    <span>{j.data.status === 'active' ? '' : j.data.status}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p class="drawer__hand">empty for now — waiting for the first scrap.</p>
+            )}
+            <p class="drawer__meta">
+              {count} {count === 1 ? 'post' : 'posts'}{last && <> · last filed {last}</>}
+            </p>
+          </div>
+          {media?.kind === 'image' && (
+            <span class="drawer__print" style={`--lean: ${lean}deg`} aria-hidden="true">
+              <img src={media.src} width={media.width} height={media.height} alt="" loading="lazy" />
+            </span>
+          )}
+        </li>
+      ))
+    }
+  </ol>
+
+  <section class="chest__sz">
+    <p class="plate__kicker"><span>Practice</span><span>draws on every drawer</span></p>
     <h2><a href={withBase('/studio-zero/')}>Studio Zero</a></h2>
-    <p class="sz-desc">building an independent creative practice</p>
-    <p class="sz-draws">draws on every obsession</p>
-    <ul class="sz-inputs">
-      {
-        identities.map((identity) => (
-          <li>
-            <a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a>
-          </li>
-        ))
-      }
+    <p class="chest__hand">building an independent creative practice</p>
+    <ul class="chest__sz-inputs">
+      {identities.map((identity) => (
+        <li><a href={withBase(`/identities/${identity.data.slug}/`)}>{identity.data.title}</a></li>
+      ))}
     </ul>
   </section>
 </Base>

@@ -1,67 +1,79 @@
 ---
-// / — journeys, most-recently-active first, each as a section: its Obsession
-// + title as a header, then a capped grid of its own most recent posts as
-// medium thumbnails with a short teaser. Gives the visitor something to
-// actually read, not just one card per journey (see the Phase 2 homepage
-// redesign — this replaced an earlier one-card-per-journey layout).
+// / — the studio, entered. Not a feed: a wall of the newest material pinned
+// up loose, then each active journey laid out as a plate from an artist's
+// book — some dense and accumulated, some quiet, one set as a catalogue
+// index — so no two neighbouring sections share a composition. Journeys rank
+// by recency; the daily gesture-drawing practice is pinned last but always
+// shown (see PINNED_LAST).
 import { getCollection } from 'astro:content';
 import Base from '../layouts/Base.astro';
-import JourneySectionHead from '../components/JourneySectionHead.astro';
-import PostThumb from '../components/PostThumb.astro';
+import JourneyTitle from '../components/JourneyTitle.astro';
+import PostThumb, { type ArtifactVariant } from '../components/PostThumb.astro';
 import {
   journeyLastActivity,
   journeyLeadLine,
   postsForJourney,
   postLeadMedia,
   postTeaser,
+  postImages,
+  stampDate,
 } from '../lib/content';
 import { originFor } from '../lib/post-origin';
+import { withBase } from '../lib/url';
+import { hashString } from '../lib/hash';
 
-// Homepage curation: only the most recently active journeys, and only the
-// most recent few posts per journey, so the page stays a bounded, scannable
-// stream rather than growing without limit as the archive does.
 const MAX_JOURNEYS = 6;
 const POSTS_PER_JOURNEY = 3;
+const WALL_SIZE = 6;
 
 const identityEntries = await getCollection('identities');
-const identityTitle = new Map(
-  identityEntries.map((i) => [i.data.slug, i.data.title])
-);
+const identityTitle = new Map(identityEntries.map((i) => [i.data.slug, i.data.title]));
+identityTitle.set('studio-zero', 'Studio Zero');
 
 const journeys = await getCollection('journeys');
 const posts = await getCollection('posts');
 const fragments = await getCollection('fragments');
 const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
 
-// Every journey gets ranked regardless of path — a daily practice journey no
-// longer dominates the page the way it would in a flat post-by-post feed; it
-// just occupies its one section and moves to the top when it's active.
-// gesture-drawing-dailies is a high-frequency daily practice journey that
-// would otherwise dominate the top of the page every time it's touched —
-// it's pinned to the bottom of the ranking instead of competing on recency.
 const PINNED_LAST = new Set(['gesture-drawing-dailies']);
-
-// Pinned journeys sit at the bottom but are always shown: the MAX_JOURNEYS
-// cap applies to the recency-ranked rest, never to the pinned ones (sorting
-// them last and then slicing used to drop them once there were enough
-// journeys to fill the cap).
 const byRecency = (a: (typeof journeys)[number], b: (typeof journeys)[number]) =>
   journeyLastActivity(b, posts).valueOf() - journeyLastActivity(a, posts).valueOf();
 const pinned = journeys.filter((j) => PINNED_LAST.has(j.data.slug));
 const ranked = [
-  ...journeys
-    .filter((j) => !PINNED_LAST.has(j.data.slug))
-    .sort(byRecency)
-    .slice(0, MAX_JOURNEYS),
+  ...journeys.filter((j) => !PINNED_LAST.has(j.data.slug)).sort(byRecency).slice(0, MAX_JOURNEYS),
   ...pinned,
 ];
 
+// The compositions a plate can take, cycled so neighbours never match.
+type Layout = 'collage' | 'quiet' | 'index' | 'spread';
+const LAYOUTS: Layout[] = ['collage', 'spread', 'index', 'quiet'];
+// Materials per slot in each composition (PostThumb falls back to an index
+// card on its own when a post has no image).
+const SLOT_MATERIAL: Record<Layout, ArtifactVariant[]> = {
+  collage: ['print', 'xerox', 'clip'],
+  quiet: ['print', 'xerox', 'print'],
+  index: ['clip', 'clip', 'clip'],
+  spread: ['clip', 'print', 'xerox'],
+};
+
+// Single-post journeys all fall to 'quiet'; alternate them between centred
+// and mirrored (image left, title right) and vary the material, so two in a
+// row never read as the same page.
+let quietSeen = 0;
+let multiSeen = 0;
+const multiLayout: (Layout | null)[] = [];
+const quietPlan = ranked.map((journey) => {
+  const count = posts.filter((p) => p.data.journey === journey.data.slug).length;
+  multiLayout.push(count > 1 ? LAYOUTS[multiSeen++ % LAYOUTS.length] : null);
+  if (count > 1) return null;
+  const k = quietSeen++;
+  return { mirror: k % 2 === 1, material: (['print', 'clip', 'xerox'] as ArtifactVariant[])[k % 3] };
+});
+
 const sections = await Promise.all(
-  ranked.map(async (journey) => {
-    const journeyPosts = postsForJourney(journey, posts, {
-      limit: POSTS_PER_JOURNEY,
-      order: 'newest',
-    });
+  ranked.map(async (journey, n) => {
+    const journeyPosts = postsForJourney(journey, posts, { limit: POSTS_PER_JOURNEY, order: 'newest' });
+    const total = posts.filter((p) => p.data.journey === journey.data.slug).length;
     const postCards = await Promise.all(
       journeyPosts.map(async (post) => ({
         post,
@@ -69,57 +81,219 @@ const sections = await Promise.all(
         teaser: postTeaser(post),
       }))
     );
+    const layout: Layout = multiLayout[n] ?? 'quiet';
+    const solo = quietPlan[n];
     return {
+      mirror: Boolean(solo?.mirror),
+      soloMaterial: solo?.material,
       journey,
+      n: n + 1,
+      layout,
+      total,
       postCards,
-      // No posts yet: fall back to the journey's own opening line so a
-      // brand new journey still shows up as something, not an empty section.
-      emptyLine: journeyPosts.length === 0 ? journeyLeadLine(journey) : null,
+      lead: firstParagraph(journey),
+      last: journeyLastActivity(journey, posts),
     };
   })
 );
+
+// The wall: the newest published posts' loose material — the last photo in
+// each (often not its lead), so the wall shows things the plates below don't.
+const newest = [...posts]
+  .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf());
+const plateSrcs = new Set(
+  sections.flatMap((s) => s.postCards.map((c) => (c.media?.kind === 'image' ? c.media.src : ''))).filter(Boolean)
+);
+const wall: { src: string; width: number; height: number; slug: string; title: string; date: string; i: number }[] = [];
+for (const post of newest) {
+  if (wall.length >= WALL_SIZE) break;
+  const imgs = await postImages(post, fragmentsById);
+  if (!imgs.length) continue;
+  const fresh = imgs.filter((im) => !plateSrcs.has(im.src));
+  if (!fresh.length) continue;
+  const pick = fresh[fresh.length - 1];
+  wall.push({ ...pick, slug: post.data.slug, title: post.data.title, date: stampDate(post.data.published), i: wall.length });
+}
+const wallTilt = (slug: string) => {
+  const h = Math.abs(hashString(`${slug}:wall`));
+  return (((h % 100) / 100 - 0.5) * 7).toFixed(2);
+};
+
+// A journey's opening, as a whole thought: the first paragraph (source files
+// hard-wrap, so the first *line* cuts mid-sentence), or the abandonment reason.
+function firstParagraph(journey: (typeof journeys)[number]): string {
+  if (journey.data.status === 'abandoned' && journey.data.reason) return journey.data.reason;
+  const para = (journey.body ?? '').split(/\n\s*\n/).map((p) => p.replace(/\s+/g, ' ').trim()).find(Boolean) ?? journeyLeadLine(journey);
+  if (para.length <= 200) return para;
+  const cut = para.slice(0, 200);
+  return cut.slice(0, cut.lastIndexOf(' ')) + '…';
+}
+
+const lastAdded = newest[0] ? stampDate(newest[0].data.published) : '';
+const STATUS_STAMP: Record<string, string> = {
+  active: 'in progress',
+  paused: 'on hold',
+  abandoned: 'abandoned',
+  completed: 'finished',
+};
+// The pencil line in the masthead margin: a different absurdity each visit
+// (picked client-side; the first one is what renders without JS).
+const ABSURD = [
+  'this is not a website ↘',
+  'the studio is closed. please come in.',
+  'everything here is unfinished, including this sentence',
+  'a chair is just a painting you can sit on',
+  'please do not feed the drafts',
+  'lost: one idea. answers to "maybe".',
+  'abandon all plans, ye who enter',
+  'the paint is still wet. so am I.',
+  'art is whatever I forgot to throw away',
+  'this sentence has been rejected by three galleries',
+];
+
+// The pencil note left beside a dense plate — one of a few, by slug.
+const NOTES = ['keeps coming back to this', 'unfinished, on purpose', 'more of this →', 'look again later', 'the pile grows'];
+const marginNote = (slug: string) => NOTES[Math.abs(hashString(`${slug}:note`)) % NOTES.length];
+const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 ---
 
-<Base title="Feed">
-  <p class="terms" data-ink-write>
-    An archive of things I'm exploring.
-    <span class="q journey-title journey-title--struck" data-strike-seed="home-tagline">
-      <span class="journey-title__text" data-strike-text>Some of it goes nowhere.</span>
-      <svg class="strike-overlay" aria-hidden="true"></svg>
-    </span>
-  </p>
+<Base title="Feed" wide>
+  <header class="mast">
+    <p class="mast__inventory" aria-label="Archive inventory">
+      <span>Inventory</span>
+      <span><b>{String(posts.length).padStart(3, '0')}</b> posts</span>
+      <span><b>{String(journeys.length).padStart(2, '0')}</b> journeys</span>
+      <span>last material added <b>{lastAdded}</b></span>
+    </p>
+
+    <h1 class="mast__title" aria-label="field notes">
+      <span class="mast__w1">field</span>
+      <span class="mast__w2">notes</span>
+    </h1>
+
+    <p class="terms" data-ink-write>
+      An archive of things I'm exploring.
+      <span class="q journey-title journey-title--struck" data-strike-seed="home-tagline">
+        <span class="journey-title__text" data-strike-text>Some of it goes nowhere.</span>
+        <svg class="strike-overlay" aria-hidden="true"></svg>
+      </span>
+    </p>
+    <p class="mast__hand" data-absurd aria-hidden="true">{ABSURD[0]}</p>
+
+    {
+      wall.length > 0 && (
+        <div class="wall" aria-label="Newest material on the wall">
+          <span class="wall__label">Pinned this week — newest material, unsorted</span>
+          {wall.map((w) => (
+            <div class={`wall__item wall__item--${w.i}`} style={`--lean: ${wallTilt(w.slug)}deg`} data-reveal>
+              <a class="wall__hit" href={withBase(`/posts/${w.slug}/`)} aria-label={w.title}></a>
+              <img src={w.src} width={w.width} height={w.height} alt="" loading={w.i < 2 ? 'eager' : 'lazy'} />
+              <button
+                type="button"
+                class="art__loupe"
+                data-loupe={w.src}
+                data-loupe-title={w.title}
+                data-loupe-href={withBase(`/posts/${w.slug}/`)}
+                data-loupe-w={w.width}
+                data-loupe-h={w.height}
+                aria-label={`See the whole photograph — ${w.title}`}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </button>
+              <span class="wall__cap">
+                <b>fig. {String(w.i + 1).padStart(2, '0')}</b> {w.title}
+                <i>{w.date}</i>
+              </span>
+            </div>
+          ))}
+        </div>
+      )
+    }
+  </header>
 
   {
-    sections.map(({ journey, postCards, emptyLine }) => (
-      <section class="journey-section">
-        <JourneySectionHead
-          slug={journey.data.slug}
-          title={journey.data.title}
-          status={journey.data.status}
-          identitySlug={journey.data.identity}
-          identityLabel={identityTitle.get(journey.data.identity) ?? journey.data.identity}
-        />
-        {postCards.length > 0 ? (
-          <div class="post-grid">
-            {postCards.map(({ post, media, teaser }) => (
-              <PostThumb
-                slug={post.data.slug}
-                title={post.data.title}
-                teaser={teaser}
-                media={media}
-                inProgress={post.data.status === 'in_progress'}
-                origin={originFor(post.data)}
-              />
+    sections.map(({ journey, n, layout, total, postCards, lead, last, mirror, soloMaterial }) => (
+      <section class:list={['plate', `plate--${layout}`, `plate--${journey.data.status}`, { 'plate--mirror': mirror }]}>
+        <header class="plate__head">
+          <span class="plate__num" aria-hidden="true">{String(n).padStart(2, '0')}</span>
+          <p class="plate__kicker">
+            <span>Plate {roman[n - 1] ?? n}</span>
+            <a href={withBase(journey.data.identity === 'studio-zero' ? '/studio-zero/' : `/identities/${journey.data.identity}/`)}>
+              {identityTitle.get(journey.data.identity) ?? journey.data.identity}
+            </a>
+            <span>{journey.data.path}</span>
+          </p>
+          <h2 class="plate__title">
+            <a href={withBase(`/journeys/${journey.data.slug}/`)}>
+              <JourneyTitle title={journey.data.title} status={journey.data.status} seed={journey.data.slug} />
+            </a>
+          </h2>
+          <p class="plate__meta">
+            begun {stampDate(journey.data.started)} · touched {stampDate(last)} · {total} {total === 1 ? 'post' : 'posts'}
+          </p>
+          <span class={`stamp-mark stamp-mark--${journey.data.status}`}>{STATUS_STAMP[journey.data.status]}</span>
+          {lead && (layout === 'spread' || layout === 'quiet') && <p class="plate__lead">{lead}</p>}
+        </header>
+
+        {postCards.length === 0 ? (
+          <p class="plate__empty">{lead || 'nothing on the table yet.'}</p>
+        ) : layout === 'index' ? (
+          <ol class="catalogue">
+            {postCards.map(({ post, media, teaser }, i) => (
+              <li>
+                <a href={withBase(`/posts/${post.data.slug}/`)} class="catalogue__row" data-reveal>
+                  <span class="catalogue__no">{String(i + 1).padStart(2, '0')}</span>
+                  <span class="catalogue__title">{post.data.title}</span>
+                  <span class="catalogue__teaser">{teaser}</span>
+                  <span class="catalogue__date">{stampDate(post.data.published)}</span>
+                  {media?.kind === 'image' && (
+                    <span class="catalogue__thumb">
+                      <img src={media.src} width={media.width} height={media.height} alt="" loading="lazy" />
+                    </span>
+                  )}
+                </a>
+              </li>
             ))}
-          </div>
+          </ol>
         ) : (
-          <p class="journey-section__empty">{emptyLine}</p>
+          <div class="plate__table">
+            {postCards.map(({ post, media, teaser }, i) => (
+              <div class={`slot slot--${i}`}>
+                <PostThumb
+                  slug={post.data.slug}
+                  title={post.data.title}
+                  teaser={teaser}
+                  media={media}
+                  inProgress={post.data.status === 'in_progress'}
+                  origin={originFor(post.data)}
+                  variant={(postCards.length === 1 && soloMaterial) || SLOT_MATERIAL[layout][i]}
+                  fig={`${String(n).padStart(2, '0')}.${i + 1}`}
+                  date={stampDate(post.data.published)}
+                  quiet={layout === 'collage' && i > 0}
+                />
+              </div>
+            ))}
+            {layout === 'collage' && <span class="plate__note" aria-hidden="true">{marginNote(journey.data.slug)}</span>}
+          </div>
+        )}
+        {total > postCards.length && (
+          <a class="plate__more" href={withBase(`/journeys/${journey.data.slug}/`)}>
+            + {total - postCards.length} more in the box →
+          </a>
         )}
       </section>
     ))
   }
 </Base>
 
+<script is:inline define:vars={{ ABSURD }}>
+  (function () {
+    var el = document.querySelector('[data-absurd]');
+    if (el) el.textContent = ABSURD[Math.floor(Math.random() * ABSURD.length)];
+  })();
+</script>
+
 <script>
   import '../client/feed';
+  import '../client/loupe';
 </script>

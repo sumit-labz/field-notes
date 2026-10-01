@@ -26,6 +26,7 @@ repo-root .env and site/.env.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import base64
 import json
 import os
@@ -72,6 +73,9 @@ def post_prose(body: str) -> str:
     """Plain narration text: drop fragment placeholders and light markdown so
     the TTS reads prose, not symbols."""
     text = re.sub(r"\{\{fragment:[^}]+\}\}", "", body)
+    # Pull-quotes (">> " lines) repeat a line already in the prose, lifted out
+    # for the eye. Read aloud they'd be said twice, so the voice skips them.
+    text = re.sub(r"^[ \t]*>>.*$", "", text, flags=re.MULTILINE)
     text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)          # images
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)      # links -> label
     text = re.sub(r"[#>*_`]+", "", text)                      # md symbols
@@ -276,7 +280,12 @@ def generate(slug: str, ref_audio: Path, ref_text_arg: str, model: str, voice: s
         add_paths.append("media")
         log(f"saved {key} locally ({len(audio)} bytes)")
     else:
-        key = f"audio/posts/{slug}.mp3"
+        # Versioned by the narrated text: a re-narration after an edit gets a
+        # new key, so no cached copy of the old mp3 can play against the new
+        # text and word timings (and the live site keeps its old audio until
+        # the edited post itself deploys).
+        version = hashlib.sha1(prose.encode("utf-8")).hexdigest()[:8]
+        key = f"audio/posts/{slug}-{version}.mp3"
         upload_mp3(r2_config_from_env(), key, audio)
         log(f"uploaded {key} to R2 ({len(audio)} bytes)")
 

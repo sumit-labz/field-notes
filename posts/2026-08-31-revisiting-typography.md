@@ -21,6 +21,8 @@ I am revisiting typography after a long time. My ADHD brain is wondering how to 
 
 My influences are definitely Paula Scher. She is the primary influence. I've seen her work, and I purchased the book, but I haven't read it fully. Apart from that, Typography Essentials — these are visual dopamine. You keep seeing them and getting excited. I think I need to train my brain in a happy, excited way to create typographic layouts. So I ran research using AI to figure out what process Paula Scher uses. She mentioned it pretty well in the research. Typography is like doing a slot machine. The fodder is what you have in your brain: the influences, the memories, things that have inspired you. You take those and spin until you arrive at the right combination. It's a very playful thing she has mentioned. I will include my research as well — how she creates contemporary typography. Her work is displayed for MoMA and the Public Art Museum of New York.
 
+>> I need to train my brain in a happy, excited way to create typographic layouts.
+
 {{fragment:2026-08-31-111052}}
 
 I decided to take this research and come up with a process driven by hand, with the input being a brief. Before wondering too much about what I should create, I figured out I'm already working on a product, Stencil & Frame MVP. Let's think of that and develop some posters for it. I think this is how I'll kick off my journey, and I'll share in the next milestone how the process is to approach typography.

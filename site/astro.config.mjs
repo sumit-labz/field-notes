@@ -37,6 +37,9 @@ function internalRoutePrivacy() {
 
 export default defineConfig({
   integrations: [internalRoutePrivacy()],
+  // Astro's dev toolbar floats over the reading pill on every page in
+  // `npm run dev`; it never ships to production, but it gets in the way here.
+  devToolbar: { enabled: false },
   vite: {
     // openrouterDevPlugin runs ONLY under `npm run dev` (apply: 'serve') and
     // powers the internal inbox's Transcribe / Fix-grammar buttons. It reads

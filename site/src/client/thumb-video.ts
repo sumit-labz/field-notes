@@ -32,13 +32,15 @@ function showFirstFrame(video: HTMLVideoElement): void {
 
 function wireHover(videos: HTMLVideoElement[]): void {
   for (const video of videos) {
-    video.addEventListener('mouseenter', () => {
+    // the card's link overlay sits above the video, so listen on the card
+    const target = video.closest<HTMLElement>('.art') ?? video;
+    target.addEventListener('mouseenter', () => {
       video.play().catch(() => {
         // autoplay can be refused for reasons outside our control (e.g. data
         // saver mode) — the thumbnail just stays on its first frame.
       });
     });
-    video.addEventListener('mouseleave', () => {
+    target.addEventListener('mouseleave', () => {
       video.pause();
       video.currentTime = 0;
     });

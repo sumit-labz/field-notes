@@ -1,9 +1,8 @@
 ---
-// Post-end byline — Medium's "written by" pattern, drawn in this site's own
-// hand: a line-art face (matches the wobble/strike-through aesthetic
-// elsewhere, no photo) + name + one punchy line pulled from the About stack's
-// current entry, so the footer stays truthful to whatever "now" says without
-// needing its own copy to maintain.
+// Post-end byline — Medium's "written by" pattern, made of the studio's own
+// materials: a little self-portrait sketched in ballpoint on a scrap of
+// paper, taped down at a lean, beside the name stamped in mono and one line
+// in the margin hand (lib/authorLines.ts). No photo; the drawing is the face.
 interface Props {
   line: string;
 }
@@ -11,13 +10,21 @@ const { line } = Astro.props;
 ---
 
 <div class="author-footer">
-  <svg class="author-footer__face" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-    <path d="M18 30 C17 15, 47 15, 46 30 C47 42, 40 50, 32 50 C24 50, 17 42, 18 30 Z" />
-    <path d="M23 28 C24 26, 27 26, 28 28" />
-    <path d="M36 28 C37 26, 40 26, 41 28" />
-    <path d="M28 37 C30 40, 34 40, 36 37" />
-    <path d="M31 31 C30 34, 29 36, 30 37" />
-  </svg>
+  <span class="author-footer__scrap" aria-hidden="true">
+    <span class="author-footer__tape"></span>
+    <svg class="author-footer__face" viewBox="14 11 40 46" focusable="false">
+      <!-- a quick contour sketch: overdrawn head, glasses, a half smile -->
+      <path d="M19 31 C17 16, 46 13, 46 30 C47 43, 40 51, 32 51 C24 51, 18 43, 19 31 Z" />
+      <path d="M20.5 30 C19 18, 44 15, 44.5 29" opacity=".45" />
+      <path d="M20 26 C24 17, 38 14, 45 23 C42 19, 33 18, 27 21" />
+      <circle cx="26" cy="31.5" r="3.6" />
+      <circle cx="38" cy="31.5" r="3.6" />
+      <path d="M29.6 31.2 C31 30.2, 33 30.2, 34.4 31.2" />
+      <path d="M32 34 C31 37, 30.5 38.5, 32.2 39" />
+      <path d="M27.5 43 C30 45.5, 35 45, 37 42" />
+    </svg>
+    <span class="author-footer__no">self-portrait</span>
+  </span>
   <div class="author-footer__body">
     <p class="author-footer__by">Written by Sumit</p>
     <p class="author-footer__line">{line}</p>
@@ -28,34 +35,74 @@ const { line } = Astro.props;
   .author-footer {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.4rem;
     margin-top: 4rem;
-    padding-top: 1.6rem;
+    padding-top: 1.8rem;
     border-top: 1px solid var(--ink);
   }
-  .author-footer__face {
+  .author-footer__scrap {
+    position: relative;
     flex: none;
-    width: 48px;
-    height: 48px;
+    display: block;
+    width: 84px;
+    padding: 6px 6px 4px;
+    background-color: var(--sheet, #fbf9f3);
+    background-image: var(--tex-grain);
+    background-size: 120px;
+    box-shadow: var(--shadow-sheet);
+    rotate: -3deg;
+    /* a torn bottom edge */
+    clip-path: polygon(0 0, 100% 0, 100% 92%, 90% 96%, 78% 91%, 64% 97%, 50% 92%, 36% 98%, 22% 92%, 10% 97%, 0 93%);
   }
-  .author-footer__face path {
+  .author-footer__tape {
+    position: absolute;
+    top: -6px;
+    left: 24px;
+    width: 38px;
+    height: 13px;
+    background: var(--tape, rgba(226, 214, 172, 0.72));
+    rotate: 4deg;
+    mix-blend-mode: multiply;
+  }
+  .author-footer__face {
+    display: block;
+    width: 72px;
+    height: 82px;
+    filter: url(#fn-ink);
+  }
+  .author-footer__face path,
+  .author-footer__face circle {
     fill: none;
-    stroke: var(--ink);
-    stroke-width: 1.6;
+    stroke: var(--blue, #2442b8);
+    stroke-width: 1.5;
     stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .author-footer__no {
+    display: block;
+    padding: 1px 0 6px;
+    font-family: var(--font-meta);
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--graphite);
   }
   .author-footer__by {
-    font-family: var(--font-structure);
-    font-weight: 600;
+    font-family: var(--font-meta);
+    font-weight: 400;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.78rem;
-    margin: 0 0 0.2rem;
+    letter-spacing: 0.14em;
+    font-size: 0.72rem;
+    color: var(--red, var(--ink));
+    margin: 0 0 0.3rem;
   }
   .author-footer__line {
-    font-family: var(--font-annotation);
-    font-size: 1.2rem;
-    color: var(--graphite);
+    font-family: var(--font-display, serif);
+    font-style: italic;
+    font-size: 1.45rem;
+    line-height: 1.15;
+    color: var(--ink);
     margin: 0;
   }
+  :global(:root[data-theme="dark"]) .author-footer__tape { mix-blend-mode: screen; }
 </style>
