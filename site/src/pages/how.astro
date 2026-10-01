@@ -308,6 +308,23 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
   .reel.is-paused .reel__play { display: inline; }
   .reel__count { white-space: nowrap; font-family: var(--font-meta); font-size: 0.7rem; color: var(--graphite); padding: 0 0.5rem; }
   .scene.is-on { --p: 1; }
+  .reel__static {
+    position: absolute;
+    z-index: 7;
+    inset: 0 0 0 0;
+    pointer-events: none;
+    opacity: 0;
+    background-color: #111;
+    background-image: var(--tex-static), var(--tex-static);
+    background-size: 140px, 90px;
+  }
+  .reel__static.is-flash { animation: channel 320ms steps(4) forwards; }
+  @keyframes channel {
+    0% { opacity: 0.95; background-position: 0 0, 10px 30px; transform: translateX(-6px); }
+    33% { opacity: 0.85; background-position: 40px -20px, -30px 10px; transform: translateX(5px) scaleY(1.02); }
+    66% { opacity: 0.6; background-position: -25px 35px, 20px -40px; transform: translateX(-2px); }
+    100% { opacity: 0; transform: none; }
+  }
   .loop__word { transition: filter 2.5s ease 0.8s; }
   .scene {
     position: relative;

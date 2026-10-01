@@ -35,8 +35,19 @@ function init(): void {
     if (paused || idx >= scenes.length - 1) return;
     timer = window.setTimeout(() => go(idx + 1), DUR);
   };
+  // a frame of TV static between scenes, like changing channels
+  const staticEl = document.createElement('div');
+  staticEl.className = 'reel__static';
+  staticEl.setAttribute('aria-hidden', 'true');
+  reel.append(staticEl);
+  const flash = () => {
+    if (reduced) return;
+    staticEl.classList.remove('is-flash');
+    void staticEl.offsetWidth;
+    staticEl.classList.add('is-flash');
+  };
   const show = (n: number) => {
-    if (n !== idx) scenes[idx]?.classList.remove('is-on');
+    if (n !== idx) { scenes[idx]?.classList.remove('is-on'); flash(); }
     idx = n;
     const s = scenes[n];
     s.classList.remove('is-on');
@@ -94,6 +105,8 @@ function init(): void {
   // don't play to an empty room
   document.addEventListener('visibilitychange', () => (document.hidden ? clearTimeout(timer) : schedule()));
 
+  // browsers restore the old sideways position on return — always start at the title card
+  film.scrollLeft = 0;
   show(0);
 }
 
