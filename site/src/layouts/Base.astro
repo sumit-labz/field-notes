@@ -30,8 +30,8 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title === 'Feed' ? 'field notes — a working studio' : `${title} — field notes`}</title>
-    <meta name="theme-color" content="#EAE4D8" />
+    <title>{title === 'Feed' ? 'field notes — notes from building a studio' : `${title} — field notes`}</title>
+    <meta name="theme-color" content="#1A1917" />
     <script is:inline>
       // Theme before first paint (no flash): the reader's saved choice wins,
       // otherwise the studio's paper. Also restores the reader's text size.
@@ -41,8 +41,8 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
         var t = null, z = null;
         try { t = localStorage.getItem('fn-theme'); z = localStorage.getItem('fn-text'); } catch (e) {}
         if (z && !isNaN(+z)) d.style.setProperty('--read-scale', z);
-        // paper is the house default; a reader's own choice overrides it
-        if (t !== 'light' && t !== 'dark' && t !== 'navy') t = 'light';
+        // the night studio is the house default; a reader's own choice overrides it
+        if (t !== 'light' && t !== 'dark' && t !== 'navy') t = 'dark';
         // navy is a tone of dark: every dark rule applies, tokens tint blue
         d.dataset.theme = t === 'navy' ? 'dark' : t;
         if (t === 'navy') d.dataset.tone = 'navy';
@@ -95,6 +95,7 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
       </span>
       <a href={withBase('/identities')} class:list={[{ 'is-here': here('/identities') }]}><i>A.</i> obsessions</a>
       <a href={withBase('/about')} class:list={[{ 'is-here': here('/about') }]}><i>B.</i> about</a>
+      <a href={withBase('/how')} class:list={[{ 'is-here': here('/how') }]}><i>C.</i> how it works</a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch background">
         <svg class="ic-moon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         <svg class="ic-sun" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -108,12 +109,18 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
         <footer class="colophon">
           <div class="colophon__row">
             <span class="colophon__mark">FN</span>
-            <span>field notes is a working studio, not a finished catalogue.</span>
+            <span>field notes is part of my writing system — notes caught on the fly, some grow into blog posts, a few into articles. Mostly it's note-taking while I build my studio.</span>
           </div>
           <div class="colophon__row colophon__meta">
             <span>Material: phone photographs, notebook scans, voice notes, unfinished thoughts.</span>
             <span>Text CC BY-NC 4.0 · system MIT</span>
             <span class="colophon__hand">the door is open — come back, things move.</span>
+          </div>
+          <div class="colophon__row colophon__clone">
+            <a href="https://github.com/sumit-labz/field-notes" rel="noopener">
+              <span class="colophon__clone-q">Want a website like this?</span>
+              <span class="colophon__clone-a">Clone it from the GitHub repo <span class="colophon__arrow" aria-hidden="true">→</span></span>
+            </a>
           </div>
         </footer>
       )

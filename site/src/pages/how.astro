@@ -1,0 +1,136 @@
+---
+// /how — how the studio actually works: the capture loop, told as a field
+// manual for people whose heads never go quiet.
+import Base from '../layouts/Base.astro';
+
+const REPO = 'https://github.com/sumit-labz/field-notes';
+
+const steps = [
+  {
+    n: '01',
+    title: 'Keep the pen in your hand',
+    body: "Nothing here starts at a desk with a blank page. It starts mid-work: one pen in my hand, a drawing half done, a thought arriving sideways. The rule is simple — don't put the pen down to go and \"write it up properly\". Properly is where thoughts go to die.",
+  },
+  {
+    n: '02',
+    title: 'Talk it into Telegram',
+    body: "With the free hand, I open Telegram and hold the record button. I talk the way I think: looping, contradicting myself, losing the sentence and finding it again. No one is listening yet. That's the point.",
+  },
+  {
+    n: '03',
+    title: 'Photograph the evidence',
+    body: 'The sketch, the page of the book, the mess on the table, the screen at 2am. I take pictures like a detective collecting evidence at a scene — not to make them pretty, but to prove the thing happened. Everything goes to the same Telegram bot.',
+  },
+  {
+    n: '04',
+    title: 'Let the machine listen',
+    body: 'The bot drops each voice note and photo into the archive as a fragment. The voice is transcribed through OpenRouter, and a post is assembled from the pieces — what I said, what I photographed, when.',
+  },
+  {
+    n: '05',
+    title: 'Tidy, never rewrite',
+    body: "Raw voice gets a clean-verbatim pass: the ums, false starts and repeated words are swept away, but the words, the order and the feeling stay mine. A badge on every voice post says how many words were swept. If it sounds like a press release, the edit went too far.",
+  },
+  {
+    n: '06',
+    title: 'Run the loop again',
+    body: "Then I go back to work, and the next thought arrives, and I do it again. This is the part I didn't expect: the more I capture my own voice and run it through these loops, the clearer I get about myself. Not because the posts are good — because I can finally hear what I keep saying.",
+  },
+];
+---
+
+<Base title="How it works">
+  <p class="how-kicker">a survival guide for overthinkers &amp; ADHDers</p>
+  <h1>How this place works</h1>
+  <p class="annotation">or: how to get the noise out of your head without stopping what you're doing.</p>
+
+  <p>
+    If your head runs eleven tabs at once, you know the problem. The good thought shows up while your hands are busy, and
+    by the time you sit down to write it, it's gone — or worse, it's grown into a plan you'll never start. This site is
+    my workaround. It isn't a blog I sit down to write. It's a writing system that catches notes on the fly while I build
+    my studio; some grow into posts, a few into articles.
+  </p>
+
+  <ol class="how-steps">
+    {
+      steps.map((s) => (
+        <li class="how-step" data-reveal>
+          <span class="how-step__n">{s.n}</span>
+          <h2 class="how-step__title">{s.title}</h2>
+          <p>{s.body}</p>
+        </li>
+      ))
+    }
+  </ol>
+
+  <p class="how-loop" aria-hidden="true">pen → voice → evidence → bot → transcript → tidy → post → ↺</p>
+
+  <p>
+    You don't need discipline for this. You need fewer steps between the thought and somewhere safe to put it. One button,
+    one bot, one archive. The overthinking still happens — it just happens out loud, on the record, where you can read it
+    back later and notice the pattern.
+  </p>
+
+  <a class="how-free" href={REPO} rel="noopener">
+    <span class="how-free__q">Want this full system for free?</span>
+    <span class="how-free__a">Follow the source code <span aria-hidden="true">→</span></span>
+    <span class="how-free__note">bot, transcription, editing rules, this website — all of it, open on GitHub.</span>
+  </a>
+</Base>
+
+<style>
+  .how-kicker {
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 0.6rem;
+  }
+  .how-steps { list-style: none; padding: 0; margin: 2.5rem 0; }
+  .how-step {
+    position: relative;
+    margin: 0 0 1.4rem;
+    padding: 1.2rem 1.3rem 1.1rem 4.2rem;
+    border: 1px dashed color-mix(in srgb, var(--ink) 45%, transparent);
+    background-color: var(--sheet);
+    background-image: var(--tex-grain);
+    background-size: 160px;
+  }
+  .how-step:nth-child(odd) { rotate: -0.4deg; }
+  .how-step:nth-child(even) { rotate: 0.5deg; }
+  .how-step__n {
+    position: absolute;
+    left: 1.1rem;
+    top: 1.05rem;
+    font-family: var(--font-structure);
+    font-variation-settings: 'wdth' 62;
+    font-weight: 800;
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--red);
+  }
+  .how-step__title { margin: 0 0 0.4rem; }
+  .how-step p { margin: 0; }
+  .how-loop {
+    font-family: var(--font-annotation);
+    font-size: 1.4rem;
+    color: var(--blue);
+    text-align: center;
+    rotate: -1.5deg;
+    margin: 2rem 0;
+  }
+  .how-free {
+    display: block;
+    margin: 3rem 0 1rem;
+    padding: 1.4rem 1.5rem;
+    border: 1px solid var(--ink);
+    background-image: none;
+    color: var(--ink);
+    transition: transform var(--dur-settle) var(--ease-paper), box-shadow var(--dur-settle) var(--ease-paper);
+  }
+  .how-free:hover { transform: translate(-2px, -3px); box-shadow: 4px 5px 0 var(--red); }
+  .how-free__q { display: block; font-family: var(--font-display); font-style: italic; font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.05; }
+  .how-free__a { display: block; margin-top: 0.4rem; font-family: var(--font-meta); font-size: 0.85rem; color: var(--red); }
+  .how-free__note { display: block; margin-top: 0.5rem; font-family: var(--font-annotation); font-size: 1.15rem; color: var(--graphite); }
+</style>

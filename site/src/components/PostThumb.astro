@@ -49,12 +49,18 @@ const drop = ((h & 1 ? 1 : -1) * (2 + ((h >> 5) % 300) / 100)).toFixed(2);
 const tapeX = 18 + ((h >> 7) % 55);
 const tapeR = (((h >> 9) % 14) - 7).toFixed(1);
 const second = (h >> 11) % 3 === 0; // a second strip, now and then
+// The grade it was printed with — never the raw phone photo. Xerox has its
+// own toner treatment; prints and clippings get a film grade, and now and
+// then a letterboxed frame, so neighbouring headers don't look alike.
+const GRADES = ['cine', 'bleach', 'mono', 'tungsten'] as const;
+const grade = variant === 'print' || variant === 'clip' ? GRADES[(h >> 13) % GRADES.length] : null;
+const letterbox = variant === 'print' && (h >> 15) % 3 === 0;
 const label = fig ?? (step ? `no. ${String(step).padStart(2, '0')}` : null);
 const originMark = origin === 'voice' ? 'voice note' : 'written';
 ---
 
 <div
-  class:list={['art', `art--${variant}`, { 'art--quiet': quiet }]}
+  class:list={['art', `art--${variant}`, grade && `grade--${grade}`, { 'art--quiet': quiet, 'art--letterbox': letterbox }]}
   style={`--lean: ${lean.toFixed(2)}deg; --drop: ${drop}deg; --tape-x: ${tapeX}%; --tape-r: ${tapeR}deg`}
   data-reveal
 >
@@ -77,6 +83,7 @@ const originMark = origin === 'voice' ? 'voice note' : 'written';
         ) : media?.kind === 'video' ? (
           <video class="art__img" data-thumb-video src={media.src} muted loop playsinline preload="metadata" />
         ) : null}
+        {grade && <span class="art__grain" aria-hidden="true" />}
         {variant === 'clip' && <span class="art__over"><span>{title}</span></span>}
       </span>
     )

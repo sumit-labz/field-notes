@@ -8,6 +8,19 @@ function init(): void {
   // Listen proxies the post's own narration player, so there is one audio
   // element and one source of truth for play state.
   const listen = document.querySelector<HTMLElement>('[data-listen]');
+  // The play button at the top of the post drives the same engine.
+  const top = document.querySelector<HTMLElement>('[data-listen-top]');
+  if (listen && top) {
+    top.addEventListener('click', () => listen.querySelector<HTMLElement>('.listen-play')?.click());
+    const topLabel = top.querySelector<HTMLElement>('[data-listen-top-label]');
+    const syncTop = () => {
+      const on = listen.classList.contains('playing');
+      top.classList.toggle('is-playing', on);
+      if (topLabel) topLabel.textContent = on ? 'pause' : 'listen to this';
+    };
+    new MutationObserver(syncTop).observe(listen, { attributes: true, attributeFilter: ['class'] });
+    syncTop();
+  }
   const listenBtn = pill.querySelector<HTMLElement>('[data-pill-listen]');
   if (listen && listenBtn) {
     listenBtn.addEventListener('click', () => listen.querySelector<HTMLElement>('.listen-play')?.click());

@@ -260,6 +260,18 @@ for (const block of blocks) {
 
   {
     postAudioUrl && (
+      <button type="button" class="listen-top" data-listen-top aria-label="Listen to this post">
+        <span class="listen-top__disc" aria-hidden="true">
+          <svg class="ic-play" width="12" height="14" viewBox="0 0 14 16"><path d="M1 1 L13 8 L1 15 Z" fill="currentColor" /></svg>
+          <svg class="ic-pause" width="12" height="14" viewBox="0 0 14 16"><rect x="1" y="1" width="4" height="14" fill="currentColor" /><rect x="9" y="1" width="4" height="14" fill="currentColor" /></svg>
+        </span>
+        <span class="listen-top__label" data-listen-top-label>Listen to this</span>
+      </button>
+    )
+  }
+
+  {
+    postAudioUrl && (
       <div class="listen" data-listen>
         <button class="listen-play" type="button" aria-label="Play">
           <svg class="ic-play" width="14" height="16" viewBox="0 0 14 16" aria-hidden="true">
@@ -308,7 +320,7 @@ for (const block of blocks) {
     nextPost && (
       <a class="next-post" href={withBase(`/posts/${nextPost.data.slug}/`)}>
         <span class="next-post__kicker">Next in {journeyTitle} · {posIdx + 2} of {journeyPosts.length}</span>
-        {nextMedia?.kind === 'image' && <img class="next-post__img" src={nextMedia.src} alt="" loading="lazy" />}
+        {nextMedia?.kind === 'image' && <span class="next-post__frame"><img class="next-post__img" src={nextMedia.src} alt="" loading="lazy" /></span>}
         <span class="next-post__title">{nextPost.data.title} →</span>
         {nextTeaser && <span class="next-post__teaser">{nextTeaser}</span>}
       </a>
@@ -449,6 +461,44 @@ for (const block of blocks) {
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
+  }
+
+  /* A play button up top, beside the title — the same engine as the pill. */
+  .listen-top {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 0 0 1.8rem;
+    padding: 0.35rem 1rem 0.35rem 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--paper);
+    background-image: var(--tex-grain);
+    background-size: 140px;
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color var(--dur-quick) ease, transform var(--dur-settle) var(--ease-paper);
+  }
+  .listen-top:hover { border-color: var(--ink); transform: translateY(-1px); }
+  .listen-top__disc {
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--red);
+    color: #fff;
+  }
+  .listen-top .ic-play { margin-left: 2px; }
+  .listen-top .ic-pause { display: none; }
+  .listen-top.is-playing .ic-play { display: none; }
+  .listen-top.is-playing .ic-pause { display: block; }
+  .listen-top__label {
+    font-family: var(--font-meta);
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
   }
 
   /* Derived rhythm for the fragment sequence. Static only — spacing, width and

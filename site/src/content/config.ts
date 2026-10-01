@@ -110,6 +110,9 @@ const journeys = defineCollection({
       ended: z.coerce.date().optional(),
       emerged_from: z.string().nullable(),
       reason: z.string().optional(),
+      // The name it started under, when the journey turned into something
+      // else on the way. The title tears from this to the current one.
+      was: z.string().optional(),
     })
     .superRefine((journey, ctx) => {
       // SPEC.md 3.3: reason is REQUIRED when status is abandoned. Build fails without it.

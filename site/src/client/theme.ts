@@ -1,10 +1,10 @@
 // Light/dark toggle. The initial theme is set inline in <head> (before paint);
 // this only handles switching and remembering the reader's choice.
 const KEY = 'fn-theme';
-// light → black → navy → light. Navy is a tone of dark (data-theme="dark"
+// black → navy → paper → black (black is the house default). Navy is a tone of dark (data-theme="dark"
 // + data-tone="navy"), so every dark-mode rule applies to it as well.
 type Theme = 'light' | 'dark' | 'navy';
-const ORDER: Theme[] = ['light', 'dark', 'navy'];
+const ORDER: Theme[] = ['dark', 'navy', 'light'];
 const META: Record<Theme, string> = { light: '#EAE4D8', dark: '#1A1917', navy: '#0F1A2B' };
 const NAME: Record<Theme, string> = { light: 'paper', dark: 'night studio', navy: 'dark blue' };
 

@@ -136,19 +136,12 @@ const STATUS_STAMP: Record<string, string> = {
   abandoned: 'abandoned',
   completed: 'finished',
 };
-// The pencil line in the masthead margin: a different absurdity each visit
-// (picked client-side; the first one is what renders without JS).
+// The pencil line in the masthead margin: three absurdities, taking turns —
+// one fades out, the next is written in (see the script at the bottom).
 const ABSURD = [
-  'this is not a website ↘',
-  'the studio is closed. please come in.',
-  'everything here is unfinished, including this sentence',
-  'a chair is just a painting you can sit on',
-  'please do not feed the drafts',
-  'lost: one idea. answers to "maybe".',
-  'abandon all plans, ye who enter',
-  'the paint is still wet. so am I.',
-  'art is whatever I forgot to throw away',
   'this sentence has been rejected by three galleries',
+  'the paint is still wet. please lean on it.',
+  'every page here was left out in the rain, on purpose',
 ];
 
 // The pencil note left beside a dense plate — one of a few, by slug.
@@ -178,7 +171,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
         <svg class="strike-overlay" aria-hidden="true"></svg>
       </span>
     </p>
-    <p class="mast__hand" data-absurd aria-hidden="true">{ABSURD[0]}</p>
+    <p class="mast__hand" data-absurd aria-live="off">{ABSURD[0]}</p>
 
     {
       wall.length > 0 && (
@@ -201,7 +194,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                 <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
               </button>
               <span class="wall__cap">
-                <b>fig. {String(w.i + 1).padStart(2, '0')}</b> {w.title}
+                <b>{w.title}</b>
                 <i>{w.date}</i>
               </span>
             </div>
@@ -225,7 +218,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
           </p>
           <h2 class="plate__title">
             <a href={withBase(`/journeys/${journey.data.slug}/`)}>
-              <JourneyTitle title={journey.data.title} status={journey.data.status} seed={journey.data.slug} />
+              <JourneyTitle title={journey.data.title} status={journey.data.status} seed={journey.data.slug} was={journey.data.was} />
             </a>
           </h2>
           <p class="plate__meta">
@@ -289,7 +282,18 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 <script is:inline define:vars={{ ABSURD }}>
   (function () {
     var el = document.querySelector('[data-absurd]');
-    if (el) el.textContent = ABSURD[Math.floor(Math.random() * ABSURD.length)];
+    if (!el) return;
+    var k = Math.floor(Math.random() * ABSURD.length);
+    el.textContent = ABSURD[k];
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setInterval(function () {
+      el.classList.add('is-erasing');
+      setTimeout(function () {
+        k = (k + 1) % ABSURD.length;
+        el.textContent = ABSURD[k];
+        el.classList.remove('is-erasing');
+      }, 700);
+    }, 5200);
   })();
 </script>
 

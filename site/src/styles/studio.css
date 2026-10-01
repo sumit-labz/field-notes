@@ -1275,3 +1275,215 @@ html.loupe-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .js .pull-quote[data-reveal] > span { background-size: 100% 100%; transition: none; }
 }
+
+/* =============================================================== feedback pass:
+   bigger pins and tape, film-graded headers, static noise, torn titles */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+:root {
+  /* TV static: the photocopy noise, coarser and grey, for laying over photos */
+  --tex-static: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .55'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+}
+
+/* the theme toggle sits level with the nav text, no stray ring after a click */
+nav .theme-toggle:focus:not(:focus-visible) { outline: none; }
+
+/* ---- the wall: no figure numbers, titles you can read from across the room */
+.wall__cap { padding-top: 0.55rem; }
+.wall__cap b {
+  display: block;
+  margin: 0;
+  font-family: var(--font-structure);
+  font-variation-settings: 'wdth' 72;
+  font-weight: 700;
+  font-size: clamp(0.92rem, 1.25vw, 1.12rem);
+  line-height: 1.12;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.wall__cap i { margin-top: 0.3rem; font-size: 0.64rem; }
+.wall__item--2 .wall__cap, .wall__item--4 .wall__cap { font-size: 0.64rem; }
+.wall__item--2 .wall__cap b, .wall__item--4 .wall__cap b { font-size: clamp(0.82rem, 1vw, 0.95rem); }
+
+/* ---- pins: a proper push-pin, not a full stop */
+.wall__item::before {
+  top: -11px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 2px 4px 4px rgba(0, 0, 0, 0.45);
+}
+
+/* ---- tape: wider, thicker strips */
+.art__tape { width: 7.6rem; height: 2.05rem; top: -1rem; }
+.art__tape--b { width: 6rem; bottom: -0.85rem; }
+.art--clip .art__tape { width: 6.4rem; top: -0.8rem; left: -1.6rem; }
+
+/* ---- film grades: no header goes out as a raw phone photo */
+.art__plate { overflow: hidden; }
+.grade--cine .art__img { filter: contrast(1.12) saturate(0.78) sepia(0.14) brightness(0.96); }
+.grade--bleach .art__img { filter: contrast(1.3) saturate(0.38) brightness(1.02); }
+.grade--mono .art__img { filter: grayscale(1) contrast(1.28) brightness(0.98); }
+.grade--tungsten .art__img { filter: contrast(1.08) saturate(0.85) sepia(0.32) hue-rotate(-12deg) brightness(0.95); }
+.art__grain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.42) 100%),
+    var(--tex-static);
+  background-size: 100% 100%, 180px;
+  mix-blend-mode: overlay;
+  opacity: 0.85;
+}
+.art--letterbox .art__plate { background: #0b0a09; padding: 1.1rem 0; }
+.art--letterbox .art__img { aspect-ratio: 2.39 / 1; height: auto; }
+.art--letterbox .art__grain { inset: 1.1rem 0; }
+:root[data-theme="dark"] .grade--cine .art__img,
+:root[data-theme="dark"] .grade--tungsten .art__img { filter: contrast(1.12) saturate(0.75) sepia(0.2) brightness(0.86); }
+:root[data-theme="dark"] .grade--mono .art__img { filter: grayscale(1) contrast(1.3) brightness(0.86); }
+:root[data-theme="dark"] .grade--bleach .art__img { filter: contrast(1.3) saturate(0.38) brightness(0.88); }
+
+/* ---- the noise, used some more: a slow layer of static over the whole
+   studio, like a projector left running in the dark */
+body::after {
+  content: '';
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  background-image: var(--tex-static);
+  background-size: 180px;
+  opacity: 0.05;
+  animation: static-drift 900ms steps(6) infinite;
+}
+:root[data-theme="dark"] body::after { opacity: 0.075; mix-blend-mode: screen; }
+@keyframes static-drift {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -4%); }
+  60% { transform: translate(-4%, -1%); }
+  80% { transform: translate(3%, 3%); }
+  100% { transform: translate(0, 0); }
+}
+@media (prefers-reduced-motion: reduce) { body::after { animation: none; } }
+
+/* the post's cover, graded and grained like a film still */
+.post-hero--image .opener { filter: contrast(1.1) saturate(0.8) sepia(0.12) brightness(0.92); }
+.post-hero--image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: var(--tex-static);
+  background-size: 200px;
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+}
+.post-hero--image .post-hero__text { z-index: 2; }
+
+/* ---- masthead pencil line: rubbed out, then written in again */
+.mast__hand { clip-path: inset(0 0 0 0); transition: opacity 650ms var(--ease-paper), filter 650ms var(--ease-paper), clip-path 650ms var(--ease-paper); }
+.mast__hand.is-erasing { opacity: 0; filter: blur(2px); clip-path: inset(0 0 0 100%); }
+
+/* ---- next in the journey: a sheet of the about page's paper, taped in */
+.next-post {
+  position: relative;
+  margin-top: 4rem;
+  padding: 1.4rem 1.4rem 1.5rem;
+  border: 1px dashed color-mix(in srgb, var(--ink) 55%, transparent);
+  outline: 1px solid var(--line);
+  outline-offset: 5px;
+  background-color: var(--sheet);
+  background-image: var(--tex-grain), var(--tex-fibre);
+  background-size: 160px, 600px;
+  rotate: -0.6deg;
+  box-shadow: var(--shadow-sheet);
+}
+.next-post::before {
+  /* masking tape across the top corner */
+  content: '';
+  position: absolute;
+  top: -0.95rem;
+  left: 1.6rem;
+  width: 7rem;
+  height: 1.9rem;
+  background-color: var(--tape);
+  background-image: var(--tex-grain);
+  background-size: 110px;
+  rotate: -4deg;
+  clip-path: polygon(0 8%, 4% 0, 8% 10%, 12% 2%, 88% 0, 92% 9%, 96% 1%, 100% 10%, 100% 90%, 96% 100%, 92% 91%, 88% 100%, 12% 98%, 8% 90%, 4% 100%, 0 92%, 3% 50%);
+}
+.next-post:hover, .next-post:focus-visible { rotate: 0deg; outline-color: transparent; }
+.next-post__kicker { font-family: var(--font-meta); letter-spacing: 0.08em; color: var(--red); }
+.next-post__frame { position: relative; display: block; margin-bottom: 0.9rem; overflow: hidden; }
+.next-post__frame .next-post__img { margin: 0; height: 200px; filter: url(#fn-xerox) contrast(1.05); }
+:root[data-theme="dark"] .next-post__frame .next-post__img { filter: url(#fn-xerox) brightness(0.85); }
+.next-post__frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--tex-static);
+  background-size: 160px;
+  mix-blend-mode: overlay;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.next-post__title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+}
+.next-post__teaser { font-family: var(--font-annotation); font-size: 1.3rem; line-height: 1.25; color: var(--blue); }
+
+/* ---- footer: the invitation to take the whole thing home */
+.colophon__clone { margin-top: 1.6rem; padding-top: 1.2rem; border-top: 1px dashed var(--line); }
+.colophon__clone a { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.8rem; background-image: none; color: var(--ink); }
+.colophon__clone-q { font-family: var(--font-display); font-style: italic; font-size: clamp(1.4rem, 2.6vw, 2rem); }
+.colophon__clone-a { font-family: var(--font-meta); font-size: 0.78rem; text-transform: lowercase; letter-spacing: 0.04em; color: var(--red); }
+.colophon__arrow { display: inline-block; transition: transform var(--dur-settle) var(--ease-paper); }
+.colophon__clone a:hover .colophon__arrow { transform: translateX(6px); }
+
+/* ---- a journey that changed its name: the old label, torn off */
+.journey-title--torn { position: relative; display: inline-block; }
+.tear__new { opacity: 0; transition: opacity 500ms var(--ease-paper) 250ms; }
+.tear__old {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+  padding: 0 0.12em;
+  margin-left: -0.12em;
+  background-color: var(--sheet);
+  background-image: var(--tex-grain);
+  background-size: 140px;
+  color: var(--ink);
+  transition: transform 900ms cubic-bezier(0.5, 0, 0.75, 0), opacity 900ms ease-in;
+}
+.tear__old--top {
+  clip-path: polygon(0 0, 100% 0, 100% 49%, 94% 56%, 87% 47%, 79% 58%, 71% 50%, 62% 60%, 54% 49%, 46% 57%, 38% 48%, 29% 59%, 21% 50%, 13% 57%, 6% 48%, 0 55%);
+  transform-origin: 0 0;
+}
+.tear__old--bottom {
+  clip-path: polygon(0 55%, 6% 48%, 13% 57%, 21% 50%, 29% 59%, 38% 48%, 46% 57%, 54% 49%, 62% 60%, 71% 50%, 79% 58%, 87% 47%, 94% 56%, 100% 49%, 100% 100%, 0 100%);
+  transform-origin: 100% 100%;
+}
+.is-torn .tear__new { opacity: 1; }
+.is-torn .tear__old--top { transform: translate(-0.4em, -0.9em) rotate(-9deg); opacity: 0; }
+.is-torn .tear__old--bottom { transform: translate(0.5em, 1.1em) rotate(7deg); opacity: 0; transition-delay: 120ms; }
+html:not(.js) .tear__new { opacity: 1; }
+html:not(.js) .tear__old { display: none; }
+.box__turn s { text-decoration-color: var(--red); text-decoration-thickness: 2px; }
+.box__turn b { color: var(--ink); }

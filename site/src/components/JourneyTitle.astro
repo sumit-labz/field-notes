@@ -5,14 +5,23 @@ interface Props {
   as?: 'span' | 'h1';
   /** Stable id (the journey slug) the strike wobble is seeded from. */
   seed: string;
+  /** The name it started under — the old title tears away to show this one. */
+  was?: string;
 }
 
-const { title, status, as = 'span', seed } = Astro.props;
+const { title, status, as = 'span', seed, was } = Astro.props;
 const Tag = as;
 ---
 
 {
-  status === 'paused' ? (
+  was ? (
+    <Tag class="journey-title journey-title--torn" data-tear>
+      <span class="tear__new">{title}</span>
+      <span class="tear__old tear__old--top" aria-hidden="true">{was}</span>
+      <span class="tear__old tear__old--bottom" aria-hidden="true">{was}</span>
+      <span class="sr-only"> (formerly {was})</span>
+    </Tag>
+  ) : status === 'paused' ? (
     <Tag class="journey-title">[ {title} ]</Tag>
   ) : status === 'completed' ? (
     <Tag class="journey-title">
@@ -36,4 +45,5 @@ const Tag = as;
 
 <script>
   import '../client/strike-through';
+  import '../client/tear';
 </script>

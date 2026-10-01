@@ -1123,7 +1123,7 @@ nav .theme-toggle {
   align-self: center;
   width: 2rem;
   height: 2rem;
-  margin: -0.35rem -0.4rem 0.35rem 0;
+  margin: 0 -0.4rem 0 0;
   border-radius: 50%;
   transition: transform var(--dur-settle) var(--ease-paper), background var(--dur-quick) ease;
 }

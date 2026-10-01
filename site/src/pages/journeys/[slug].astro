@@ -72,7 +72,7 @@ const postCards = await Promise.all(
         <span>box {data.slug}</span>
       </p>
       <h1 class="box__title">
-        <JourneyTitle title={data.title} status={data.status} seed={data.slug} />
+        <JourneyTitle title={data.title} status={data.status} seed={data.slug} was={data.was} />
       </h1>
       <p class="box__meta">
         <ModeGlyph path={data.path} size={16} color="var(--graphite)" />
@@ -88,6 +88,13 @@ const postCards = await Promise.all(
         emergedFrom && (
           <p class="box__lineage">
             emerged from <a href={withBase(`/journeys/${emergedFrom.data.slug}/`)}>{emergedFrom.data.title}</a>
+          </p>
+        )
+      }
+      {
+        data.was && (
+          <p class="box__lineage box__turn">
+            began as <s>{data.was}</s> · torn up and relabelled <b>{data.title}</b>
           </p>
         )
       }
