@@ -4,6 +4,7 @@
 // the scene arrives (client/how.ts adds .is-on and a scroll value --p).
 // A survival guide for overthinkers & ADHDers.
 import Base from '../layouts/Base.astro';
+import { withBase } from '../lib/url';
 
 const REPO = 'https://github.com/sumit-labz/field-notes';
 ---
@@ -17,7 +18,7 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       <h1 class="film__title">
         <span>How</span> <span>this</span> <span>place</span> <span class="film__title-big">works</span>
       </h1>
-      <p class="film__sub">or: getting the noise out of your head without putting the pen down.</p>
+      <p class="film__sub">nobody is coming. so I built my own support.</p>
       <p class="film__scroll" aria-hidden="true">scroll to roll film ↓</p>
     </section>
 
@@ -34,9 +35,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </svg>
       <div class="scene__text">
         <p class="scene__tag">scene one · the studio, mid-mess</p>
-        <h2>An idea walks in.</h2>
-        <p>It never knocks. It shows up while my hands are busy and my coffee is cold — and it has eleven friends.</p>
-        <p class="scene__aside">ping. ping. ping. ping.</p>
+        <h2>An idea comes.</h2>
+        <p>I was doing figure drawing, and a good idea came: let's try shading. Then another one. I was not noting them down. So all those ideas were getting left out.</p>
+        <p class="scene__aside">all those crazy ideas</p>
+        <a class="scene__src" href={withBase("/posts/2026-09-26-i-built-an-operating-system-for-my-brain/")}>from “I built an operating system for my brain” →</a>
       </div>
     </section>
 
@@ -55,9 +57,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </svg>
       <div class="scene__text">
         <p class="scene__tag">scene two · do not put the pen down</p>
-        <h2>One hand keeps working.</h2>
-        <p>Pen stays on the paper. The drawing keeps going. Rule number one: never stop to "write it up properly". Properly is where thoughts go to die.</p>
-        <p class="scene__aside">(the other hand is free. suspicious.)</p>
+        <h2>Keep drawing.</h2>
+        <p>I don't stop the work to write it up. The pen stays on the paper. Free play is where the crazy ideas come from.</p>
+        <p class="scene__aside">give it a very dirty start.</p>
+        <a class="scene__src" href={withBase("/posts/2026-09-26-i-built-an-operating-system-for-my-brain/")}>from “I built an operating system for my brain” →</a>
       </div>
     </section>
 
@@ -81,9 +84,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </svg>
       <div class="scene__text">
         <p class="scene__tag">scene three · hold to record</p>
-        <h2>The free hand opens Telegram.</h2>
-        <p>Hold the mic. Talk the way I think — looping, contradicting myself, losing the sentence and finding it again two minutes later. Nobody's listening yet. That's the point.</p>
-        <p class="scene__aside">"okay so, um. wait. okay so—"</p>
+        <h2>Talk into Telegram.</h2>
+        <p>This is how I capture things: I take audio notes. I just talk, the way I think. Nobody is listening yet.</p>
+        <p class="scene__aside">okay so, um—</p>
+        <a class="scene__src" href={withBase("/posts/2026-10-01-nobody-is-coming-so-i-build-my-own-support/")}>from “Nobody is coming, so I build my own support” →</a>
       </div>
     </section>
 
@@ -107,9 +111,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </svg>
       <div class="scene__text">
         <p class="scene__tag">scene four · the crime scene</p>
-        <h2>Photograph the evidence.</h2>
-        <p>The sketch. The page of the book. The table at 2am. I take pictures like a detective at a scene — not to make them pretty, just to prove it happened.</p>
-        <p class="scene__aside">exhibit A: a coffee ring.</p>
+        <h2>Take a photo.</h2>
+        <p>The notebook. The sketch. The screen. With an ADHD brain it's easy to think you made nothing. A photo shows what exists.</p>
+        <p class="scene__aside">what exists now?</p>
+        <a class="scene__src" href={withBase("/posts/2026-09-26-i-built-an-operating-system-for-my-brain/")}>from “I built an operating system for my brain” →</a>
       </div>
     </section>
 
@@ -130,9 +135,9 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </svg>
       <div class="scene__text">
         <p class="scene__tag">scene five · the getaway</p>
-        <h2>Everything goes to the bot.</h2>
-        <p>Voice notes and photos fly to one Telegram bot. It files each one as a fragment, stamped with when it happened. No folders. No decisions. One door.</p>
-        <p class="scene__aside">the bot does not judge. the bot has no face. (it has a face.)</p>
+        <h2>Send it to the bot.</h2>
+        <p>Voice notes and photos go to one Telegram bot. It saves each one with the time. No folders. Nothing to decide.</p>
+        <p class="scene__aside">one door.</p>
       </div>
     </section>
 
@@ -146,8 +151,8 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </div>
       <div class="scene__text">
         <p class="scene__tag">scene six · the machine listens</p>
-        <h2>Sound becomes words.</h2>
-        <p>Each voice note is transcribed through OpenRouter. The rambling arrives on the page exactly as rambled — then the photos and words are assembled into a post, in the order they happened.</p>
+        <h2>Turn voice into text.</h2>
+        <p>The voice note is transcribed through OpenRouter. The photos and the words become a post, in the order they happened.</p>
       </div>
     </section>
 
@@ -164,9 +169,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </div>
       <div class="scene__text">
         <p class="scene__tag">scene seven · sweep, don't rewrite</p>
-        <h2>Tidy the raw voice.</h2>
-        <p>The ums, false starts and repeated words get swept away. The words, the order and the feeling stay mine. If it ever sounds like a press release, the broom went too far.</p>
+        <h2>Clean it. Don't change it.</h2>
+        <p>Only the ums and repeats go. The words and the feeling stay mine. AI can help — but authorship has to be mine.</p>
         <p class="scene__aside">every voice post says how many words were swept.</p>
+        <a class="scene__src" href={withBase("/posts/2026-09-03-spontaneity/")}>from “Spontaneity” →</a>
       </div>
     </section>
 
@@ -185,9 +191,10 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       </svg>
       <div class="scene__text">
         <p class="scene__tag">scene eight · action</p>
-        <h2>Make it look like a movie.</h2>
-        <p>Phone photos don't go out raw. Each one gets a film grade, some grain, sometimes a widescreen frame — so a messy desk at 2am reads like a still from something worth watching.</p>
-        <p class="scene__aside">same desk. better lighting. (it's a filter.)</p>
+        <h2>Make it beautiful.</h2>
+        <p>Making stuff beautiful for yourself, so that you start enjoying it. So every phone photo gets a film look.</p>
+        <p class="scene__aside">same desk. better light.</p>
+        <a class="scene__src" href={withBase("/posts/2026-10-01-nobody-is-coming-so-i-build-my-own-support/")}>from “Nobody is coming, so I build my own support” →</a>
       </div>
     </section>
 
@@ -201,14 +208,15 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       <div class="scene__text">
         <p class="scene__tag">scene nine · roll it again</p>
         <h2>Then do it again.</h2>
-        <p>Back to work. Next thought arrives. Pen, voice, evidence, bot, words, sweep, post. The part I didn't expect: the more I capture my own voice and run it through these loops, the clearer I get about myself. Not because the posts are good — because I can finally hear what I keep saying.</p>
+        <p>For an ADHD brain, clarity comes through a lot of writing. You post stuff, you see it yourself, and then you like it yourself. That gives self-worth.</p>
+        <a class="scene__src" href={withBase("/posts/2026-09-11-when-your-adhd-brain-finally-wakes-up/")}>from “When your ADHD brain finally wakes up” →</a>
       </div>
     </section>
 
     <!-- end credits -->
     <section class="scene scene--credits" data-scene>
       <p class="credits__roll">pen → voice → evidence → bot → transcript → tidy → film grade → post → ↺</p>
-      <p class="credits__line">You don't need discipline. You need fewer steps between the thought and somewhere safe to put it.</p>
+      <p class="credits__line">Building self-worth by investing in yourself is a great idea.</p>
       <a class="how-free" href={REPO} rel="noopener">
         <span class="how-free__q">Want this full system for free?</span>
         <span class="how-free__a">Follow the source code <span aria-hidden="true">→</span></span>
@@ -284,6 +292,15 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
     color: var(--charcoal);
     max-width: 34ch;
   }
+  .scene__src {
+    display: inline-block;
+    margin-top: 1rem;
+    font-family: var(--font-meta);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--graphite);
+  }
+  .scene__src:hover { color: var(--red); }
   .scene__aside {
     font-family: var(--font-annotation);
     font-size: 1.5rem;
