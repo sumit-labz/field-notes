@@ -27,6 +27,8 @@ Say the message is "how a premise works" — that could become a multi-part vide
 
 The question I still don't have an answer to: does the expression for distribution have to share the same art direction — the same visual DNA — as the product build? I don't know yet. But this gives me a structure to produce artifacts, and I think my job is to produce artifacts, pulling in whatever practice engine each one needs. Putting a diagram to this gave me a direction.
 
+>> My job is to produce artifacts.
+
 I spent more time on how build and distribute connect — so it feels like it's coming from one source, so the distribution content feels like it shares the software's DNA. One idea: decide the color palette and the typography once, and both sides will look like they come from the same family. Build and distribute can keep their own voices — distribution could be playful, or something else I decide later — the voices don't need to depend on each other. The only visual relationship they need is color and font, so they read as coming from one source.
 
 So that's where I land for now: think from the product itself about how to decide the colors and the typography — more of an art direction question. I'll keep figuring that out.

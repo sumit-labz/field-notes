@@ -4,7 +4,7 @@ import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import AuthorFooter from '../../components/AuthorFooter.astro';
 import MadeWith from '../../components/MadeWith.astro';
-import PostOriginBadge from '../../components/PostOriginBadge.astro';
+import OriginGlyph from '../../components/OriginGlyph.astro';
 import { authorLineFor } from '../../lib/authorLines';
 import { splitPostBody } from '../../lib/post-body';
 import { withBase } from '../../lib/url';
@@ -53,19 +53,6 @@ const nextMedia = nextPost ? await postLeadMedia(nextPost, fragmentsById) : null
 const nextTeaser = nextPost ? postTeaser(nextPost, 120) : '';
 const blocks = splitPostBody(post.body ?? '', post.data.fragments);
 
-// Optional raw transcript from the repo-root transcripts/ dir, read at build
-// via Vite's raw glob (posts/[slug].astro → four levels up is the repo root).
-// The `transcript` field is a pointer; a missing file renders nothing.
-const transcriptFiles = import.meta.glob<string>('../../../../transcripts/**/*', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-});
-const transcriptByName = new Map<string, string>();
-for (const [filePath, content] of Object.entries(transcriptFiles)) {
-  const name = filePath.split('/').pop();
-  if (name) transcriptByName.set(name, content as string);
-}
 // Word timings for Stage mode (scripts/generate_word_timings.py), from the
 // repo-root narration/ dir. Only offered when this post has both.
 const timingFiles = import.meta.glob<unknown>('../../../../narration/*.json', {
@@ -74,10 +61,6 @@ const timingFiles = import.meta.glob<unknown>('../../../../narration/*.json', {
 });
 const stageTimings = post.data.audio
   ? Object.entries(timingFiles).find(([f]) => f.endsWith(`/${post.data.slug}.json`))?.[1] ?? null
-  : null;
-
-const transcriptText = post.data.transcript
-  ? transcriptByName.get(post.data.transcript) ?? null
   : null;
 
 // Optional narration audio (R2 key, or a local media/ path).
@@ -253,23 +236,20 @@ for (const block of blocks) {
         <span>{journeyTitle ? `${journeyTitle}` : 'loose sheet'}</span>
         {posIdx >= 0 && <span>item {String(posIdx + 1).padStart(2, '0')} / {String(journeyPosts.length).padStart(2, '0')}</span>}
         <span>{stampDate(post.data.published)}</span>
+        <span class={`post-kicker__origin post-kicker__origin--${originFor(post.data)}`}>
+          <OriginGlyph origin={originFor(post.data)} size={12} />
+          {originFor(post.data) === 'voice' ? 'voice note' : 'written'}
+        </span>
       </p>
       <h1>
         {post.data.title}
         {post.data.status === 'in_progress' && <span class="inprogress">in progress</span>}
-        <PostOriginBadge origin={originFor(post.data)} size={17} class="post-origin--title" />
       </h1>
     </div>
   </header>
   <p class="meta">
     {dateLine(post.data.published)}{' · '}{readMinutes} min read
     {post.data.kind === 'insight' && <> · note to self</>}
-    {stageTimings && (
-      <>
-        {' · '}
-        <button type="button" class="stage-open" data-stage-open>on stage</button>
-      </>
-    )}
     {post.data.journey && (
       <>
         {' '}
@@ -320,15 +300,6 @@ for (const block of blocks) {
     )
   }
 
-  {
-    transcriptText && (
-      <details class="transcript-raw">
-        <summary>before cleanup</summary>
-        <div class="transcript-raw-body">{transcriptText}</div>
-      </details>
-    )
-  }
-
   {authorLine && <AuthorFooter line={authorLine} />}
 
   {post.data.made_with && <MadeWith stage={post.data.made_with} />}
@@ -358,6 +329,7 @@ for (const block of blocks) {
         <svg class="ic-play" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12-7.5z" fill="currentColor"/></svg>
         <svg class="ic-pause" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor"/></svg>
         <span class="read-pill__label" data-pill-listen-label>Listen</span>
+        <span class="read-pill__gauge" data-pill-gauge aria-hidden="true"></span>
       </button>
     )}
     {postAudioUrl && (
@@ -365,7 +337,7 @@ for (const block of blocks) {
     )}
     {postAudioUrl && <span class="read-pill__progress" data-pill-progress aria-hidden="true"><i /></span>}
     {stageTimings && (
-      <button type="button" class="read-pill__btn" data-stage-open aria-label="Watch on stage">
+      <button type="button" class="read-pill__btn read-pill__stage" data-stage-open aria-label="Watch on stage" title="the lights are on — watch it on stage">
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5.5 13h13z" fill="currentColor" opacity=".35"/><ellipse cx="12" cy="17.5" rx="7" ry="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/></svg>
       </button>
     )}
@@ -616,24 +588,6 @@ for (const block of blocks) {
     white-space: nowrap;
   }
 
-  /* Raw transcript: the "before cleanup" record. Space Mono, lighter ink,
-     line breaks preserved, no other styling; native <details>, no motion. */
-  .transcript-raw {
-    margin-top: 3rem;
-  }
-  .transcript-raw summary {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.85rem;
-    color: var(--graphite);
-    cursor: pointer;
-  }
-  .transcript-raw-body {
-    margin-top: 1rem;
-    font-family: 'Space Mono', monospace;
-    font-size: 0.85rem;
-    color: var(--graphite);
-    white-space: pre-wrap;
-  }
 </style>
 
 <script>

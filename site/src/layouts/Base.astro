@@ -1,7 +1,9 @@
 ---
 import '../styles/global.css';
 import '../styles/studio.css';
+import { getCollection } from 'astro:content';
 import { withBase } from '../lib/url';
+import { stampDate } from '../lib/content';
 
 interface Props {
   title: string;
@@ -16,6 +18,11 @@ interface Props {
 const { title, progress = false, reading = false, wide = false } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '');
 const here = (p: string) => path.endsWith(p);
+// A status line, not a link: the studio is open, and when it last changed.
+const newest = (await getCollection('posts')).reduce<Date | null>(
+  (m, p) => (!m || p.data.published > m ? p.data.published : m),
+  null
+);
 ---
 
 <!doctype html>
@@ -83,7 +90,9 @@ const here = (p: string) => path.endsWith(p);
       <a class="wordmark" href={withBase('/')} aria-label="field notes — home">
         <span class="wordmark__a">field</span><span class="wordmark__b">notes</span>
       </a>
-      <span class="studio-nav__meta" aria-hidden="true">studio / archive / ongoing</span>
+      <span class="studio-nav__meta">
+        <i class="studio-nav__dot" aria-hidden="true"></i>studio open{newest && <> · last added {stampDate(newest)}</>}
+      </span>
       <a href={withBase('/identities')} class:list={[{ 'is-here': here('/identities') }]}><i>A.</i> obsessions</a>
       <a href={withBase('/about')} class:list={[{ 'is-here': here('/about') }]}><i>B.</i> about</a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch background">

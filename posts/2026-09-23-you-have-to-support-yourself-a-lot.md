@@ -36,4 +36,6 @@ And also I have done some background nudging, you know, in terms of animations. 
 
 I love developing this app in free time and, you know, I think the whole idea of it started from when I read that you have to support yourself a lot and it is a good investment, you know, to how do you tackle all those mental patterns. And once you have built a system, you can rely on it and the system should give you free space.
 
+>> Once you have built a system, you can rely on it — and the system should give you free space.
+
 Anyhow, if you're reading it and if you want the access to the app, then let me know. I can delete my personal data and host it for you.

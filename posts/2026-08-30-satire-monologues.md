@@ -17,6 +17,8 @@ Okay, this is a pretty insane idea that has driven my life and I'm not able to t
 
 Watching this movie took me in a different direction. Can I create something like this—monologues? I thought about this for a long time, but satire started making sense to me. I feel satire is beautiful, more than serious. People want to listen to absurdity right now—it makes more sense in today's era. Even past revolutions utilized absurdist satire because logic has reached its peak and doesn't serve anymore.
 
+>> People want to listen to absurdity right now — it makes more sense in today's era.
+
 This is where art movements like Dada picked up, relying on absurdity. There's so much hustle culture, habit building—everything feels like you have to be extremely logical to get ahead. Satire started making more sense. I thought, okay, let's attempt that.
 
 Today something clicked. Why not read the book I ordered, *John Truby's The Anatomy of Story*? I've read about 20-30% so far. I still remember the art of writing a premise—he gives two or three weeks just for that. The author encourages taking time. I think I just want to continue my journey of writing satire, short monologues using John Truby.

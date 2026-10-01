@@ -538,7 +538,7 @@ h1, h2, h3 { color: var(--ink); }
 
 /* --------------------------------------------------------------- artifacts */
 
-a.art {
+.art {
   position: relative;
   display: block;
   color: var(--ink);
@@ -546,7 +546,7 @@ a.art {
   rotate: var(--lean, 0deg);
   transition: transform var(--dur-settle) var(--ease-paper), box-shadow var(--dur-settle) var(--ease-paper);
 }
-a.art:hover, a.art:focus-visible { transform: translateY(-4px); z-index: 6; }
+.art:hover, .art:focus-within { transform: translateY(-4px); z-index: 6; }
 .art__plate { position: relative; display: block; }
 .art__img { display: block; width: 100%; height: auto; max-height: 34rem; object-fit: cover; }
 .art__body { display: block; }
@@ -719,7 +719,7 @@ a.art:hover, a.art:focus-visible { transform: translateY(-4px); z-index: 6; }
 
 /* placed onto the table: each artifact comes down at its own angle and
    presses flat to its resting lean */
-.js a.art[data-reveal] {
+.js .art[data-reveal] {
   opacity: 0;
   translate: 0 -28px;
   rotate: var(--drop, 3deg);
@@ -731,35 +731,25 @@ a.art:hover, a.art:focus-visible { transform: translateY(-4px); z-index: 6; }
     box-shadow var(--dur-settle) var(--ease-paper);
   transition-delay: calc(var(--i, 0) * 110ms);
 }
-.js a.art[data-reveal].is-in { opacity: 1; translate: 0 0; rotate: var(--lean, 0deg); }
+.js .art[data-reveal].is-in { opacity: 1; translate: 0 0; rotate: var(--lean, 0deg); }
 .js .wall__item[data-reveal] { translate: 0 -18px; rotate: calc(var(--lean, 0deg) * 2.2); transition: opacity 600ms var(--ease-paper), translate 700ms var(--ease-paper), rotate 900ms var(--ease-paper), transform var(--dur-settle) var(--ease-paper), box-shadow var(--dur-settle) var(--ease-paper); transition-delay: calc(var(--i, 0) * 120ms); }
 .js .wall__item[data-reveal].is-in { translate: 0 0; rotate: var(--lean, 0deg); }
-/* the masthead is scanned in: a bright bar passes and leaves the print */
-.js .mast__title { animation: scan-in 1100ms var(--ease-ink) both; }
-@keyframes scan-in {
-  from { clip-path: inset(0 100% 0 0); }
-  to { clip-path: inset(0 0 0 0); }
+/* the masthead is set down: each word fades up and settles — opacity and
+   transform only, so it stays on the compositor and never stutters */
+.js .mast__w1, .js .mast__w2 {
+  animation: word-set 1100ms cubic-bezier(.16, 1, .3, 1) both;
+  will-change: opacity, transform;
 }
-.js .mast__title::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--fluoro);
-  box-shadow: 0 0 18px 6px color-mix(in srgb, var(--fluoro) 60%, transparent);
-  animation: scan-bar 1100ms var(--ease-ink) both;
-}
-@keyframes scan-bar {
-  0% { left: 0; opacity: 1; }
-  92% { opacity: 1; }
-  100% { left: 100%; opacity: 0; }
+.js .mast__w1 { animation-delay: 60ms; }
+.js .mast__w2 { animation-delay: 260ms; --set-from: translate3d(0, 0.06em, 0) scale(1.015); }
+@keyframes word-set {
+  from { opacity: 0; transform: var(--set-from, translate3d(0, 0.08em, 0)); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .js a.art[data-reveal], .js .wall__item[data-reveal] { opacity: 1; translate: none; rotate: var(--lean, 0deg); transition: none; }
-  .js .mast__title, .js .mast__title::after { animation: none; }
-  .js .mast__title::after { display: none; }
+  .js .art[data-reveal], .js .wall__item[data-reveal] { opacity: 1; translate: none; rotate: var(--lean, 0deg); transition: none; }
+  .js .mast__w1, .js .mast__w2 { animation: none; }
 }
 
 /* ---------------------------------------------------------------- colophon */
@@ -974,6 +964,220 @@ main:not(.wide) h2 { font-family: var(--font-structure); font-variation-settings
   .drawer__print { grid-column: 2; grid-row: 2; }
 }
 
+/* ------------------------------------------------- the link, the loupe */
+
+/* the whole object is one link (a stretched overlay), so the loupe can sit
+   above it as its own button */
+.art__hit, .wall__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background-image: none;
+}
+.art__hit:focus-visible, .wall__hit:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+.art__tape, .art__staple { z-index: 3; }
+.art__loupe {
+  position: absolute;
+  z-index: 4;
+  top: 0.9rem;
+  right: 0.9rem;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--sheet) 88%, transparent);
+  color: var(--ink);
+  box-shadow: 0 2px 6px rgba(20, 15, 5, 0.25);
+  cursor: zoom-in;
+  transition: opacity var(--dur-quick) ease, transform var(--dur-settle) var(--ease-paper);
+}
+.art__loupe:hover { transform: scale(1.08); }
+.art__loupe:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.wall__item .art__loupe { top: 0.8rem; right: 0.8rem; width: 1.8rem; height: 1.8rem; }
+/* with a real pointer the loupe waits until you reach for the print */
+@media (hover: hover) and (pointer: fine) {
+  .art__loupe { opacity: 0; }
+  .art:hover .art__loupe, .art:focus-within .art__loupe,
+  .wall__item:hover .art__loupe, .wall__item:focus-within .art__loupe { opacity: 1; }
+  /* and a photocopy gives up its toner when you look closely */
+  .art--xerox:hover .art__img--top { opacity: 0; }
+}
+.art--xerox .art__plate { overflow: hidden; }
+.art__img--clean { position: absolute; inset: 0; width: 100%; height: 100% !important; max-height: none !important; object-fit: cover; }
+.art--xerox .art__img--top { position: relative; transition: opacity 600ms var(--ease-paper); }
+.art--xerox .art__img--clean { filter: none !important; mix-blend-mode: normal !important; }
+
+/* the loupe dialog: the print lifted to eye level */
+dialog.loupe {
+  max-width: none;
+  max-height: none;
+  width: 100vw;
+  height: 100dvh;
+  margin: 0;
+  padding: clamp(1rem, 4vw, 3rem);
+  border: 0;
+  background: transparent;
+  display: none;
+  place-items: center;
+}
+dialog.loupe[open] { display: grid; }
+dialog.loupe::backdrop {
+  background: color-mix(in srgb, #0d0c0a 72%, transparent);
+  backdrop-filter: blur(3px);
+  animation: loupe-dim 260ms ease both;
+}
+.loupe__sheet {
+  margin: 0;
+  max-width: min(92vw, 1100px);
+  padding: 0.7rem 0.7rem 0.9rem;
+  background: var(--sheet);
+  background-image: var(--tex-grain);
+  background-size: 160px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+  animation: loupe-lift 420ms cubic-bezier(.16, 1, .3, 1) both;
+}
+.loupe__img { display: block; max-width: 100%; max-height: calc(100dvh - 9rem); width: auto; height: auto; margin: 0 auto; }
+.loupe__cap {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.4rem 1.5rem;
+  padding-top: 0.7rem;
+  font-family: var(--font-meta);
+  font-size: 0.74rem;
+  color: var(--graphite);
+}
+.loupe__title { font-family: var(--font-display); font-size: 1.25rem; color: var(--ink); }
+.loupe__go { color: var(--red); align-self: center; }
+.loupe__close {
+  position: fixed;
+  top: 1rem;
+  right: 1.2rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--sheet);
+  color: var(--ink);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+dialog.loupe.is-closing .loupe__sheet { animation: loupe-down 220ms ease-in both; }
+dialog.loupe.is-closing::backdrop { animation: loupe-dim 220ms ease reverse both; }
+html.loupe-open { overflow: hidden; }
+@keyframes loupe-lift { from { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.96) rotate(-1.2deg); } }
+@keyframes loupe-down { to { opacity: 0; transform: translate3d(0, 14px, 0) scale(0.97) rotate(1deg); } }
+@keyframes loupe-dim { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .loupe__sheet, dialog.loupe::backdrop { animation: none; }
+}
+
+/* ------------------------------------------------- voice note, legibly */
+
+.art__origin { display: inline-flex; align-items: center; gap: 0.3rem; }
+.art__origin--voice { color: var(--red); }
+.art__origin svg { flex: none; }
+.post-kicker__origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.5rem 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  line-height: 1.5;
+}
+.post-kicker__origin--voice { color: var(--red); }
+.post-kicker__origin--written { color: var(--graphite); }
+/* the made-with pill and the "next" card were touching — give them air */
+.mw { margin-bottom: 2.6rem; }
+
+/* ------------------------------------------------- the reading pill */
+
+/* the length of the listen, drawn: a tick per minute, lit as it plays */
+.read-pill__gauge { display: inline-flex; gap: 2px; margin-left: 0.15rem; align-items: center; }
+.read-pill__gauge:empty { display: none; }
+.read-pill__gauge i {
+  width: 3px;
+  height: 10px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.28;
+  transition: opacity 300ms ease, background-color 300ms ease;
+}
+.read-pill__gauge i.on { opacity: 1; background: var(--red); }
+/* the stage stays dark until someone presses Listen — then the lamp comes on */
+.read-pill__stage { display: none !important; }
+.read-pill.has-started .read-pill__stage {
+  display: inline-flex !important;
+  color: var(--yellow);
+  animation: lamp-on 1200ms ease both;
+}
+@keyframes lamp-on {
+  0% { opacity: 0; }
+  20% { opacity: 0.8; }
+  28% { opacity: 0.2; }
+  45%, 100% { opacity: 1; }
+}
+
+/* ------------------------------------------------- nav status */
+
+.studio-nav__meta { display: inline-flex; align-items: center; gap: 0.5rem; text-transform: lowercase; letter-spacing: 0.04em; }
+.studio-nav__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: studio-open 2.8s ease-in-out infinite;
+}
+@keyframes studio-open {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) { .studio-nav__dot { animation: none; } }
+
+/* ------------------------------------------------- about: sheets laid down */
+
+.era {
+  background-color: var(--sheet) !important;
+  background-image: var(--tex-grain);
+  background-size: 160px;
+  box-shadow: var(--shadow-sheet);
+}
+.era--archive { background-color: var(--paper) !important; }
+.js .era[data-reveal] {
+  opacity: 0;
+  translate: -14px -26px;
+  rotate: -2.5deg;
+  transition:
+    opacity 650ms var(--ease-paper),
+    translate 900ms cubic-bezier(.16, 1, .3, 1),
+    rotate 1000ms cubic-bezier(.16, 1, .3, 1),
+    transform var(--dur-settle) var(--ease-paper);
+  transition-delay: calc(var(--i, 0) * 160ms);
+  will-change: opacity, transform;
+}
+.js .era[data-reveal]:nth-child(even) { translate: 16px -22px; rotate: 2deg; }
+.js .era[data-reveal].is-in { opacity: 1; translate: 0 0; rotate: 0deg; }
+/* the spine draws itself down as the sheets arrive */
+.js .about-eras::before { transform-origin: top; animation: spine-draw 1400ms var(--ease-ink) 120ms both; }
+@keyframes spine-draw { from { transform: scaleY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .js .era[data-reveal] { opacity: 1; translate: none; rotate: none; transition: none; }
+  .js .about-eras::before { animation: none; }
+}
+
+/* ------------------------------------------------- night paper has tooth too */
+
+:root[data-theme="dark"] {
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 .97  0 0 0 0 .9  0 0 0 .2 -.04'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 .09' numOctaves='2' seed='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .85  0 0 0 .09 -.025'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --tex-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0035' numOctaves='3' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 .95  0 0 0 0 .85  0 0 0 .12 -.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+}
+
 /* --------------------------------------------------------- night studio */
 
 :root[data-theme="dark"] {
@@ -1000,7 +1204,7 @@ main:not(.wide) h2 { font-family: var(--font-structure); font-variation-settings
   --newsprint: #1E2D47;
   --line: #2A3A55;
 }
-:root[data-theme="dark"] body { background-blend-mode: soft-light, soft-light, soft-light; }
+:root[data-theme="dark"] body { background-blend-mode: normal, normal, normal; }
 :root[data-theme="dark"] .art__tape { mix-blend-mode: screen; }
 :root[data-theme="dark"] .art--xerox .art__img { mix-blend-mode: normal; filter: url(#fn-xerox) brightness(0.85); }
 :root[data-theme="dark"] .art--xerox { background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 0.7px, transparent 1.15px), var(--tex-grain); }
@@ -1009,4 +1213,65 @@ main:not(.wide) h2 { font-family: var(--font-structure); font-variation-settings
   background-image:
     linear-gradient(transparent 2.6rem, var(--red) 2.6rem, var(--red) calc(2.6rem + 1px), transparent calc(2.6rem + 1px)),
     repeating-linear-gradient(transparent 0 calc(1.6rem - 1px), color-mix(in srgb, var(--blue) 22%, transparent) calc(1.6rem - 1px) 1.6rem);
+}
+
+/* ------------------------------------------------- pull-quote: a line lifted
+   off the page, marked up the way you would in a book you own — oversized
+   italic, a highlighter swipe that draws on as it arrives, a red quote mark
+   in the margin. Silent to the narration (scripts/generate_post_audio.py). */
+.pull-quote {
+  position: relative;
+  max-width: none;
+  margin: 2.8rem -2.5rem 2.8rem 0;
+  padding: 0 0 0 3.2rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(1.85rem, 4.2vw, 2.7rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  text-align: left;
+  color: var(--ink);
+  white-space: normal;
+}
+.pull-quote::before {
+  content: '\201C';
+  position: absolute;
+  left: -0.1rem;
+  top: -0.18em;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: 7.5rem;
+  line-height: 1;
+  color: var(--red);
+}
+.pull-quote::after {
+  content: 'lifted from the text';
+  display: block;
+  margin-top: 0.9rem;
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.pull-quote > span {
+  background-image: linear-gradient(transparent 58%, color-mix(in srgb, var(--fluoro) 75%, transparent) 58%, color-mix(in srgb, var(--fluoro) 75%, transparent) 92%, transparent 92%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 0.08em;
+}
+.js .pull-quote[data-reveal] > span { background-size: 0% 100%; transition: background-size 1100ms var(--ease-ink) 250ms; }
+.js .pull-quote[data-reveal].is-in > span { background-size: 100% 100%; }
+:root[data-theme="dark"] .pull-quote > span {
+  background-image: linear-gradient(transparent 62%, color-mix(in srgb, var(--red) 45%, transparent) 62%, color-mix(in srgb, var(--red) 45%, transparent) 90%, transparent 90%);
+}
+@media (max-width: 720px) {
+  .pull-quote { margin-right: 0; padding-left: 2.4rem; }
+  .pull-quote::before { font-size: 3.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .js .pull-quote[data-reveal] > span { background-size: 100% 100%; transition: none; }
 }

@@ -14,6 +14,7 @@ import type { LeadMedia } from '../lib/content';
 import { withBase } from '../lib/url';
 import { hashString } from '../lib/hash';
 import type { PostOrigin } from '../lib/post-origin';
+import OriginGlyph from './OriginGlyph.astro';
 
 export type ArtifactVariant = 'print' | 'xerox' | 'card' | 'clip';
 
@@ -52,12 +53,13 @@ const label = fig ?? (step ? `no. ${String(step).padStart(2, '0')}` : null);
 const originMark = origin === 'voice' ? 'voice note' : 'written';
 ---
 
-<a
+<div
   class:list={['art', `art--${variant}`, { 'art--quiet': quiet }]}
-  href={withBase(`/posts/${slug}/`)}
   style={`--lean: ${lean.toFixed(2)}deg; --drop: ${drop}deg; --tape-x: ${tapeX}%; --tape-r: ${tapeR}deg`}
   data-reveal
 >
+  <!-- the whole object is the link; the loupe sits above it -->
+  <a class="art__hit" href={withBase(`/posts/${slug}/`)} aria-label={title}></a>
   {variant !== 'card' && <span class="art__tape" aria-hidden="true" />}
   {second && variant === 'print' && <span class="art__tape art__tape--b" aria-hidden="true" />}
   {variant === 'xerox' && <span class="art__staple" aria-hidden="true" />}
@@ -66,12 +68,33 @@ const originMark = origin === 'voice' ? 'voice note' : 'written';
     variant !== 'card' && (
       <span class="art__plate">
         {media?.kind === 'image' ? (
-          <img class="art__img" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+          <>
+            {variant === 'xerox' && (
+              <img class="art__img art__img--clean" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+            )}
+            <img class="art__img art__img--top" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+          </>
         ) : media?.kind === 'video' ? (
           <video class="art__img" data-thumb-video src={media.src} muted loop playsinline preload="metadata" />
         ) : null}
         {variant === 'clip' && <span class="art__over"><span>{title}</span></span>}
       </span>
+    )
+  }
+  {
+    media?.kind === 'image' && (
+      <button
+        type="button"
+        class="art__loupe"
+        data-loupe={media.src}
+        data-loupe-title={title}
+        data-loupe-href={withBase(`/posts/${slug}/`)}
+        data-loupe-w={media.width}
+        data-loupe-h={media.height}
+        aria-label={`See the whole photograph — ${title}`}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
     )
   }
 
@@ -84,21 +107,21 @@ const originMark = origin === 'voice' ? 'voice note' : 'written';
         </span>
       )
     }
-    {variant !== 'clip' && (
-      <span class="art__title">
-        {title}
-      </span>
-    )}
+    {variant !== 'clip' && <span class="art__title">{title}</span>}
     {!quiet && teaser && <span class="art__teaser">{teaser}</span>}
     <span class="art__meta">
       {variant !== 'card' && label && <span class="art__fig">{label}</span>}
       {variant !== 'card' && date && <span>{date}</span>}
-      <span>{originMark}</span>
+      <span class={`art__origin art__origin--${origin}`}>
+        <OriginGlyph origin={origin} size={11} />
+        {originMark}
+      </span>
       {inProgress && <span class="art__wip">in progress</span>}
     </span>
   </span>
-</a>
+</div>
 
 <script>
   import '../client/thumb-video';
+  import '../client/loupe';
 </script>

@@ -28,4 +28,9 @@ Then I spent a whole night sleeping over it and the morning I asked AI, you know
 
 While I sat on this particular problem, I was unable to solve it. Last night I saw a dream when a woman was drinking something from a broken glass. A person I knew, I mean an acquaintance, not a friend or something, she was drinking from it and at the same time my mind was giving an explanation that this glass had been made to work. So when I woke up in the morning and I was analyzing my dream, I realized most likely this is hyperfixation itself. You are drinking from a broken glass and you are making it functional. And I think this is the metaphor for acceptance in ADHD is that things are broken and still you are making it work.
 
+>> Things are broken, and still you are making it work.
+
 Well, I continued to think about this broken glass metaphor. I also realized that in general our attitude in life is always about, you know, if something is broken, just throw it away. I think I've read it somewhere in Japanese craft that when something is broken, they join them and they keep it in the showcase or something. I'm not sure, but it seems to be a valid idea, you know. If you are broken, what would you do? You will not throw yourself away. You will not throw away that part, right? You will still use it. And I think that's what the woman was doing: nourishing herself from something broken. It seems like such a great idea.
+
+
+>> If you are broken, you will not throw yourself away.

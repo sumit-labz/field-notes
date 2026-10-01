@@ -19,4 +19,6 @@ So I decided, okay, let's do a layout, you know, some kind of a notebook where I
 
 And the last column came as a suggestion while I was thinking with AI. It asks one question: what exists now? And I think it's a very beautiful question to answer, because sometime with the ADHD brain, it's easy to get lost. And you know, you kind of easily get into the thinking of, you did not create anything which is visible. And I think if I can solve this problem, I can have a good self-worth. The shaming system that exists inside me can die, because right now, what happens is I'm doubting myself a lot. And this is what happens to the ADHD brain. But if I write down what exists, then it will give me a sense of a direction where I'm heading.
 
+>> What exists now?
+
 Although I'm not completely happy with the system, because like I've got so many columns, and it's very difficult to write inside these columns. But let's give it as a very dirty start and keep doing it, I think that and let's see how it goes. So yeah, seems to be a decent start and let's see where it evolves to.

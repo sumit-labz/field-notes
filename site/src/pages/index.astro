@@ -129,7 +129,6 @@ function firstParagraph(journey: (typeof journeys)[number]): string {
   return cut.slice(0, cut.lastIndexOf(' ')) + '…';
 }
 
-const fragmentCount = fragments.filter((f) => f.data.consumed_by).length;
 const lastAdded = newest[0] ? stampDate(newest[0].data.published) : '';
 const STATUS_STAMP: Record<string, string> = {
   active: 'in progress',
@@ -137,6 +136,21 @@ const STATUS_STAMP: Record<string, string> = {
   abandoned: 'abandoned',
   completed: 'finished',
 };
+// The pencil line in the masthead margin: a different absurdity each visit
+// (picked client-side; the first one is what renders without JS).
+const ABSURD = [
+  'this is not a website ↘',
+  'the studio is closed. please come in.',
+  'everything here is unfinished, including this sentence',
+  'a chair is just a painting you can sit on',
+  'please do not feed the drafts',
+  'lost: one idea. answers to "maybe".',
+  'abandon all plans, ye who enter',
+  'the paint is still wet. so am I.',
+  'art is whatever I forgot to throw away',
+  'this sentence has been rejected by three galleries',
+];
+
 // The pencil note left beside a dense plate — one of a few, by slug.
 const NOTES = ['keeps coming back to this', 'unfinished, on purpose', 'more of this →', 'look again later', 'the pile grows'];
 const marginNote = (slug: string) => NOTES[Math.abs(hashString(`${slug}:note`)) % NOTES.length];
@@ -147,7 +161,6 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   <header class="mast">
     <p class="mast__inventory" aria-label="Archive inventory">
       <span>Inventory</span>
-      <span><b>{String(fragmentCount).padStart(3, '0')}</b> fragments</span>
       <span><b>{String(posts.length).padStart(3, '0')}</b> posts</span>
       <span><b>{String(journeys.length).padStart(2, '0')}</b> journeys</span>
       <span>last material added <b>{lastAdded}</b></span>
@@ -165,25 +178,33 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
         <svg class="strike-overlay" aria-hidden="true"></svg>
       </span>
     </p>
-    <p class="mast__hand" aria-hidden="true">fragments in, journeys out ↘</p>
+    <p class="mast__hand" data-absurd aria-hidden="true">{ABSURD[0]}</p>
 
     {
       wall.length > 0 && (
         <div class="wall" aria-label="Newest material on the wall">
           <span class="wall__label">Pinned this week — newest material, unsorted</span>
           {wall.map((w) => (
-            <a
-              class={`wall__item wall__item--${w.i}`}
-              href={withBase(`/posts/${w.slug}/`)}
-              style={`--lean: ${wallTilt(w.slug)}deg`}
-              data-reveal
-            >
+            <div class={`wall__item wall__item--${w.i}`} style={`--lean: ${wallTilt(w.slug)}deg`} data-reveal>
+              <a class="wall__hit" href={withBase(`/posts/${w.slug}/`)} aria-label={w.title}></a>
               <img src={w.src} width={w.width} height={w.height} alt="" loading={w.i < 2 ? 'eager' : 'lazy'} />
+              <button
+                type="button"
+                class="art__loupe"
+                data-loupe={w.src}
+                data-loupe-title={w.title}
+                data-loupe-href={withBase(`/posts/${w.slug}/`)}
+                data-loupe-w={w.width}
+                data-loupe-h={w.height}
+                aria-label={`See the whole photograph — ${w.title}`}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M15 15l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </button>
               <span class="wall__cap">
                 <b>fig. {String(w.i + 1).padStart(2, '0')}</b> {w.title}
                 <i>{w.date}</i>
               </span>
-            </a>
+            </div>
           ))}
         </div>
       )
@@ -265,6 +286,14 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   }
 </Base>
 
+<script is:inline define:vars={{ ABSURD }}>
+  (function () {
+    var el = document.querySelector('[data-absurd]');
+    if (el) el.textContent = ABSURD[Math.floor(Math.random() * ABSURD.length)];
+  })();
+</script>
+
 <script>
   import '../client/feed';
+  import '../client/loupe';
 </script>

@@ -26,6 +26,10 @@ But then I thought, what will be the distribution strategy? How am I gonna distr
 
 Then I realized: why can't distribution and development come together? Why can't HTML be the tool in which I use 3D space or kinetic typography to build the distribution content? I was looking at some crazy distribution angles through which I can hook people — more than the hook, it's about making people curious about how story works. Even this viewpoint of stories can be used in branding, marketing, story for money — how Nike sells shoes, how they use the protagonist. What is the hidden structure of the story? Stories can be used as a lens of life, even as a moral question of how much of your personality is actually yours. There could be crazy content, crazy ideas I can come up with to hook people in.
 
+>> Why can't distribution and development come together?
+
+>> Stories can be used as a lens of life.
+
 So I thought — why not create my own world, in which I'm doing the scene building myself? A world with scenes, kinetic typography to study motion, diagrams for relationships at times, 3D space for exploration, and interaction to help with causality, sound effects, and a voiceover since it's video-based distribution. I think that will be the best way to do it. This is the journey that was completely missing from this website, and it gives structure to my mind too — how I'm going to do it.
 
 Building a visual world is really the most challenging aspect of it, and I want to do it slowly, because it's like an animated world. I wish I could combine distribution and development together. The sweet spot, if I could arrive at it, would be distribution content that's linked with the development.

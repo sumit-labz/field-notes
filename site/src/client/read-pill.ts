@@ -21,6 +21,7 @@ function init(): void {
     const audio = listen.querySelector('audio');
     const label = pill.querySelector<HTMLElement>('[data-pill-listen-label]');
     const bar = pill.querySelector<HTMLElement>('[data-pill-progress] i');
+    const gauge = pill.querySelector<HTMLElement>('[data-pill-gauge]');
     const rate = pill.querySelector<HTMLElement>('[data-pill-rate]');
     const engineRate = listen.querySelector<HTMLElement>('.listen-rate');
     const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -31,6 +32,13 @@ function init(): void {
           ? `${fmt(audio.currentTime)} / ${fmt(audio.duration)}`
           : isFinite(audio.duration) ? `Listen · ${Math.max(1, Math.round(audio.duration / 60))} min` : 'Listen';
         if (bar) bar.style.transform = `scaleX(${audio.duration ? audio.currentTime / audio.duration : 0})`;
+        // the length, drawn: one tick per minute, filling as the voice reads
+        if (gauge && isFinite(audio.duration)) {
+          const n = Math.min(12, Math.max(1, Math.round(audio.duration / 60)));
+          if (gauge.childElementCount !== n) gauge.replaceChildren(...Array.from({ length: n }, () => document.createElement('i')));
+          const lit = Math.ceil((audio.currentTime / audio.duration) * n);
+          Array.from(gauge.children).forEach((t, k) => t.classList.toggle('on', k < lit));
+        }
         pill.classList.toggle('has-started', started);
       };
       ['timeupdate', 'loadedmetadata', 'play', 'pause', 'ended'].forEach((ev) => audio.addEventListener(ev, tick));

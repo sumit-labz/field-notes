@@ -22,6 +22,8 @@ I was building a typography poster for one of the product ideas I'm working on, 
 
 While doing this, I discovered that the sentence I was trying to compose had a lot of depth in itself. I realized that you can write a sentence and give it a visual meaning that someone has to decode.
 
+>> You can write a sentence and give it a visual meaning that someone has to decode.
+
 As I continued exploring, I somehow entered a zone that became more and more addictive. I wanted to make the layout increasingly difficult to read while experimenting with different visual styles. The depth of the work seemed to increase as I continued.
 
 Eventually, I noticed that I kept attempting to make it better and better, and everything outside of it started feeling like a distraction. I didn't want to stop. For a long time, I didn't eat or drink water, and I kept working for hours until the end of the day.
@@ -41,5 +43,7 @@ There was a strange contradiction between the joy I felt while creating the piec
 I had to take a complete day to recover.
 
 What I think about now is that I'm a little scared of getting caught in the same loop again. I think hyperfixation can be creatively powerful, but I need to make sure that I take rest, eat, drink water, and take care of my body so that the intensity doesn't turn into dysregulation.
+
+>> Hyperfixation can be creatively powerful — as long as the intensity doesn't turn into dysregulation.
 
 {{fragment:2026-09-08-075622}}

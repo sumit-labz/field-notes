@@ -22,6 +22,8 @@ And also I built this guided meditation, you know, on the widget, I can press th
 
 What I, in a sense, I feel now is software development has reached everyone. Now everyone can design an application for their own needs with ease, but with a little knowledge of, you know, desktop-based development, like what is GitHub, what are desktop applications, web applications. Even people who have no coding background can code it, but definitely there is a learning curve involved. I think that's not too difficult because right now Claude can drive all the things for you. Understanding pull requests, GitHub, can help anyone, you know, go past that barrier. And this is such a beautiful time to develop something hyper-specific for your hyper-specific need. So this is, I think, one of the best things about AI: you can design something for exactly what you need.
 
+>> Such a beautiful time to develop something hyper-specific for your hyper-specific need.
+
 I think another learning curve for people who are not familiar with coding would be to think in terms of user experience itself, what kind of a user experience they want to build. And that's also a skill in itself, how many softwares you have used, how many patterns you remember. And you can always ask the AI what pattern will best fit here, and it can develop it for you, and then you have a choice whether you want to keep the feature or not.
 
 So, yeah, I'm just loving this time of, you know, developing software for myself.

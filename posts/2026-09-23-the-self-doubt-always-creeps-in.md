@@ -24,4 +24,9 @@ On the other hand, I was looking at the bigger picture today because one of the 
 
 You know, I think I'm rambling now, but the thing is, with ADHD brain, reflection works so well. You need to reflect on your thoughts again and again. Then only it will make sense at some point of a time. I recently started doing food logging, the food I'm eating these days. And when I reflected on it, I realized that I was consuming far more protein than I had been worrying about. So, so logging and reflecting, I think that will be the core part of my journey and I think that will help me stay on the path.
 
+>> With an ADHD brain, reflection works so well.
+
 The self-doubt always creeps in because the interests are changing. You drop out some journeys and you embark on new one. Then you think that why did I drop that? Why it became slow. So handling multiple things, learning multiple things, doing multiple things at the same time has a cost. And I think you got to give yourself a benefit of doubt also. I think that's what the message is coming from inside as I speak. Don't be harsh on yourself when you're doing well. Yeah, I think probably I'm out of that hyper fixation loop and I'm back at work with good energy.
+
+
+>> Don't be harsh on yourself when you're doing well.

@@ -72,6 +72,9 @@ def post_prose(body: str) -> str:
     """Plain narration text: drop fragment placeholders and light markdown so
     the TTS reads prose, not symbols."""
     text = re.sub(r"\{\{fragment:[^}]+\}\}", "", body)
+    # Pull-quotes (">> " lines) repeat a line already in the prose, lifted out
+    # for the eye. Read aloud they'd be said twice, so the voice skips them.
+    text = re.sub(r"^[ \t]*>>.*$", "", text, flags=re.MULTILINE)
     text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)          # images
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)      # links -> label
     text = re.sub(r"[#>*_`]+", "", text)                      # md symbols
