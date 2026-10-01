@@ -1516,3 +1516,6 @@ html:not(.js) .tear__old { display: none; }
     overflow-wrap: anywhere;
   }
 }
+
+/* never scroll sideways: nothing on the wall may widen the page */
+html, body { overflow-x: clip; }
