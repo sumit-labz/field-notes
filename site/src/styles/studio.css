@@ -1519,3 +1519,17 @@ html:not(.js) .tear__old { display: none; }
 
 /* never scroll sideways: nothing on the wall may widen the page */
 html, body { overflow-x: clip; }
+
+/* torn title, sturdier: both names on one line so the label covers the new
+   one exactly; a tug before the rip; slower fall so a phone sees it */
+.journey-title--torn { white-space: nowrap; max-width: 100%; }
+.tear__old { top: 0; bottom: 0; display: flex; align-items: center; }
+.journey-title--torn.is-ripping .tear__old--top { animation: tug 450ms ease-in-out; }
+.journey-title--torn.is-ripping .tear__old--bottom { animation: tug 450ms ease-in-out reverse; }
+@keyframes tug { 25% { transform: translate(-2px, -1px) rotate(-1deg); } 50% { transform: translate(2px, 1px) rotate(0.8deg); } 75% { transform: translate(-1px, 0) rotate(-0.6deg); } }
+.tear__old { transition-duration: 1.1s; }
+.is-torn .tear__old--top { transform: translate(-0.5em, -1.4em) rotate(-14deg); }
+.is-torn .tear__old--bottom { transform: translate(0.6em, 1.6em) rotate(10deg); }
+@media (max-width: 720px) {
+  .plate__title .journey-title--torn, .box__title .journey-title--torn { font-size: clamp(2.2rem, 11vw, 3.4rem); }
+}
