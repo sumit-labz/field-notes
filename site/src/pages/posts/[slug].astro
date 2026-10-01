@@ -302,7 +302,7 @@ for (const block of blocks) {
 
   {authorLine && <AuthorFooter line={authorLine} />}
 
-  {post.data.made_with && <MadeWith stage={post.data.made_with} />}
+  {post.data.made_with && <MadeWith stage={post.data.made_with} trimmed={post.data.trimmed} />}
 
   {
     nextPost && (

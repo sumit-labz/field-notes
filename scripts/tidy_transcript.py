@@ -191,6 +191,11 @@ def tidy_post(slug: str, model: str, dry_run: bool) -> dict:
         head = re.sub(r"^made_with:.*$", f"made_with: {STAGE}", head, flags=re.M)
     else:
         head += f"\nmade_with: {STAGE}"
+    # how many spoken words came out — the badge shows it (cumulative if re-run)
+    removed = max(0, result["words_before"] - result["words_after"])
+    prev = re.search(r"^trimmed:\s*(\d+)\s*$", head, re.M)
+    total = removed + (int(prev.group(1)) if prev else 0)
+    head = re.sub(r"\ntrimmed:.*", "", head) + f"\ntrimmed: {total}"
     out = head + close + "\n" + result["text"] + "\n"
     if not dry_run:
         path.write_text(out, encoding="utf-8", newline="\n")

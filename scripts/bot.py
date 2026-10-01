@@ -423,7 +423,7 @@ def _publish_audio(st: dict) -> str:
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
         fh.write(text)
         raw_file = fh.name
-    stage, body_file = "raw", raw_file
+    stage, body_file, trimmed = "raw", raw_file, 0
     try:
         tidy = _run_json([PY, str(REPO_ROOT / "scripts" / "tidy_transcript.py"),
                           "--file", raw_file, "--json"], timeout=600)
@@ -431,11 +431,14 @@ def _publish_audio(st: dict) -> str:
             fh.write(tidy["text"])
             body_file = fh.name
         stage = "tidied"
+        trimmed = max(0, int(tidy.get("words_before", 0)) - int(tidy.get("words_after", 0)))
     except Exception as exc:  # noqa: BLE001
         log(f"tidy pass failed, publishing raw: {redact_secrets(str(exc))}")
     try:
         cmd = [PY, str(REPO_ROOT / "scripts" / "publish_post.py"),
                "--audio-id", audio, "--body-file", body_file, "--stage", stage, "--json"]
+        if trimmed:
+            cmd += ["--trimmed", str(trimmed)]
         if cover:
             cmd += ["--cover-id", cover]
         if st.get("journey"):

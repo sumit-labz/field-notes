@@ -90,6 +90,8 @@ const posts = defineCollection({
     // practice this post reached, rendered as the MadeWith badge (see
     // components/MadeWith.astro). Absent → no badge.
     made_with: z.enum(['raw', 'tidied', 'self-edited', 'feedback', 'unaided']).optional(),
+    // tidied posts: how many spoken words the clean-verbatim pass removed.
+    trimmed: z.number().optional(),
   }),
 });
 

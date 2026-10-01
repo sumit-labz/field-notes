@@ -12,7 +12,7 @@ false starts, a warm-up minute before the first real thought. Rewritten into
 polished prose they stop sounding like me. Clean verbatim is the middle: remove
 the noise of *speaking*, keep everything that is *me*.
 
-The published stage label is `tidied` — "Voice Note, tidied".
+The published stage is `tidied`; the badge reads "Raw voice, tidied · N words swept" (N = `trimmed:` in the frontmatter, written by the script).
 
 ## Rules
 
