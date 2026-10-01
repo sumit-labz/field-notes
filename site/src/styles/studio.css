@@ -1564,3 +1564,9 @@ html, body { overflow-x: clip; }
   60% { filter: blur(1.5px); opacity: 0.9; }
   to { filter: none; opacity: 1; letter-spacing: normal; }
 }
+
+/* footer: the way in to /how, for whoever scrolled this far */
+.colophon__how { margin-top: 1.4rem; }
+.colophon__how a { font-family: var(--font-annotation); font-size: 1.35rem; color: var(--ink); background-image: none; }
+.colophon__how span { color: var(--blue); }
+.colophon__how a:hover span { color: var(--red); }

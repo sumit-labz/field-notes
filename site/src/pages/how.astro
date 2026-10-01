@@ -5,6 +5,12 @@
 // A survival guide for overthinkers & ADHDers.
 import Base from '../layouts/Base.astro';
 import { withBase } from '../lib/url';
+import { getCollection } from 'astro:content';
+
+// where the film sends you when it's over: the studio, or the newest note
+const newestPost = (await getCollection('posts')).sort(
+  (a, b) => b.data.published.valueOf() - a.data.published.valueOf()
+)[0];
 
 const REPO = 'https://github.com/sumit-labz/field-notes';
 ---
@@ -19,7 +25,7 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
       <filter id="brush-edge"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.05" numOctaves="2" seed="4" /><feDisplacementMap in="SourceGraphic" scale="9" /></filter>
     </defs>
   </svg>
-  <nav class="film__dots" aria-label="Scenes" data-film-dots></nav>
+  <div class="film__dots" role="group" aria-label="Scenes" data-film-dots></div>
   <div class="film" data-film>
     <!-- the title card -->
     <section class="scene scene--title" data-scene>
@@ -246,6 +252,14 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
         <span>authorship: still mine</span>
       </p>
       <p class="credits__end">THE END <small>(it isn't. it loops.)</small></p>
+      <div class="credits__next" role="group" aria-label="Where next">
+        <a class="credits__go" href={withBase('/')}>step into the studio <span aria-hidden="true">→</span></a>
+        {newestPost && (
+          <a class="credits__go credits__go--quiet" href={withBase(`/posts/${newestPost.data.slug}/`)}>
+            or read the newest note: <i>{newestPost.data.title}</i>
+          </a>
+        )}
+      </div>
       </div>
     </section>
   </div>
@@ -658,6 +672,24 @@ const REPO = 'https://github.com/sumit-labz/field-notes';
   }
   .credits__made span:last-child { color: var(--red); }
   .credits__end { margin-top: 1rem; font-family: var(--font-structure); font-variation-settings: 'wdth' 62; font-weight: 800; font-size: 1.8rem; letter-spacing: 0.1em; color: var(--ink); }
+  .credits__next { display: grid; justify-items: center; gap: 0.7rem; margin-top: 1.4rem; }
+  .credits__go {
+    display: inline-block;
+    padding: 0.75rem 1.4rem;
+    border: 1.5px solid var(--ink);
+    border-radius: 999px 980px 999px 960px;
+    background: var(--red);
+    color: #fff;
+    font-family: var(--font-meta);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    rotate: -1.2deg;
+    transition: rotate 300ms var(--ease-paper), box-shadow 300ms var(--ease-paper);
+  }
+  .credits__go:hover { rotate: 0deg; box-shadow: 4px 5px 0 var(--ink); }
+  .credits__go--quiet { padding: 0; border: 0; background: none; color: var(--graphite); rotate: none; font-size: 0.75rem; max-width: 30ch; }
+  .credits__go--quiet i { font-style: normal; color: var(--ink); }
+  .credits__go--quiet:hover { box-shadow: none; color: var(--red); }
   .credits__end small { display: block; font-family: var(--font-annotation); font-weight: 400; font-size: 1.3rem; letter-spacing: 0; color: var(--red); }
   .how-free {
     display: block;
