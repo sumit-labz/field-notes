@@ -52,10 +52,10 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..600&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap"
-      rel="stylesheet"
-    />
+    <!-- fonts load without blocking the first paint; text swaps in when they land -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..600&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..600&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..800;1,62..125,400..600&family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" /></noscript>
   </head>
   <body class:list={[{ 'is-wide': wide }]}>
     <!-- Material filters: photocopy toner, rough paper edges, ink bleed.
@@ -106,8 +106,8 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
     {
       !reading && (
         <footer class="colophon">
+          <span class="colophon__mark" aria-label="field notes">FN</span>
           <div class="colophon__row">
-            <span class="colophon__mark">FN</span>
             <span>field notes is part of my writing system — notes caught on the fly, some grow into blog posts, a few into articles. Mostly it's note-taking while I build my studio.</span>
           </div>
           <div class="colophon__row colophon__meta">
@@ -115,15 +115,11 @@ const newest = (await getCollection('posts')).reduce<Date | null>(
             <span>Text CC BY-NC 4.0 · system MIT</span>
             <span class="colophon__hand">the door is open — come back, things move.</span>
           </div>
-          <div class="colophon__row colophon__how">
-            <a href={withBase('/how/')}>how does this place work? <span>watch the two-minute film →</span></a>
-          </div>
-          <div class="colophon__row colophon__clone">
-            <a href="https://github.com/sumit-labz/field-notes" rel="noopener">
-              <span class="colophon__clone-q">Want a website like this?</span>
-              <span class="colophon__clone-a">Clone it from the GitHub repo <span class="colophon__arrow" aria-hidden="true">→</span></span>
-            </a>
-          </div>
+          <p class="colophon__ways">
+            <a href={withBase('/how/')}>see how it works</a>
+            <span class="colophon__plus" aria-hidden="true">+</span>
+            <a href="https://github.com/sumit-labz/field-notes" rel="noopener">make one like it <span aria-hidden="true">→</span></a>
+          </p>
         </footer>
       )
     }

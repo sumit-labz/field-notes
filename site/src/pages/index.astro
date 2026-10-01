@@ -183,7 +183,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
           {wall.map((w) => (
             <div class={`wall__item wall__item--${w.i}`} style={`--lean: ${wallTilt(w.slug)}deg`} data-reveal>
               <a class="wall__hit" href={withBase(`/posts/${w.slug}/`)} aria-label={w.title}></a>
-              <img src={w.src} width={w.width} height={w.height} alt="" loading={w.i < 2 ? 'eager' : 'lazy'} />
+              <img src={w.src} width={w.width} height={w.height} alt="" loading={w.i < 2 ? 'eager' : 'lazy'} decoding="async" fetchpriority={w.i === 0 ? 'high' : 'auto'} />
               <button
                 type="button"
                 class="art__loupe"
@@ -244,7 +244,7 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                   <span class="catalogue__date">{stampDate(post.data.published)}</span>
                   {media?.kind === 'image' && (
                     <span class="catalogue__thumb">
-                      <img src={media.src} width={media.width} height={media.height} alt="" loading="lazy" />
+                      <img src={media.src} width={media.width} height={media.height} alt="" loading="lazy" decoding="async" />
                     </span>
                   )}
                 </a>

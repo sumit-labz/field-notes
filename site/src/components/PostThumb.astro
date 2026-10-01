@@ -76,9 +76,9 @@ const originMark = origin === 'voice' ? 'voice note' : 'written';
         {media?.kind === 'image' ? (
           <>
             {variant === 'xerox' && (
-              <img class="art__img art__img--clean" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+              <img class="art__img art__img--clean" src={media.src} width={media.width} height={media.height} loading="lazy" decoding="async" alt="" />
             )}
-            <img class="art__img art__img--top" src={media.src} width={media.width} height={media.height} loading="lazy" alt="" />
+            <img class="art__img art__img--top" src={media.src} width={media.width} height={media.height} loading="lazy" decoding="async" alt="" />
           </>
         ) : media?.kind === 'video' ? (
           <video class="art__img" data-thumb-video src={media.src} muted loop playsinline preload="metadata" />
