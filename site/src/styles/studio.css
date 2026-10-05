@@ -183,7 +183,7 @@ h1, h2, h3 { color: var(--ink); }
   display: block;
   font-family: var(--font-display);
   font-style: italic;
-  font-size: clamp(5.5rem, 21vw, 19rem);
+  font-size: clamp(4.4rem, 16.8vw, 15.2rem);
   letter-spacing: -0.035em;
   margin-left: -0.04em;
 }
@@ -193,7 +193,7 @@ h1, h2, h3 { color: var(--ink); }
   font-variation-settings: 'wdth' 62;
   font-weight: 800;
   text-transform: uppercase;
-  font-size: clamp(6.5rem, 27vw, 25rem);
+  font-size: clamp(5.2rem, 21.6vw, 20rem);
   letter-spacing: -0.03em;
   line-height: 0.8;
   margin-top: -0.12em;
@@ -734,22 +734,8 @@ h1, h2, h3 { color: var(--ink); }
 .js .art[data-reveal].is-in { opacity: 1; translate: 0 0; rotate: var(--lean, 0deg); }
 .js .wall__item[data-reveal] { translate: 0 -18px; rotate: calc(var(--lean, 0deg) * 2.2); transition: opacity 600ms var(--ease-paper), translate 700ms var(--ease-paper), rotate 900ms var(--ease-paper), transform var(--dur-settle) var(--ease-paper), box-shadow var(--dur-settle) var(--ease-paper); transition-delay: calc(var(--i, 0) * 120ms); }
 .js .wall__item[data-reveal].is-in { translate: 0 0; rotate: var(--lean, 0deg); }
-/* the masthead is set down: each word fades up and settles — opacity and
-   transform only, so it stays on the compositor and never stutters */
-.js .mast__w1, .js .mast__w2 {
-  animation: word-set 1100ms cubic-bezier(.16, 1, .3, 1) both;
-  will-change: opacity, transform;
-}
-.js .mast__w1 { animation-delay: 60ms; }
-.js .mast__w2 { animation-delay: 260ms; --set-from: translate3d(0, 0.06em, 0) scale(1.015); }
-@keyframes word-set {
-  from { opacity: 0; transform: var(--set-from, translate3d(0, 0.08em, 0)); }
-  to { opacity: 1; transform: none; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .js .art[data-reveal], .js .wall__item[data-reveal] { opacity: 1; translate: none; rotate: var(--lean, 0deg); transition: none; }
-  .js .mast__w1, .js .mast__w2 { animation: none; }
 }
 
 /* ---------------------------------------------------------------- colophon */
@@ -1148,28 +1134,6 @@ html.loupe-open { overflow: hidden; }
   box-shadow: var(--shadow-sheet);
 }
 .era--archive { background-color: var(--paper) !important; }
-.js .era[data-reveal] {
-  opacity: 0;
-  translate: -14px -26px;
-  rotate: -2.5deg;
-  transition:
-    opacity 650ms var(--ease-paper),
-    translate 900ms cubic-bezier(.16, 1, .3, 1),
-    rotate 1000ms cubic-bezier(.16, 1, .3, 1),
-    transform var(--dur-settle) var(--ease-paper);
-  transition-delay: calc(var(--i, 0) * 160ms);
-  will-change: opacity, transform;
-}
-.js .era[data-reveal]:nth-child(even) { translate: 16px -22px; rotate: 2deg; }
-.js .era[data-reveal].is-in { opacity: 1; translate: 0 0; rotate: 0deg; }
-/* the spine draws itself down as the sheets arrive */
-.js .about-eras::before { transform-origin: top; animation: spine-draw 1400ms var(--ease-ink) 120ms both; }
-@keyframes spine-draw { from { transform: scaleY(0); } }
-@media (prefers-reduced-motion: reduce) {
-  .js .era[data-reveal] { opacity: 1; translate: none; rotate: none; transition: none; }
-  .js .about-eras::before { animation: none; }
-}
-
 /* ------------------------------------------------- night paper has tooth too */
 
 :root[data-theme="dark"] {

@@ -85,7 +85,7 @@ const layerClass = (index: number) =>
   <div class="about-eras">
     {
       eras.map((era, i) => (
-        <details data-reveal class={`era ${layerClass(i)}`} open={i === 0}>
+        <details class={`era ${layerClass(i)}`} open={i === 0}>
           <summary class="era__head">
             <span class="era__period">
               {era.period.split('∞').map((part, k) => (
@@ -97,6 +97,7 @@ const layerClass = (index: number) =>
             </span>
             <span class="era__title">{era.title}</span>
             <span class="era__hook">{era.hook}</span>
+            <span class="era__cue" aria-hidden="true"></span>
           </summary>
           <div class="era__body">
             {era.body.map((p) => (

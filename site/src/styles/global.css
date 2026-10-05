@@ -670,14 +670,17 @@ svg.tick path { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-lineca
   font-size: 1.15rem;
   color: var(--ink);
 }
-/* An unobtrusive open/close affordance on the title row. */
-.era__title::after {
-  content: '+';
-  font-weight: 400;
-  color: var(--ghost);
-  margin-left: 0.5rem;
+/* Open/close cue: a plain Space Mono instruction, static. */
+.era__cue {
+  grid-column: 1 / -1;
+  justify-self: end;
+  font-family: var(--font-meta);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--graphite);
 }
-.era[open] .era__title::after { content: '–'; }
+.era__cue::after { content: 'open ↓'; }
+.era[open] .era__cue::after { content: 'close ↑'; }
 .era__hook {
   font-family: var(--font-annotation);
   font-size: 1.25rem;
@@ -969,33 +972,6 @@ nav .wordmark:hover { transform: rotate(-3deg) translateY(-1px); }
 .journeys .j:hover .st { color: var(--ink); }
 .sz-page__body, .coord .provenance, .journeys .j .st { transition: color var(--dur-quick) ease; }
 
-/* about eras — tilted past cards straighten as you reach for them */
-.era {
-  transition:
-    transform var(--dur-settle) var(--ease-paper),
-    border-color var(--dur-quick) ease;
-}
-.era:hover { transform: rotate(0deg) translateX(2px); border-color: var(--graphite); }
-.era--current:hover { border-color: var(--ink); }
-.era::before { transition: background var(--dur-quick) ease, transform var(--dur-settle) var(--ease-paper); }
-.era:hover::before { background: var(--ink); border-color: var(--ink); transform: scale(1.3); }
-.era__title::after { display: inline-block; transition: transform var(--dur-settle) var(--ease-paper); }
-.era:hover .era__title::after { transform: rotate(90deg); }
-.era[open] .era__title::after { transform: none; }
-
-/* details bodies unfold rather than snap (progressive: browsers without
-   ::details-content / interpolate-size just open instantly) */
-:root { interpolate-size: allow-keywords; }
-details::details-content {
-  block-size: 0;
-  opacity: 0;
-  overflow: clip;
-  transition:
-    block-size var(--dur-settle) var(--ease-paper),
-    opacity var(--dur-settle) ease,
-    content-visibility var(--dur-settle) allow-discrete;
-}
-details[open]::details-content { block-size: auto; opacity: 1; }
 .md-fragment summary { transition: padding-left var(--dur-quick) var(--ease-paper); }
 .md-fragment summary:hover { padding-left: 0.3rem; }
 
