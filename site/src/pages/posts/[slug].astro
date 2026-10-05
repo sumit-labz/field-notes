@@ -4,6 +4,7 @@ import Base from '../../layouts/Base.astro';
 import FragmentBlock from '../../components/Fragment.astro';
 import AuthorFooter from '../../components/AuthorFooter.astro';
 import MadeWith from '../../components/MadeWith.astro';
+import PostTags from '../../components/PostTags.astro';
 import OriginGlyph from '../../components/OriginGlyph.astro';
 import { authorLineFor } from '../../lib/authorLines';
 import { splitPostBody } from '../../lib/post-body';
@@ -314,7 +315,14 @@ for (const block of blocks) {
 
   {authorLine && <AuthorFooter line={authorLine} />}
 
-  {post.data.made_with && <MadeWith stage={post.data.made_with} trimmed={post.data.trimmed} />}
+  {
+    (post.data.made_with || post.data.tags.length > 0) && (
+      <div class="post-slip">
+        {post.data.made_with && <MadeWith stage={post.data.made_with} trimmed={post.data.trimmed} />}
+        <PostTags tags={post.data.tags} />
+      </div>
+    )
+  }
 
   {
     nextPost && (
@@ -382,6 +390,20 @@ for (const block of blocks) {
 </script>
 
 <style>
+  /* The post's slip: how it was made, and the tags it carries, on one line. */
+  .post-slip {
+    margin-top: 3rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.6rem 1.2rem;
+  }
+  .post-slip > :global(.mw) {
+    margin-top: 0;
+  }
+  .post-slip :global(.post-tags) {
+    padding-top: 0.45rem;
+  }
   /* A clear way back to the feed at the end of the read, mirroring the top
      link (the wordmark is the only other route home now that nav has no feed
      item). */

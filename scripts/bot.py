@@ -362,7 +362,19 @@ def do_publish(chat_id: int, st: dict) -> None:
         log(f"publish failed: {redact_secrets(str(exc))}")
         edit_message(chat_id, msg_id, f"❌ Publish failed:\n{redact_secrets(str(exc))[:500]}")
         return
-    edit_message(chat_id, msg_id, f"✅ Published: {slug}\n/posts/{slug}/\n(site will rebuild)")
+    tags = _post_tags(slug)
+    tag_line = f"tags: {', '.join(tags)}" if tags else "tags: none"
+    edit_message(chat_id, msg_id, f"✅ Published: {slug}\n/posts/{slug}/\n{tag_line}\n(site will rebuild)")
+
+
+def _post_tags(slug: str) -> list[str]:
+    """The tags publish_post.py auto-applied, read back for the reply."""
+    try:
+        text = (REPO_ROOT / "posts" / f"{slug}.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    m = re.search(r"(?m)^tags:\s*\[(.*)\]\s*$", text)
+    return [t.strip() for t in m.group(1).split(",") if t.strip()] if m else []
 
 
 def _run_publish(st: dict) -> str:

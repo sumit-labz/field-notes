@@ -1,0 +1,15 @@
+# Controlled tag vocabulary. Posts may only use slugs listed here (build fails otherwise).
+# Tags are a second lens across journeys; a post can carry several. Never set at capture.
+studio-zero:  { label: Studio Zero,  note: the one-person creative studio }
+adhd:         { label: ADHD,         note: living and working with an ADHD brain }
+drawing:      { label: Drawing,      note: gesture, figure, composition, value }
+painting:     { label: Painting,     note: paint, colour, mark-making }
+typography:   { label: Typography,   note: letterforms, posters, kinetic type }
+writing:      { label: Writing,      note: monologues, essays, editing }
+film:         { label: Film,         note: monologues on camera, filmmaking }
+animation:    { label: Animation,    note: motion, manim, moving pictures }
+kinetic-typography: { label: Kinetic Typography, note: type that moves }
+sound:        { label: Sound,        note: music, sound design, voice }
+code:         { label: Code,         note: tools and apps I build }
+distribution: { label: Distribution, note: getting work seen }
+feelings:     { label: Feelings,     note: grief, doubt, the hard days }

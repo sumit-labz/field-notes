@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { TAG_SLUGS } from '../lib/tags';
 
 // Content lives at the repo root (fragments/, posts/, journeys/, identities/),
 // not inside site/ — see SPEC.md section 2. The glob loader reads it in place
@@ -92,6 +93,12 @@ const posts = defineCollection({
     made_with: z.enum(['raw', 'tidied', 'self-edited', 'feedback', 'unaided']).optional(),
     // tidied posts: how many spoken words the clean-verbatim pass removed.
     trimmed: z.number().optional(),
+    // Tags: a second lens across journeys, from the controlled vocabulary in
+    // config/tags.yml. Set at publish (scripts/suggest_tags.py), never at capture.
+    tags: z
+      .array(z.string().refine((t) => TAG_SLUGS.has(t), (t) => ({ message: `unknown tag "${t}" — add it to config/tags.yml` })))
+      .optional()
+      .default([]),
   }),
 });
 

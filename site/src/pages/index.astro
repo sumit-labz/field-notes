@@ -21,6 +21,14 @@ import {
 import { originFor } from '../lib/post-origin';
 import { withBase } from '../lib/url';
 import { hashString } from '../lib/hash';
+import { TAGS } from '../lib/tags';
+
+// The second lens: tags that carry at least one post, beside the journeys.
+const allPostsForTags = await getCollection('posts');
+const tagRow = TAGS.map((tag) => ({
+  tag,
+  count: allPostsForTags.filter((p) => p.data.tags.includes(tag.slug)).length,
+})).filter((t) => t.count > 0);
 
 const MAX_JOURNEYS = 6;
 const POSTS_PER_JOURNEY = 3;
@@ -208,6 +216,19 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   </header>
 
   {
+    tagRow.length > 0 && (
+      <nav class="tag-row" aria-label="Browse by tag">
+        <span class="tag-row__label">or by tag —</span>
+        {tagRow.map(({ tag, count }) => (
+          <a href={withBase(`/tags/${tag.slug}/`)}>
+            #{tag.label} <span>{String(count).padStart(2, '0')}</span>
+          </a>
+        ))}
+      </nav>
+    )
+  }
+
+  {
     sections.map(({ journey, n, layout, total, postCards, lead, last, mirror, soloMaterial }) => (
       <section class:list={['plate', `plate--${layout}`, `plate--${journey.data.status}`, { 'plate--mirror': mirror }]}>
         <header class="plate__head">
@@ -299,3 +320,35 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   import '../client/feed';
   import '../client/loupe';
 </script>
+
+<style>
+  /* A second way in, alongside the journey plates: plain mono links, no cards. */
+  .tag-row {
+    max-width: 88rem;
+    margin: 2.5rem auto 0;
+    padding: 0 var(--gutter);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 1.1rem;
+    font-family: var(--font-meta);
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+  }
+  .tag-row__label {
+    color: var(--graphite);
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+  }
+  .tag-row a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .tag-row a:hover {
+    text-decoration: underline;
+  }
+  .tag-row a span {
+    color: var(--graphite);
+  }
+</style>

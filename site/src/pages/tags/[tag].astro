@@ -1,0 +1,64 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import PostThumb from '../../components/PostThumb.astro';
+import { withBase } from '../../lib/url';
+import { postLeadMedia, postTeaser, stampDate } from '../../lib/content';
+import { originFor } from '../../lib/post-origin';
+import { TAGS } from '../../lib/tags';
+
+export async function getStaticPaths() {
+  return TAGS.map((tag) => ({ params: { tag: tag.slug }, props: { tag } }));
+}
+
+const { tag } = Astro.props;
+
+// Newest first: a tag is a lens across journeys, not a story — journeys stay
+// the oldest-first reading.
+const posts = (await getCollection('posts'))
+  .filter((p) => p.data.tags.includes(tag.slug))
+  .sort((a, b) => b.data.published.valueOf() - a.data.published.valueOf());
+
+const fragments = await getCollection('fragments');
+const fragmentsById = new Map(fragments.map((f) => [f.data.id, f]));
+const postCards = await Promise.all(
+  posts.map(async (post) => ({
+    post,
+    media: await postLeadMedia(post, fragmentsById),
+    teaser: postTeaser(post),
+  }))
+);
+---
+
+<Base title={`#${tag.label}`} wide>
+  <article class="box">
+    <header class="box__head">
+      <p class="plate__kicker">
+        <a href={withBase('/')}>← studio</a>
+        <a href={withBase('/tags/')}>all tags</a>
+      </p>
+      <h1 class="box__title">#{tag.label}</h1>
+      <p class="box__meta">{tag.note} · {posts.length} {posts.length === 1 ? 'post' : 'posts'}</p>
+    </header>
+
+    {
+      postCards.length > 0 && (
+        <div class="box__items">
+          {postCards.map(({ post, media, teaser }) => (
+            <div class="box__item">
+              <PostThumb
+                slug={post.data.slug}
+                title={post.data.title}
+                teaser={teaser}
+                media={media}
+                inProgress={post.data.status === 'in_progress'}
+                origin={originFor(post.data)}
+                date={stampDate(post.data.published)}
+              />
+            </div>
+          ))}
+        </div>
+      )
+    }
+  </article>
+</Base>

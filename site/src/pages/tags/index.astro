@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { withBase } from '../../lib/url';
+import { TAGS } from '../../lib/tags';
+
+const posts = await getCollection('posts');
+const counted = TAGS.map((tag) => ({
+  tag,
+  count: posts.filter((p) => p.data.tags.includes(tag.slug)).length,
+}));
+---
+
+<Base title="Tags">
+  <h1>Tags</h1>
+  <p class="annotation">a second way in — across journeys.</p>
+  <ul class="tag-index">
+    {
+      counted.map(({ tag, count }) => (
+        <li>
+          <a href={withBase(`/tags/${tag.slug}/`)}>#{tag.label}</a>
+          <span class="tag-index__count">{String(count).padStart(2, '0')}</span>
+          <span class="tag-index__note">{tag.note}</span>
+        </li>
+      ))
+    }
+  </ul>
+</Base>
+
+<style>
+  .tag-index {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0;
+    display: grid;
+    gap: 0.9rem;
+  }
+  .tag-index li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.8rem;
+  }
+  .tag-index a {
+    font-family: var(--font-structure);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+  }
+  .tag-index__count {
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    color: var(--graphite);
+  }
+  .tag-index__note {
+    color: var(--graphite);
+  }
+</style>

@@ -265,9 +265,17 @@ identities. A journey page reads as uninterrupted thinking.
 Setup: enable Discussions on the repo, create a `comments` category, install the
 giscus app, and embed the script on the post template with `mapping="pathname"`.
 
+### Tags (added after v1)
+
+`Post.tags` — optional list, default empty — is a second lens across journeys,
+drawn only from the controlled vocabulary in `config/tags.yml` (the build fails
+on anything else). Routes: `/tags` and `/tags/[tag]` (newest first). Tags are
+auto-applied at publish by `scripts/suggest_tags.py` and corrected by hand;
+never set at capture. Journeys are unchanged.
+
 ### Not in v1
 
-Search. Tags. Post-to-post links. Multi-journey posts. RSS is optional and cheap —
+Search. Post-to-post links. Multi-journey posts. RSS is optional and cheap —
 add it if trivial. No graph visualisation of any kind.
 
 ---

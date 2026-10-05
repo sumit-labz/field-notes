@@ -94,6 +94,7 @@ def render_post(
     stage: str,
     body: str,
     trimmed: int | None = None,
+    tags: list[str] | None = None,
 ) -> str:
     lines = ["---", f"slug: {slug}", f"title: {yaml_str(title)}", f"published: {published}"]
     lines.append(f"journey: {journey if journey else 'null'}")
@@ -113,6 +114,7 @@ def render_post(
     lines.append(f"made_with: {stage}")
     if trimmed:
         lines.append(f"trimmed: {trimmed}")
+    lines.append(f"tags: [{', '.join(tags or [])}]")
     lines.append("---")
     lines.append("")
     lines.append(body.strip())
@@ -197,6 +199,17 @@ def publish(args: argparse.Namespace) -> dict:
         (TRANSCRIPTS_DIR / transcript_name).write_text(raw, encoding="utf-8")
         rel_paths.append(f"transcripts/{transcript_name}")
 
+    # Tags from the controlled vocabulary (config/tags.yml), auto-applied —
+    # corrections go through /command1. Never blocks a publish: on any failure
+    # the post goes out untagged.
+    tags: list[str] = []
+    if not args.no_tags:
+        try:
+            from suggest_tags import suggest
+            tags = suggest(title, body)
+        except Exception as exc:  # noqa: BLE001
+            log(f"tagging failed, publishing untagged: {redact_secrets(str(exc))}")
+
     fragments = [args.cover_id] if args.cover_id else []
     POSTS_DIR.mkdir(parents=True, exist_ok=True)
     post_path.write_text(
@@ -211,6 +224,7 @@ def publish(args: argparse.Namespace) -> dict:
             cover_id=args.cover_id,
             stage=args.stage,
             trimmed=args.trimmed,
+            tags=tags,
             body=body,
         ),
         encoding="utf-8",
@@ -239,6 +253,7 @@ def publish(args: argparse.Namespace) -> dict:
         "cover": args.cover_id,
         "audio_id": args.audio_id,
         "stage": args.stage,
+        "tags": tags,
         "consumed_marked": bool(consumed_rel),
         "committed": True,
         "pushed": pushed,
@@ -261,6 +276,7 @@ def main() -> None:
     parser.add_argument("--trimmed", type=int, default=None, help="spoken words removed by the tidy pass (shown on the badge)")
     parser.add_argument("--published")
     parser.add_argument("--no-push", action="store_true")
+    parser.add_argument("--no-tags", action="store_true", help="skip auto-tagging")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 

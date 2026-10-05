@@ -1,0 +1,45 @@
+---
+// A post's tags, set beside the MadeWith pill: plain Space Mono links to each
+// tag's page. Graphite, underline only — no yellow (yellow is never UI).
+import { tagBySlug } from '../lib/tags';
+import { withBase } from '../lib/url';
+
+interface Props {
+  tags: string[];
+}
+
+const tags = Astro.props.tags.map(tagBySlug).filter((t) => t !== undefined);
+---
+
+{
+  tags.length > 0 && (
+    <ul class="post-tags" aria-label="Tags">
+      {tags.map((t) => (
+        <li>
+          <a href={withBase(`/tags/${t.slug}/`)}>#{t.label}</a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .post-tags {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.9rem;
+    font-family: var(--font-meta);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+  }
+  .post-tags a {
+    color: var(--graphite);
+    text-decoration: none;
+  }
+  .post-tags a:hover {
+    text-decoration: underline;
+  }
+</style>

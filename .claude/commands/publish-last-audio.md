@@ -72,8 +72,10 @@ Work from a scratch dir; do not leave temp files in the repo.
      [--title "<TITLE if provided or generated>"] \
      --json
    ```
+   publish_post.py auto-tags the post from `config/tags.yml` (scripts/suggest_tags.py);
+   a tagging failure publishes untagged, never blocks.
 
-6. **Report** the result: the returned `slug`, the local path `posts/<slug>.md`,
+6. **Report** the result: the returned `slug`, the `tags` applied, the local path `posts/<slug>.md`,
    and the live path `/posts/<slug>/`. Check `branch` and `will_deploy` in the
    JSON — `will_deploy` is only true when `pushed` is true AND `branch` is
    `main` (the only branch `.github/workflows/build.yml` deploys from). If
