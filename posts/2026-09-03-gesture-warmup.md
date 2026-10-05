@@ -9,7 +9,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
-tags: [drawing]
+tags: [drawing, daily-practice]
 ---
 
 Still warming up with gesture drawing. I've been following 30-second and 20-second gestures. What I like about gesture drawing is how it makes me feel alive — looking at bodies and drawing them makes me feel alive.

@@ -13,3 +13,4 @@ sound:        { label: Sound,        note: music, sound design, voice }
 code:         { label: Code,         note: tools and apps I build }
 distribution: { label: Distribution, note: getting work seen }
 feelings:     { label: Feelings,     note: grief, doubt, the hard days }
+daily-practice: { label: Daily Practice, note: the small things done every day }

@@ -10,7 +10,7 @@ status: published
 kind: post
 cover: 2026-09-23-100107
 made_with: raw
-tags: [drawing, painting]
+tags: [drawing, painting, daily-practice]
 ---
 
 I realized unless I master composition my dream of making art will be stalled. This is a fun exercise where I open a landscape on monitor and make a 3 value scale. Finally a start on this journey.
