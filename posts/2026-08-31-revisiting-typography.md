@@ -13,6 +13,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
+tags: [typography, adhd, studio-zero]
 ---
 
 I am revisiting typography after a long time. My ADHD brain is wondering how to reach hyperfixation while pursuing typography. I started looking back at my other influences, the books I purchased and never finished, though I got really excited. I pursued a lot of typographic layouts. I came to know what the typography order has to be: starting from focal point, order, surprise, negative space, and what details you show. Since I practiced them a way back, I don't remember much. I still remember that you pick up constraints, create thumbnail layouts, and then keep iterating and selecting. At the beginning of this day, I'm feeling very confused about how to start something so complex. I'm both excited and overwhelmed by the thought of getting back to typography and how useful it is to have a statement for your own personal brand.

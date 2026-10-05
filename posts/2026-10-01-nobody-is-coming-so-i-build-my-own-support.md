@@ -11,6 +11,7 @@ transcript: 2026-10-01-132953.txt
 cover: 2026-10-01-132348
 made_with: tidied
 trimmed: 56
+tags: [studio-zero, adhd, code, feelings]
 ---
 
 A few months back, I wrote this quote and stuck it on my monitor: giving yourself support. When I reflected on it for a while, I realized the best thing I could do is invest in myself, in the things and the support I need, because nobody is coming to tell me this. You have to invent tools for yourself that will give you productivity.

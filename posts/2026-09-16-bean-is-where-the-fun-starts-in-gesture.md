@@ -11,6 +11,7 @@ kind: post
 cover: 2026-09-16-125151
 made_with: tidied
 trimmed: 15
+tags: [drawing]
 ---
 
 For gesture drawing, I'm happy to say I have moved up to drawing the bean, the simple bean shape for the torso. For a long time I was doing the gesture poses for 30 seconds, two minutes, but doing the bean made me realize that if I could reverse the bean exercise, I would draw the bean and then think of human posture.

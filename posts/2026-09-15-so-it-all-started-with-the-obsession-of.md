@@ -10,6 +10,7 @@ status: in_progress
 kind: post
 cover: 2026-09-15-075039
 made_with: raw
+tags: [distribution, code, writing, kinetic-typography]
 ---
 
 It all started with the obsession of monologue, when I watched the movie The Killer at my friend's house. It stirred something deep inside me — how voice and music can come together and deliver something which remains in the head for a long time. Very artistic and very effective for an artist. It led me to very different directions in life.

@@ -10,6 +10,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
+tags: [studio-zero, distribution, adhd, writing]
 ---
 
 This morning, I woke with a clarity emerging. While lying in bed for an hour—wanting to sleep but unable to—the chatter came so fast that I had no control over it. But here's the thing: suddenly, what happened yesterday started making sense. How to build the new identity. How to move forward.

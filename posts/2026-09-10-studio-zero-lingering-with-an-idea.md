@@ -10,6 +10,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
+tags: [studio-zero, adhd, feelings, distribution]
 ---
 
 {{fragment:2026-09-10-175212}}

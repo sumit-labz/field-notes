@@ -11,6 +11,7 @@ kind: post
 transcript: 2026-09-24-065605.txt
 cover: 2026-09-24-070208
 made_with: feedback
+tags: [distribution, studio-zero, typography, feelings]
 ---
 
 I wanted clarity on how to organize the way I work, so I can sense a direction. Right now, while I'm building skills in motion and typography, a feeling of emptiness keeps showing up — yeah, you're learning the skill, but in isolation, without a bigger picture. So I had an internal discussion with myself about what I'm actually doing.

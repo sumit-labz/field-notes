@@ -9,6 +9,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
+tags: [drawing, studio-zero]
 ---
 
 There's little improvement in drawing after doing a lot of 2-minute poses. 30-second poses are hard — fast decision making — but the 2-minute ones are something I love doing over and over. It's my favorite night activity these days; the calm of the night and the studio lighting bring me back.

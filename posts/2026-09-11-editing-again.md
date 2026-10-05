@@ -9,6 +9,7 @@ fragments:
   - 2026-09-11-135139
 status: published
 kind: post
+tags: [writing, code, studio-zero]
 ---
 
 I'm returning to something I set down years ago: editing my own writing. My close friend [Alok](https://www.linkedin.com/in/alokingh/) introduced me to it — he'd used Shani Raja's course to write a book on CRM. I trusted Alok, so I bought the course.

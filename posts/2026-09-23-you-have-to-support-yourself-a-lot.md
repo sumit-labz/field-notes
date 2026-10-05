@@ -13,6 +13,7 @@ transcript: 2026-09-23-131205.txt
 cover: 2026-09-23-130652
 made_with: tidied
 trimmed: 126
+tags: [adhd, code, sound]
 ---
 
 For a long time I was trying to build an app for myself, tackling the core problems of ADHD — something that brings me back to the same app, over and over. I designed it as a vibe-coded desktop app on a Rust-based framework. Initially I tried an HTML-bundled app, but it was consuming a lot of memory, and then I found a lower-memory way to build it.

@@ -12,6 +12,7 @@ transcript: 2026-09-26-103802.txt
 cover: 2026-09-26-103458
 made_with: tidied
 trimmed: 36
+tags: [studio-zero, adhd, feelings, drawing]
 ---
 
 Here is the ultimate creative operating system I created for myself. What was happening was I was doing something and losing track of it. Suppose I did figure drawing, and then a good idea came: let's try shading. Then I was losing all those ideas. I was doing calligraphy, and at the same time I was thinking, why don't I combine it with figure drawing, explore lettering? All those crazy ideas were coming and I was not noting them down. When I was doing music, I was forgetting I have to get back to rhythm for sound. So all those ideas were getting left out.

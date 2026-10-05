@@ -13,6 +13,7 @@ transcript: 2026-09-23-093106.txt
 cover: 2026-09-23-100107
 made_with: tidied
 trimmed: 92
+tags: [feelings, adhd, studio-zero, kinetic-typography]
 ---
 
 I want to take a note about the emotions I've been going through while I built this creative studio. Recently, I went through a hyper-fixation loop. It was for a long time, getting addicted to things I wanted to build. I should say it's more about discovering something so addictive that you have no control over it and you keep coming back. Sometimes it's building music, sometimes it's just creating a three-value scale thumbnail. You find something more interesting and then you get hyper-fixated on it.

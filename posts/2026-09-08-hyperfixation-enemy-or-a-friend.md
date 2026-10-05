@@ -10,6 +10,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
+tags: [adhd, typography, studio-zero, feelings]
 ---
 
 {{fragment:2026-09-08-062425}}

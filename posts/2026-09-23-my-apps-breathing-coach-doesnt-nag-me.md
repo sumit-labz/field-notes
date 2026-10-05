@@ -13,6 +13,7 @@ transcript: 2026-09-23-205850.txt
 cover: 2026-09-23-205918
 made_with: tidied
 trimmed: 57
+tags: [code, adhd, animation, feelings]
 ---
 
 In my last post, I mentioned the app that I built for myself. I keep building it, mostly by coding in my free time, whenever I get a moment. It's very addictive to write code and build software for yourself.

@@ -9,6 +9,7 @@ fragments:
 status: published
 kind: post
 made_with: raw
+tags: [writing, film, sound]
 ---
 
 I am seeking guidance on how to write monologues. According to AI, it referred me to Truby's Anatomy of Story. I resisted, because I thought Truby is for structure, not dialogue. But when I confronted it, here's what it replied:

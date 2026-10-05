@@ -13,6 +13,7 @@ transcript: 2026-09-16-090554.txt
 cover: 2026-09-13-103613
 made_with: tidied
 trimmed: 77
+tags: [adhd, studio-zero, distribution, code]
 ---
 
 I was working on two ideas: the brand positioning software and Story Dojo, which is my main focus right now. The reasons I gave for switching from the brand positioning software to Story Dojo were many. The first one was that the brand positioning software is going to be a real money earner, because it has such terrific value for people all around the world, although I haven't even proven it yet. The second was that distribution for the branding software could be a challenge. You need to try it on another idea, and with Story Dojo you can build the video distribution, and you can fail on that, because I'm not very confident speaking on video itself.

@@ -15,6 +15,7 @@ transcript: 2026-09-20-083927.txt
 cover: 2026-09-20-083200
 made_with: tidied
 trimmed: 124
+tags: [adhd, feelings, sound, code]
 ---
 
 Why does it feel that the best days are also the worst days? I was examining my own behavior for the last few days. I was super excited about creating drum beats, so amazing that I could spend hours and hours just building beats and music. And I was getting more and more hyper-fixated after creating music. Anything I was doing, I was searching for something that would completely involve me. I was building a desktop app for myself to put all my shortcuts in one place: minor-level programming, minor-level planning, not too deep. And I kept getting back to it, wanting to improve it, build it, the Claude Code routine. This looks good, making widgets. And I found it so fascinating that you are the driver and the machine builds the software for you. Something so amazing.

@@ -15,6 +15,7 @@ transcript: 2026-09-22-052741.txt
 cover: 2026-09-22-053121
 made_with: tidied
 trimmed: 60
+tags: [feelings, adhd, writing]
 ---
 
 I am feeling a sense of grief after getting into hyperfixation loops. The grief comes from an inability to connect with people. While I am continuously working, dreaming about big outcomes, working towards them, sometimes failing, sometimes succeeding, I am sensing that the structure which led to hyperfixation has stopped allowing people into my life too.

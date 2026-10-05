@@ -11,6 +11,7 @@ kind: post
 cover: 2026-09-16-073359
 made_with: tidied
 trimmed: 52
+tags: [adhd, feelings, writing]
 ---
 
 I'm reflecting on yesterday. I felt I went through a burnout, where I was trying really hard but nothing was happening. I was trying to get out of it, but my mind was locked onto whatever I was doing, and it was not moving anywhere. My logical brain was saying I should get out of it, but I wasn't able to. There was some realization of failure, that this was not going to work, and the brain kept trying hard, saying you can push through, you can try this, try that, and it would work. But it was not a very productive day.
