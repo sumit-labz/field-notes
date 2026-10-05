@@ -2,6 +2,8 @@
 // fragments render inline at {{fragment:ID}} markers if present, otherwise
 // appended in listed order after the prose.
 
+import { isLinkBlock, linkCards } from './link-preview';
+
 export type PostBlock = { kind: 'text'; html: string } | { kind: 'fragment'; id: string };
 
 const MARKER_RE = /\{\{fragment:([a-zA-Z0-9-]+)\}\}/g;
@@ -57,7 +59,9 @@ export function paragraphs(text: string): string {
     .map((p) => p.trim())
     .filter(Boolean)
     .map((block) =>
-      isPullQuoteBlock(block)
+      isLinkBlock(block)
+        ? `<div class="link-cards">${linkCards(block)}</div>`
+        : isPullQuoteBlock(block)
         ? `<blockquote class="pull-quote"><span>${autolink(escapeHtml(stripPullQuoteMarkers(block)))}</span></blockquote>`
         : isQuoteBlock(block)
           ? `<blockquote class="ai-quote">${autolink(escapeHtml(stripQuoteMarkers(block)))}</blockquote>`

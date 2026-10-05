@@ -783,6 +783,64 @@ figure > p {
   margin: 0.5rem 0 1.25rem;
 }
 
+/* Link preview cards (lib/link-preview.ts) — a link line set as an ink-bordered
+   slip: thumbnail when the site gave one, then label, title, source. Square,
+   flat, no shadow; hover is an underline on the title only. */
+.link-cards {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.75rem 0;
+}
+.link-card {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+  text-decoration: none;
+  min-height: 6rem;
+}
+.link-card--bare { grid-template-columns: 1fr; min-height: 0; }
+.link-card__img {
+  width: 100%;
+  /* fills the row the text sets, never stretches it (portrait reels) */
+  height: 0;
+  min-height: 100%;
+  object-fit: cover;
+  border-right: 1.5px solid var(--ink);
+  display: block;
+}
+.link-card__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.8rem 1rem;
+  min-width: 0;
+}
+.link-card__label {
+  font-family: var(--font-structure);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: var(--graphite);
+}
+.link-card__title {
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.link-card:hover .link-card__title { text-decoration: underline; }
+.link-card__site {
+  font-family: var(--font-meta);
+  font-size: 0.72rem;
+  color: var(--graphite);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .link-card { grid-template-columns: 5.5rem 1fr; }
+}
+
 /* Quoted aside — an AI reply, or any verbatim text worth setting apart from
    the author's own prose. One inserted surface (--paper, same material as a
    scanned sheet), a plain ink rule on the left, no quote marks or italics —

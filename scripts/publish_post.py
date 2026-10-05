@@ -232,6 +232,16 @@ def publish(args: argparse.Namespace) -> dict:
     rel_paths.append(f"posts/{slug}.md")
     log(f"wrote posts/{slug}.md ({len(body)} chars, cover={args.cover_id or 'none'})")
 
+    # Link previews for any new link in the body — cached once, committed with
+    # the post. Never blocks a publish: a failure just means a plainer card.
+    try:
+        from link_previews import update_cache
+
+        if update_cache():
+            rel_paths.append("config/link-previews.json")
+    except Exception as exc:  # noqa: BLE001
+        log(f"link previews skipped: {redact_secrets(str(exc))}")
+
     consumed_rel = stamp_consumed_by(args.audio_id, slug) if args.audio_id else None
     if consumed_rel:
         rel_paths.append(consumed_rel)
