@@ -158,6 +158,18 @@ const ABSURD = [
 // The pencil note left beside a dense plate — one of a few, by slug.
 const NOTES = ['keeps coming back to this', 'unfinished, on purpose', 'more of this →', 'look again later', 'the pile grows'];
 const marginNote = (slug: string) => NOTES[Math.abs(hashString(`${slug}:note`)) % NOTES.length];
+// Start here: three hand-picked doors for a first visit — why the studio
+// exists, a piece of made work, and the person behind it. The wall below is
+// for returning readers; this is for strangers.
+const START_HERE: { slug: string; note: string }[] = [
+  { slug: '2026-09-10-studio-zero-lingering-with-an-idea', note: 'why this exists' },
+  { slug: '2026-09-08-torturing-a-color-palette', note: 'something made' },
+  { slug: '2026-09-03-adhd-in-my-40s', note: 'who is making it' },
+];
+const startHere = START_HERE.flatMap(({ slug, note }) => {
+  const post = posts.find((p) => p.data.slug === slug);
+  return post ? [{ slug, note, title: post.data.title }] : [];
+});
 const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 ---
 
@@ -182,7 +194,31 @@ const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
         <svg class="strike-overlay" aria-hidden="true"></svg>
       </span>
     </p>
+    <p class="mast__who">
+      Sumit Gupta — fifteen years writing software, now a one-person creative
+      studio. Notes on learning art, film, type and sound, built in public.
+    </p>
     <p class="mast__hand" data-absurd aria-live="off">{ABSURD[0]}</p>
+
+    {
+      startHere.length > 0 && (
+        <nav class="start-here" aria-label="Start here">
+          <span class="start-here__label">New here? Start with these —</span>
+          <ol>
+            {startHere.map((s, i) => (
+              <li>
+                <a href={withBase(`/posts/${s.slug}/`)}>
+                  <span class="start-here__n">{String(i + 1).padStart(2, '0')}</span>
+                  <b>{s.title}</b>
+                  <i>{s.note}</i>
+                </a>
+              </li>
+            ))}
+          </ol>
+          <a class="start-here__more" href={withBase('/about/')}>more about me →</a>
+        </nav>
+      )
+    }
 
     {
       wall.length > 0 && (

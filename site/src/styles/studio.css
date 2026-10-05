@@ -226,6 +226,58 @@ h1, h2, h3 { color: var(--ink); }
   rotate: -6deg;
 }
 
+/* who: the plain sentence a stranger needs before the jokes land */
+.mast__who {
+  max-width: 46ch;
+  margin: 0.9rem 0 0.5rem 18%;
+  font-family: var(--font-structure);
+  font-size: 1.02rem;
+  line-height: 1.45;
+  color: var(--graphite);
+}
+
+/* start here: three doors for a first visit, set as a short index */
+.start-here {
+  display: block;
+  margin: clamp(1.8rem, 4vw, 3rem) 0 0 18%;
+  max-width: 44rem;
+}
+.start-here__label {
+  font-family: var(--font-meta);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.start-here ol { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.start-here li { border-top: 1px dashed var(--graphite); }
+.start-here li:last-child { border-bottom: 1px dashed var(--graphite); }
+.start-here li a {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr auto;
+  gap: 0 0.9rem;
+  align-items: baseline;
+  padding: 0.65rem 0;
+  color: var(--ink);
+  background-image: none;
+}
+.start-here__n { font-family: var(--font-meta); font-size: 0.72rem; color: var(--graphite); }
+.start-here li b { font-family: var(--font-structure); font-weight: 600; }
+.start-here li i { font-family: var(--font-annotation); font-style: normal; color: var(--blue); white-space: nowrap; }
+.start-here li a:hover b { text-decoration: underline; text-underline-offset: 0.2em; }
+.start-here__more {
+  display: inline-block;
+  margin-top: 0.6rem;
+  font-family: var(--font-meta);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+}
+@media (max-width: 560px) {
+  .mast__who, .start-here { margin-left: 0; }
+  .start-here li a { grid-template-columns: 2rem 1fr; }
+  .start-here li i { grid-column: 2; }
+}
+
 /* the wall: newest material pinned loose */
 .wall {
   position: relative;
