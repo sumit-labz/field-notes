@@ -30,13 +30,24 @@ const tags = Astro.props.tags.map(tagBySlug).filter((t) => t !== undefined);
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.3rem 0.9rem;
+    align-items: center;
+    gap: 0.5rem;
     font-family: var(--font-meta);
     font-size: 0.75rem;
     letter-spacing: 0.04em;
   }
+  /* Stamped labels: square ink border, padded to the MadeWith pill's height
+     so the slip reads as one line. Hover is a plain underline — no motion. */
   .post-tags a {
-    color: var(--graphite);
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 2.55rem; /* the MadeWith pill's height, so they sit level */
+    padding: 0 0.75rem;
+    border: 1.5px solid var(--ink);
+    color: var(--ink);
+    font-weight: 700;
+    line-height: 1.2;
     text-decoration: none;
   }
   .post-tags a:hover {
