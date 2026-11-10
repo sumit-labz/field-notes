@@ -91,6 +91,16 @@ def log(msg: str) -> None:
     print(f"[bot {datetime.now(tz=IST).strftime('%H:%M:%S')}] {msg}", file=sys.stderr, flush=True)
 
 
+def _log_thread_crash(args: threading.ExceptHookArgs) -> None:
+    # Python's default hook prints the raw traceback, which can carry the bot
+    # token inside a URL. Log one scrubbed line instead.
+    name = args.thread.name if args.thread else "?"
+    log(f"thread {name} crashed: {args.exc_type.__name__}: {redact_secrets(str(args.exc_value))}")
+
+
+threading.excepthook = _log_thread_crash
+
+
 # ---------------------------------------------------------------------------
 # journeys / identities (for the buttons)
 
@@ -147,7 +157,18 @@ def newest_photo_fragment() -> str | None:
 
 def tg(method: str, **params) -> dict:
     token = os.environ["TELEGRAM_BOT_TOKEN"]
-    resp = requests.post(f"{TELEGRAM_API}/bot{token}/{method}", json=params, timeout=60)
+    # The home connection to api.telegram.org drops for seconds at a time
+    # (DNS misses, connect timeouts), so ride out short blips. On final
+    # failure, re-raise with the token scrubbed: requests puts the full URL,
+    # token included, into its exception text.
+    for attempt in range(3):
+        try:
+            resp = requests.post(f"{TELEGRAM_API}/bot{token}/{method}", json=params, timeout=60)
+            break
+        except requests.RequestException as exc:
+            if attempt == 2:
+                raise RuntimeError(f"telegram {method} unreachable: {redact_secrets(str(exc))}") from None
+            time.sleep(5 * (attempt + 1))
     body = resp.json()
     if not body.get("ok"):
         log(f"telegram {method} error: {body.get('description')}")
@@ -168,7 +189,10 @@ def send_message(chat_id: int, text: str, keyboard: dict | None = None, reply_to
     return (body.get("result") or {}).get("message_id")
 
 
-def edit_message(chat_id: int, message_id: int, text: str, keyboard: dict | None = None) -> None:
+def edit_message(chat_id: int, message_id: int | None, text: str, keyboard: dict | None = None) -> None:
+    if message_id is None:  # the placeholder never got sent; post the update fresh
+        send_message(chat_id, text, keyboard)
+        return
     params: dict = {"chat_id": chat_id, "message_id": message_id, "text": text, "disable_web_page_preview": True}
     params["reply_markup"] = keyboard or {"inline_keyboard": []}
     tg("editMessageText", **params)
@@ -507,7 +531,12 @@ def do_command1(chat_id: int, instruction: str, trigger_msg_id: int) -> None:
     deliberately dropped elsewhere; the safety net is REPO_LOCK (no two
     repo-touching jobs run at once) plus command1.md's own guardrails and the
     mandatory commit trail, not a live confirmation step."""
-    msg_id = send_message(chat_id, "⏳ Working on it…", reply_to=trigger_msg_id)
+    try:
+        msg_id = send_message(chat_id, "⏳ Working on it…", reply_to=trigger_msg_id)
+    except RuntimeError as exc:
+        # Run the command anyway; the result goes out as a fresh message below.
+        log(f"command1 ack failed (running anyway): {exc}")
+        msg_id = None
     prompt = f"/command1 {instruction}"
     try:
         with REPO_LOCK:
