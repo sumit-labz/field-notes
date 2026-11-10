@@ -87,6 +87,10 @@ const posts = defineCollection({
     // overriding the default "first fragment that has an image" heuristic in
     // pages/posts/[slug].astro. Absent → the heuristic picks the opener.
     cover: z.string().optional(),
+    // Optional cover framing. Default ('crop') fills the short hero banner and
+    // crops the photo; 'full' shows the whole photo at its own aspect ratio
+    // (capped in height) with the title set below it instead of over it.
+    cover_fit: z.enum(['crop', 'full']).optional(),
     // Optional AI-usage stage — the honest rung of the self-editing-pass
     // practice this post reached, rendered as the MadeWith badge (see
     // components/MadeWith.astro). Absent → no badge.

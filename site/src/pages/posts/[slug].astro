@@ -221,7 +221,7 @@ for (const block of blocks) {
     data-next={nextPost ? withBase(`/posts/${nextPost.data.slug}/`) : ''}
     hidden
   />
-  <header class:list={['post-hero', { 'post-hero--image': openerSrc }]}>
+  <header class:list={['post-hero', { 'post-hero--image': openerSrc, 'post-hero--full': openerSrc && post.data.cover_fit === 'full' }]}>
     {
       openerSrc && (
         <img
@@ -491,6 +491,11 @@ for (const block of blocks) {
   @media (min-width: 721px) {
     .post-hero--image { height: min(52vh, 520px); max-height: none; }
   }
+  /* cover_fit: full — the whole photo, uncropped, with the title below it */
+  .post-hero--image.post-hero--full { height: auto; min-height: 0; max-height: none; overflow: visible; }
+  .post-hero--full .opener { height: auto; max-height: 80svh; object-fit: contain; }
+  .post-hero--full::after { content: none; }
+  .post-hero--image.post-hero--full .post-hero__text { position: static; translate: none; margin: 1rem auto 0; }
   .post-hero + .meta { margin-top: 0.5rem; margin-bottom: 1.4rem; }
 
   /* The narration player lives in the floating reading pill now (see

@@ -9,9 +9,10 @@ status: published
 kind: post
 transcript: 2026-11-10-122832.txt
 cover: 2026-11-10-122448
+cover_fit: full
 made_with: tidied
 trimmed: 40
-tags: [adhd, feelings, code, daily-practice]
+tags: [adhd, feelings]
 ---
 
 Recovered from a major ADHD crash. I'm coming back after several months to record what actually happened.
