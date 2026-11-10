@@ -2,7 +2,7 @@
 // returns when you scroll up. Publishes its height as --nav-h so pinned
 // section headings can ride just below it.
 function init(): void {
-  const nav = document.querySelector<HTMLElement>('nav');
+  const nav = document.querySelector<HTMLElement>('nav.studio-nav');
   if (!nav) return;
   const mq = matchMedia('(max-width: 720px)');
   const root = document.documentElement;

@@ -1304,14 +1304,14 @@ nav .theme-toggle:hover { background: var(--line); transform: rotate(-20deg); }
 
 /* phones: the nav rides along, then tucks away while you read downward */
 @media (max-width: 720px) {
-  .js nav {
+  .js nav.studio-nav {
     position: sticky;
     top: 0;
     z-index: 15;
     background: var(--ground);
     transition: transform var(--dur-settle) var(--ease-paper);
   }
-  .js nav.is-tucked { transform: translateY(-100%); }
+  .js nav.studio-nav.is-tucked { transform: translateY(-100%); }
 }
 
 /* swipe to the next/previous post: the page slides the way your finger went */
@@ -1387,7 +1387,7 @@ body.swipe-prev main { animation: swipe-out-right 220ms var(--ease-ink) both; }
 @media (max-width: 720px) {
   /* ride below the nav while it's showing; slide up when it tucks away */
   .js .journey-section__head { top: var(--nav-h, 0px); transition: top var(--dur-settle) var(--ease-paper); }
-  .js body:has(nav.is-tucked) .journey-section__head { top: 0; }
+  .js body:has(nav.studio-nav.is-tucked) .journey-section__head { top: 0; }
 }
 
 @supports (animation-timeline: view()) {
